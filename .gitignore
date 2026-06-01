@@ -1,0 +1,144 @@
+# macOS / editor clutter
+.DS_Store
+*.swp
+*.swo
+.claude/
+collaboration_email_forithmus.md
+
+# Python caches and environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Raw and derived MRI datasets
+Alzheimer_MRI_4_classes_dataset/
+Alzheimer_MRI_binary/
+oasis1/
+data/
+
+# Model checkpoints and run outputs
+runs/
+*.pt
+*.pth
+*.ckpt
+
+# Large archives and medical imaging binaries
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.nii
+*.nii.gz
+*.img
+*.hdr
+*.dcm
+
+# Local LaTeX build products
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+
+# Generated duplicate figure exports outside the paper folder
+figures/
+
+# Local archive of superseded notebooks/drafts; keep public release focused.
+obsolete_archive/
+archive/
+
+# Local/generated notebooks and legacy drafts not needed for public release.
+# subject_debiasing_model.py is an obsolete exploratory predecessor; migrate
+# useful logic into tracked scripts or src/splitguard_ad/ before publishing.
+*_FIXED.ipynb
+*_FIXED.py
+!scripts/run_e2_probe_fixed.py
+*_CORRECTED.ipynb
+*_CORRECTED.py
+create_fixed_notebook.py
+generate_fixed_notebook.py
+CODE_REVIEW*.md
+FIXES_APPLIED.md
+training_log.txt
+mrrate_adapter.py
+subject_debiasing_model.py
+paper1_experiments.py
+paper1_results.json
+probe_experiment_results.json
+
+# Per-image prediction exports are result data; keep aggregate metrics instead
+reports/tables/*test_predictions*.csv
+reports/tables/adni/
+reports/audits/
+
+# Keep target-specific submission packages; ignore old top-level drafts.
+submissions/*.md
+
+# Local archive of retired submission work — keep public release focused.
+submissions/_archive_*/
+
+# Local scratch / build-output directory.
+tmp/
+
+# Restricted ADNI study-file downloads (DUA-protected participant-level
+# clinical data). Live at project root before being symlinked into
+# data/raw/adni/study_files/, so explicit root-level rules are needed in
+# addition to the broader `data/` exclusion above.
+ADNIMERGE*
+DATADIC_*.csv
+DXSUM_*.csv
+MMSE_*.csv
+PTDEMOG_*.csv
+ROSTER_*.csv
+REGISTRY_*.csv
+VISITS_*.csv
+MRIMETA_*.csv
+MRI3META_*.csv
+MRIQC_*.csv
+Enrollment.zip
+Enrollment.zip.txt
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Public-release boundary
+# ──────────────────────────────────────────────────────────────────────────────
+# The framework repository is code-only. The journal manuscript, AIHealth
+# conference camera-ready, aggregate result tables, internal planning notes,
+# and reviewer-feedback drafts all live under these paths locally but are not
+# redistributed publicly. They are kept on disk so authors can keep working
+# without re-creating them, but git will not track them.
+
+paper/
+submissions/
+reports/
+download.zip
+download.zip.txt
+
+# Keep two canonical methodology docs in the public release; exclude
+# everything else under docs/ (internal planning, reviewer-feedback,
+# superseded drafts, work-package outlines).
+docs/*
+!docs/ADNI_LABEL_ONTOLOGY.md
+!docs/DATA_ACCESS.md
+docs/reviews/
+
+# AIHealth conference-submission tooling is not part of the framework.
+scripts/build_aihealth_template_docx.py
+scripts/render_aihealth_camera_ready_pdf.py
+
+# Pre-merge redirect stubs (superseded by docs/SPLITGUARD_AD_FORWARD_PLAN.md
+# which itself is kept local).
+MASTER_PLAN.md
+SPLITGUARD_AD_SCOPE.md
+download.zip
