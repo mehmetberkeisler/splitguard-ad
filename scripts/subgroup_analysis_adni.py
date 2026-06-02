@@ -95,6 +95,8 @@ def main() -> int:
     # Per (seed, protocol, subgroup) -> AUROC
     per_seed_aurocs: dict[tuple[int, str, str], float] = {}
     test_sizes: dict[tuple[int, str, str], int] = {}
+    # Per (seed, protocol, subgroup) -> AD prevalence in 0..1 (class control).
+    ad_prev: dict[tuple[int, str, str], float] = {}
 
     for seed in args.seeds:
         for proto in args.protocols:
@@ -113,14 +115,28 @@ def main() -> int:
                 key_age = f"age_{age_band}"
                 key_sex = f"sex_{sex}" if sex else "sex_unknown"
                 key_overall = "overall"
+                # New: age × sex interaction cell (only when sex is known).
+                key_interaction = (
+                    f"sex_{sex}_age_{age_band}" if sex else None
+                )
                 pt = (int(r["y_true"]), float(r["y_prob"]))
                 by_subgroup[key_overall].append(pt)
                 by_subgroup[key_age].append(pt)
                 by_subgroup[key_sex].append(pt)
+                if key_interaction is not None:
+                    by_subgroup[key_interaction].append(pt)
             for subgroup, pts in by_subgroup.items():
                 y_t, y_p = zip(*pts)
                 per_seed_aurocs[(seed, proto, subgroup)] = auroc(list(y_t), list(y_p))
                 test_sizes[(seed, proto, subgroup)] = len(pts)
+                # Class prevalence: fraction of AD-positive labels in this
+                # subgroup-protocol-seed cell.  Used to control for the
+                # possibility that the F-M AUROC gap is driven by differing
+                # AD prevalence rather than by genuine representation
+                # differences.
+                ad_prev[(seed, proto, subgroup)] = (
+                    sum(y_t) / len(y_t) if y_t else float("nan")
+                )
 
     # Aggregate across seeds with paired bootstrap
     subgroups = sorted({k[2] for k in per_seed_aurocs})
@@ -150,6 +166,58 @@ def main() -> int:
                 "ci_hi": round(percentile(boot_means, hi_q), 4),
             }
 
+    # ──────────────────────────────────────────────────────────────────────
+    # Sex-gap analysis: paired bootstrap on the per-seed F-M AUROC delta.
+    # Same B and CI as the marginal bootstrap so the numbers are mutually
+    # comparable.  Reported per protocol.
+    # ──────────────────────────────────────────────────────────────────────
+    sex_gap: dict[str, dict] = {}
+    rng_sex = random.Random(args.seed + 1)
+    for proto in args.protocols:
+        f_vals = [per_seed_aurocs.get((s, proto, "sex_F"), float("nan"))
+                  for s in seeds]
+        m_vals = [per_seed_aurocs.get((s, proto, "sex_M"), float("nan"))
+                  for s in seeds]
+        # Only use seeds where BOTH sexes have an AUROC (no NaN).
+        paired = [(f, m) for f, m in zip(f_vals, m_vals) if f == f and m == m]
+        if not paired:
+            continue
+        deltas = [f - m for f, m in paired]
+        boot_deltas = []
+        for _ in range(args.n_boot):
+            idx = [rng_sex.randrange(len(deltas)) for _ in range(len(deltas))]
+            boot_deltas.append(mean([deltas[i] for i in idx]))
+        lo_q = (100.0 - args.ci) / 2; hi_q = 100.0 - lo_q
+        # Count of resamples preserving direction (sign of mean).
+        same_sign = sum(
+            1 for d in boot_deltas if (d > 0) == (mean(deltas) > 0)
+        )
+        sex_gap[proto] = {
+            "n_seeds_paired": len(paired),
+            "delta_per_seed": [round(d, 4) for d in deltas],
+            "delta_mean": round(mean(deltas), 4),
+            "delta_ci_lo": round(percentile(boot_deltas, lo_q), 4),
+            "delta_ci_hi": round(percentile(boot_deltas, hi_q), 4),
+            "direction_preserved_iters": same_sign,
+            "n_boot": args.n_boot,
+        }
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Class-prevalence summary per protocol × subgroup: mean AD fraction
+    # across seeds.  Used as the class-imbalance control: if the F-M AUROC
+    # gap arose from AD prevalence differences between male and female test
+    # partitions, those numbers should diverge.
+    # ──────────────────────────────────────────────────────────────────────
+    prevalence: dict[str, dict[str, float]] = {}
+    for proto in args.protocols:
+        prevalence[proto] = {}
+        for subgroup in subgroups:
+            vals = [ad_prev.get((s, proto, subgroup), float("nan"))
+                    for s in seeds]
+            vals = [v for v in vals if v == v]
+            if vals:
+                prevalence[proto][subgroup] = round(mean(vals), 4)
+
     out = {
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "runs_root": str(args.runs_root.resolve().relative_to(PROJECT_ROOT))
@@ -167,6 +235,8 @@ def main() -> int:
         "results": {
             f"{p}__{sg}": v for (p, sg), v in point.items()
         },
+        "sex_gap_paired_bootstrap": sex_gap,
+        "ad_prevalence_by_subgroup": prevalence,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(out, indent=2), encoding="utf-8")
