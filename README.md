@@ -15,6 +15,33 @@ The framework is designed around three concrete validation cohorts:
 - **Tier 3** — ADNI1: Complete 3Yr 1.5T (longitudinal clinical-research
   cohort, visit-level diagnosis through DXSUM, multi-phase coverage).
 
+## What's new in v0.2.0
+
+Three new evidence streams built on top of the v0.1.0 inflation-gap core:
+
+- **Sex-related performance disparity that leakage hides** — paired-bootstrap
+  female-minus-male AUROC delta of +0.106 to +0.109 under both honest
+  protocols, indistinguishable from zero under the leaky benchmark.
+  Class-prevalence control rules out the most obvious confound; age × sex
+  interaction localises the gap to the older male stratum.
+  See `scripts/subgroup_analysis_adni.py`.
+- **Clinical cost-of-leakage translation** — converts the AUROC inflation
+  into missed-diagnosis counts per 1000 screened patients at literature-
+  cited prevalence anchors (Rajan 2021 US 75-84 stratum = 13.8%; PROMPT
+  2025 tertiary memory clinic = 58.9%). Headline: ~3.2× understatement of
+  clinical harm at the screening operating point.
+  See `scripts/clinical_cost_of_leakage_adni.py`.
+- **Leakage dose-response stress test** — controlled 5×5×2 subject-
+  substitution matrix on ADNI yields a near-linear AUROC-vs-overlap
+  relationship: AUROC ≈ 0.832 + 0.107·p on ResNet-18 (R²=0.69). Every 10pp
+  of test-subject overlap inflates reported AUROC by ~0.011.
+  See `scripts/inject_leakage_split.py` + `scripts/run_dose_response_matrix.sh`.
+
+Plus infrastructure: a `DataLoader num_workers` fix that's critical on CUDA
+(67× speedup) and a one-shot RunPod setup script
+(`scripts/runpod_setup_and_run.sh`) for the dose-response matrix on a
+rented 4090 (~$2, ~1h40min wall-clock).
+
 ## Quick start
 
 The framework targets Python 3.10+. PyTorch with the MPS or CUDA backend
@@ -82,6 +109,41 @@ python3 scripts/run_adni_inflation_gap.py \
 # Optional probes.
 python3 scripts/subgroup_analysis_adni.py
 python3 scripts/run_biometric_probe_adni.py
+```
+
+#### v0.2.0 follow-up experiments
+
+The dose-response stress test and the clinical cost-of-leakage analysis
+both run on the converter-inclusive ADNI sensitivity arm and reuse the
+per-image test predictions that the patched training pipeline persists.
+
+```bash
+# Clinical cost-of-leakage: translates AUROC gap into missed-diagnosis
+# counts per 1000 screened patients at literature-cited prevalence
+# anchors. Uses the predictions written by run_adni_inflation_gap.py.
+python3 scripts/clinical_cost_of_leakage_adni.py \
+    --prev-pop 0.138 \
+    --prev-pop-citation "Rajan et al. 2021, Alz&Dement, doi:10.1002/alz.12362" \
+    --prev-clinic 0.589 \
+    --prev-clinic-citation "Thomas et al. 2025 PROMPT registry, PMC11716007"
+python3 scripts/generate_cost_of_leakage_figure.py
+
+# Dose-response stress test: inject controlled test-subject overlap at
+# five levels and fit AUROC = f(overlap). 50 training runs (5 seeds x
+# 5 overlap levels x 2 archs) — typically ~25 hours on RTX 4090.
+# A one-shot RunPod driver (scripts/runpod_setup_and_run.sh) handles
+# environment setup, smoke test, full matrix, and result bundling.
+for seed in 0 1 2 3 4; do
+  for overlap in 0.0 0.25 0.50 0.75 1.0; do
+    python3 scripts/inject_leakage_split.py \
+        --base data/splits/adni_with_converters/adni_splitguard_seed${seed}.csv \
+        --overlap $overlap --seed $seed \
+        --output data/splits/adni_dose_response/seed${seed}_overlap${overlap}.csv
+  done
+done
+bash scripts/run_dose_response_matrix.sh
+python3 scripts/analyze_dose_response.py
+python3 scripts/generate_dose_response_figure.py
 ```
 
 ## Repository layout
