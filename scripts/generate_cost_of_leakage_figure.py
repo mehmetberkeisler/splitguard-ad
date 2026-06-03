@@ -1,32 +1,43 @@
 #!/usr/bin/env python3
-"""Generate the clinical cost-of-leakage figure for §6.8.
+"""Generate Figure 9: the clinical cost-of-leakage figure.
 
-Two panels:
+Two-panel publication-quality figure:
   (a) Per-seed ROC curves for Protocol A (leaky) and Protocol C
-      (component-safe \\SGA{}) on the converter-inclusive ADNI sensitivity
-      arm, with the sens@spec=0.90 screening operating point marked on
-      each protocol's mean curve.
-  (b) Expected missed-diagnoses per 1000 screened patients at two
+      (component-safe SplitGuard-AD) on the converter-inclusive ADNI
+      sensitivity arm, with the screening operating point (specificity
+      = 0.90) marked on each protocol's mean curve.
+  (b) Expected missed AD diagnoses per 1,000 screened patients at two
       literature-cited prevalence anchors (Rajan 2021 75-84 stratum,
-      Thomas 2025 PROMPT tertiary clinic), showing what the leaky
-      benchmark predicts vs.\\ what an honest-protocol model actually
-      delivers at the same operating point.
+      Thomas 2025 PROMPT tertiary memory clinic).
 
-Reads
------
-runs/adni_with_converters/inflation_gap_seed{S}/{protocol}/test_predictions.csv
-reports/tables/adni/adni_cost_of_leakage.json  (for the per-1000 anchors)
+Style: shared publication-quality from scripts/_publication_style.py.
 
-Writes
-------
-paper/fig9_cost_of_leakage.{pdf,png}
+Reads:
+  runs/adni_with_converters/inflation_gap_seed{S}/{protocol}/test_predictions.csv
+  reports/tables/adni/adni_cost_of_leakage.json
+
+Writes:
+  paper/fig9_cost_of_leakage.{pdf,png}
 """
 
 from __future__ import annotations
 
 import csv
 import json
+import sys
 from pathlib import Path
+
+# Project-shared style ------------------------------------------------------
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _publication_style import (
+    apply_publication_style, thin_y_grid,
+    LEAKY, SPLIT, NEUTRAL, TWO_COL_W,
+)
+apply_publication_style()
+
+import matplotlib.pyplot as plt
+import numpy as np
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUNS = PROJECT_ROOT / "runs" / "adni_with_converters"
@@ -36,28 +47,23 @@ OUT_STEM = PROJECT_ROOT / "paper" / "fig9_cost_of_leakage"
 SEEDS = [0, 1, 2, 3, 4]
 TARGET_SPEC = 0.90
 
-LEAKY = "#c44e52"
-SPLIT = "#4c72b0"
-NEUTRAL = "#7f8c8d"
 
-
+# ── ROC primitives ──────────────────────────────────────────────────────
 def roc_points(y_true, y_prob):
     P = sum(y_true); N = len(y_true) - P
     pairs = sorted(zip(y_prob, y_true), reverse=True)
     tp = fp = 0
-    pts = [(0.0, 1.0)]  # (FPR=0, TPR=0) start at origin
+    pts = [(0.0, 0.0)]
     for _, label in pairs:
         if label == 1: tp += 1
         else:          fp += 1
         sens = tp / P; spec = 1 - fp / N
         pts.append((1 - spec, sens))
-    return pts  # [(FPR, TPR), ...]
+    return pts
 
 
 def interp_roc(xs, ys, n=200):
-    """Linearly interpolate a ROC curve onto a fixed FPR grid for averaging."""
     import bisect
-    # sort by FPR then dedupe
     seen = {}
     for x, y in zip(xs, ys):
         if x not in seen or y > seen[x]:
@@ -80,37 +86,7 @@ def interp_roc(xs, ys, n=200):
     return grid, out
 
 
-def sens_at_spec(pts, target_spec):
-    best = 0.0
-    for fpr, tpr in pts:
-        spec = 1 - fpr
-        if spec >= target_spec and tpr > best:
-            best = tpr
-    return best
-
-
 def main() -> int:
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    plt.rcParams.update({
-        "font.family": "serif",
-        "font.size": 10,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-        "axes.titlesize": 10.5,
-        "axes.titlelocation": "left",
-        "axes.titleweight": "bold",
-        "axes.labelsize": 10,
-        "xtick.labelsize": 9,
-        "ytick.labelsize": 9,
-        "legend.fontsize": 8.5,
-        "legend.frameon": False,
-        "figure.dpi": 180,
-    })
-
     # ── Collect ROC points per (seed, protocol) ────────────────────────────
     rocs = {"random": [], "component_safe": []}
     for proto in rocs:
@@ -121,13 +97,13 @@ def main() -> int:
             y_p = [float(r["y_prob"]) for r in rows]
             rocs[proto].append(roc_points(y_t, y_p))
 
-    # Mean curves on a common FPR grid
+    # Mean curves on common FPR grid
     mean_curves = {}
     for proto, runs in rocs.items():
         grids = []
         for pts in runs:
             xs, ys = zip(*pts)
-            g, y = interp_roc(list(xs), list(ys), n=200)
+            _, y = interp_roc(list(xs), list(ys), n=200)
             grids.append(y)
         grid = [i / 199 for i in range(200)]
         mean_y = [sum(g[i] for g in grids) / len(grids) for i in range(200)]
@@ -136,51 +112,58 @@ def main() -> int:
     cost = json.loads(COST_JSON.read_text())
 
     # ── Build figure ────────────────────────────────────────────────────────
-    # Two-row layout so panel titles never overlap.
-    fig, (axa, axb) = plt.subplots(1, 2, figsize=(9.5, 3.6),
-                                   gridspec_kw={"wspace": 0.28})
+    fig, (axa, axb) = plt.subplots(
+        1, 2, figsize=(TWO_COL_W, 3.3), gridspec_kw={"wspace": 0.35}
+    )
 
-    # Panel A: ROC curves
+    # ── Panel A: ROC curves ────────────────────────────────────────────────
     for pts in rocs["random"]:
         xs, ys = zip(*pts)
-        axa.plot(xs, ys, color=LEAKY, alpha=0.18, lw=0.9, zorder=2)
+        axa.plot(xs, ys, color=LEAKY, alpha=0.14, lw=0.6, zorder=2)
     for pts in rocs["component_safe"]:
         xs, ys = zip(*pts)
-        axa.plot(xs, ys, color=SPLIT, alpha=0.18, lw=0.9, zorder=2)
+        axa.plot(xs, ys, color=SPLIT, alpha=0.14, lw=0.6, zorder=2)
     gx, gy = mean_curves["random"]
-    axa.plot(gx, gy, color=LEAKY, lw=2.0, zorder=3,
-             label="Protocol A — Leaky (mean)")
+    axa.plot(gx, gy, color=LEAKY, lw=1.4, zorder=3,
+             label="Protocol A — Random (leaky)")
     gx, gy = mean_curves["component_safe"]
-    axa.plot(gx, gy, color=SPLIT, lw=2.0, zorder=3,
-             label="Protocol C — SplitGuard (mean)")
-    # Operating-point markers at spec=0.90 ⇒ FPR=0.10.
-    # Use the *per-seed mean* sens@spec we report in the text, NOT a value
-    # re-computed on the averaged ROC curve (which saturates at 1.0 because
-    # individual seeds vary in where their step-curves jump).
+    axa.plot(gx, gy, color=SPLIT, lw=1.4, zorder=3,
+             label="Protocol C — SplitGuard-AD")
+
+    # Operating-point markers at spec=0.90
     op_fpr = 1 - TARGET_SPEC
     sens_l = cost["by_protocol"]["random"]["mean_sens_at_fixed_spec"]
     sens_h = cost["by_protocol"]["component_safe"]["mean_sens_at_fixed_spec"]
-    axa.axvline(op_fpr, color=NEUTRAL, lw=0.7, linestyle=":", zorder=1)
-    axa.scatter([op_fpr], [sens_l], s=70, color=LEAKY,
-                edgecolor="black", linewidth=0.8, zorder=4)
-    axa.scatter([op_fpr], [sens_h], s=70, color=SPLIT,
-                edgecolor="black", linewidth=0.8, zorder=4)
-    axa.annotate(f"  sens = {sens_l:.3f}", xy=(op_fpr, sens_l),
-                 xytext=(op_fpr + 0.04, sens_l + 0.02), va="center",
-                 color=LEAKY, fontsize=8.5, weight="bold")
-    axa.annotate(f"  sens = {sens_h:.3f}", xy=(op_fpr, sens_h),
-                 xytext=(op_fpr + 0.04, sens_h - 0.04), va="center",
-                 color=SPLIT, fontsize=8.5, weight="bold")
-    axa.plot([0, 1], [0, 1], color=NEUTRAL, lw=0.7, linestyle=":", zorder=1)
-    axa.set_xlabel("False positive rate (1 − specificity)")
+    axa.axvline(op_fpr, color=NEUTRAL, lw=0.4, linestyle=(0, (1, 2)), zorder=1)
+    axa.scatter([op_fpr], [sens_l], s=32, color=LEAKY,
+                edgecolor="white", linewidth=0.9, zorder=4)
+    axa.scatter([op_fpr], [sens_h], s=32, color=SPLIT,
+                edgecolor="white", linewidth=0.9, zorder=4)
+
+    # Diagonal chance line
+    axa.plot([0, 1], [0, 1], color=NEUTRAL, lw=0.4, linestyle=(0, (1, 2)),
+             zorder=1)
+
+    # Operating-point sensitivities — lower-right white space, colour-coded
+    # (title already states spec = 0.90, so no need to repeat it here).
+    axa.text(0.50, 0.13, f"sens (leaky)   = {sens_l:.3f}",
+             color=LEAKY, fontsize=8, ha="left", va="bottom",
+             family="monospace")
+    axa.text(0.50, 0.05, f"sens (honest)  = {sens_h:.3f}",
+             color=SPLIT, fontsize=8, ha="left", va="bottom",
+             family="monospace")
+
+    axa.set_xlabel("False positive rate (1 $-$ specificity)")
     axa.set_ylabel("True positive rate (sensitivity)")
     axa.set_xlim(0, 1)
     axa.set_ylim(0, 1.02)
-    axa.set_title("(a) ROC, operating point @ spec = 0.90")
-    axa.legend(loc="lower right", ncol=1)
+    axa.set_title("(a) ROC, operating point @ spec $= 0.90$", loc="left")
+    thin_y_grid(axa)
 
-    # Panel B: per-1000 missed-diagnoses bar chart at both prevalences
-    labels = ["Population\n13.8 % (Rajan 2021)", "Tertiary clinic\n58.9 % (Thomas 2025)"]
+    # ── Panel B: per-1000 missed-diagnoses bar chart ──────────────────────
+    # Short tick labels; full prevalence citations move to the caption.
+    labels = ["Population\n(13.8% prev.)",
+              "Tertiary clinic\n(58.9% prev.)"]
     leaky_miss = [
         cost["cost_of_leakage"]["prev_population"]["leaky_apparent_missed_per_1000"],
         cost["cost_of_leakage"]["prev_clinic"]["leaky_apparent_missed_per_1000"],
@@ -191,34 +174,48 @@ def main() -> int:
     ]
     x = np.arange(len(labels))
     w = 0.36
-    axb.bar(x - w/2, leaky_miss, w, color=LEAKY, edgecolor="black",
-            linewidth=0.6, label="Leaky benchmark predicts", zorder=3)
-    axb.bar(x + w/2, honest_miss, w, color=SPLIT, edgecolor="black",
-            linewidth=0.6, label="Honest deployment yields", zorder=3)
-    for i, v in enumerate(leaky_miss):
-        axb.text(x[i] - w/2, v + 4, f"{v:.1f}", ha="center", va="bottom",
-                 fontsize=9, color=LEAKY, weight="bold")
-    for i, v in enumerate(honest_miss):
-        axb.text(x[i] + w/2, v + 4, f"{v:.1f}", ha="center", va="bottom",
-                 fontsize=9, color=SPLIT, weight="bold")
-    # Gap annotation
-    for i, (lm, hm) in enumerate(zip(leaky_miss, honest_miss)):
-        axb.annotate(f"+{hm - lm:.0f}", xy=(x[i], max(lm, hm) + 22),
-                     ha="center", fontsize=10, weight="bold", color=NEUTRAL)
-    axb.set_xticks(x)
-    axb.set_xticklabels(labels, fontsize=9)
-    axb.set_ylabel("Missed AD diagnoses per 1000 screened")
-    axb.set_ylim(0, max(honest_miss) * 1.30)
-    axb.grid(axis="y", linestyle=":", alpha=0.5)
-    axb.set_title("(b) Missed AD diagnoses per 1000 screened")
-    axb.legend(loc="upper left", ncol=1)
+    axb.bar(x - w/2, leaky_miss, w, color=LEAKY, edgecolor="none",
+            label="Leaky benchmark (apparent miss-rate)", zorder=3)
+    axb.bar(x + w/2, honest_miss, w, color=SPLIT, edgecolor="none",
+            label="Honest evaluation (actual miss-rate)", zorder=3)
 
-    fig.tight_layout()
+    ymax = max(honest_miss) * 1.40
+    pad = ymax * 0.012
+    for i, v in enumerate(leaky_miss):
+        axb.text(x[i] - w/2, v + pad, f"{v:.1f}", ha="center", va="bottom",
+                 fontsize=7.5, color=LEAKY)
+    for i, v in enumerate(honest_miss):
+        axb.text(x[i] + w/2, v + pad, f"{v:.1f}", ha="center", va="bottom",
+                 fontsize=7.5, color=SPLIT)
+    # Gap annotation anchored above the taller (honest) bar.
+    for i, (lm, hm) in enumerate(zip(leaky_miss, honest_miss)):
+        axb.annotate(
+            f"+{hm - lm:.0f} missed",
+            xy=(x[i] + w/2, hm),
+            xytext=(0, 18), textcoords="offset points",
+            ha="center", va="bottom",
+            fontsize=7.5, color=NEUTRAL,
+        )
+    axb.set_xticks(x)
+    axb.set_xticklabels(labels)
+    axb.set_ylabel("Missed AD diagnoses per 1,000 screened")
+    axb.set_ylim(0, ymax)
+    axb.set_title("(b) Per-1,000 missed-diagnosis shortfall", loc="left")
+    thin_y_grid(axb)
+
+    # Shared legend below both panels — combine ROC + bar entries.
+    handles_a, labels_a = axa.get_legend_handles_labels()
+    handles_b, labels_b = axb.get_legend_handles_labels()
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.91, bottom=0.26, wspace=0.35)
+    fig.legend(handles_a + handles_b, labels_a + labels_b,
+               loc="lower center", bbox_to_anchor=(0.5, 0.02),
+               ncol=2, frameon=False, fontsize=8,
+               columnspacing=2.2, handlelength=1.8)
     OUT_STEM.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(f"{OUT_STEM}.pdf", bbox_inches="tight")
-    fig.savefig(f"{OUT_STEM}.png", bbox_inches="tight")
+    fig.savefig(f"{OUT_STEM}.pdf")
+    fig.savefig(f"{OUT_STEM}.png")
     plt.close(fig)
-    print(f"Wrote {OUT_STEM}.pdf + .png")
+    print(f"  wrote paper/{OUT_STEM.name}.pdf + .png")
     return 0
 
 

@@ -1,22 +1,38 @@
 #!/usr/bin/env python3
 """Generate Figure 10: the leakage dose-response curve.
 
-Two-panel figure:
+Two-panel publication-quality figure:
   (a) Per-seed scatter + mean line with 95% paired-bootstrap CI band for
-      each architecture (ResNet-18, DenseNet-121).  The x-axis is target
-      test-subject overlap fraction, the y-axis is test AUROC.
-  (b) Same two architectures overlaid with the OLS linear fits, showing
-      the dose-response slope.  Annotation reports the headline finding:
-      AUROC ≈ a + b × overlap.
+      each architecture (ResNet-18, DenseNet-121). x-axis is target
+      test-subject overlap fraction; y-axis is test AUROC.
+  (b) Same two architectures overlaid with OLS linear fits showing
+      the dose-response slope.
 
-Reads: reports/tables/adni/adni_dose_response.json (from analyze_dose_response.py)
+Style: shared publication-quality from scripts/_publication_style.py
+(STIX serif, Wong colorblind-safe palette, minimal grid, legend below
+axes, 600 dpi PDF, Type-42 embedded fonts).
+
+Reads:  reports/tables/adni/adni_dose_response.json
 Writes: paper/fig10_dose_response.{pdf,png}
 """
 
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+# Project-shared style ------------------------------------------------------
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _publication_style import (
+    apply_publication_style, thin_y_grid,
+    SPLIT, DENSENET, NEUTRAL, TWO_COL_W,
+)
+apply_publication_style()
+
+import matplotlib.pyplot as plt
+import numpy as np
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA = PROJECT_ROOT / "reports" / "tables" / "adni" / "adni_dose_response.json"
@@ -24,35 +40,14 @@ OUT_STEM = PROJECT_ROOT / "paper" / "fig10_dose_response"
 
 
 def main() -> int:
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    plt.rcParams.update({
-        "font.family": "serif",
-        "font.size": 10,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-        "axes.titlesize": 10.5,
-        "axes.titlelocation": "left",
-        "axes.titleweight": "bold",
-        "axes.labelsize": 10,
-        "xtick.labelsize": 9,
-        "ytick.labelsize": 9,
-        "legend.fontsize": 8.5,
-        "legend.frameon": False,
-        "figure.dpi": 180,
-    })
-
     d = json.loads(DATA.read_text())
 
-    RESNET_COLOR    = "#4c72b0"   # SplitGuard blue from existing figs
-    DENSENET_COLOR  = "#c44e52"   # leaky red from existing figs
-    NEUTRAL         = "#7f8c8d"
+    RESNET_COLOR   = SPLIT
+    DENSENET_COLOR = DENSENET
 
-    fig, (axa, axb) = plt.subplots(1, 2, figsize=(9.6, 3.6),
-                                   gridspec_kw={"wspace": 0.26})
+    fig, (axa, axb) = plt.subplots(
+        1, 2, figsize=(TWO_COL_W, 3.2), gridspec_kw={"wspace": 0.30}
+    )
 
     # ── Panel A: per-seed scatter + mean with CI band ─────────────────────
     for arch, color, label in [
@@ -61,15 +56,12 @@ def main() -> int:
     ]:
         agg = d["by_arch"][arch]
         overlaps = sorted(float(k) for k in agg)
-        means    = [agg[f"{o:.1f}" if f"{o:.1f}" in agg else f"{o}"]["mean"]
-                    if (f"{o:.1f}" in agg or f"{o}" in agg)
-                    else agg[str(o)]["mean"]
-                    for o in overlaps]
-        # JSON keys come back as strings; align robustly:
+
         def get_d(o):
             for k in agg:
                 if float(k) == o: return agg[k]
             raise KeyError(o)
+
         means = [get_d(o)["mean"] for o in overlaps]
         ci_lo = [get_d(o)["ci_lo"] for o in overlaps]
         ci_hi = [get_d(o)["ci_hi"] for o in overlaps]
@@ -77,14 +69,14 @@ def main() -> int:
         # Per-seed scatter (small markers, semitransparent)
         for o in overlaps:
             for v in get_d(o)["per_seed"]:
-                axa.scatter([o], [v], s=18, color=color, alpha=0.45,
+                axa.scatter([o], [v], s=12, color=color, alpha=0.40,
                             edgecolor="none", zorder=2)
 
         # Mean line + CI band
-        axa.fill_between(overlaps, ci_lo, ci_hi, color=color, alpha=0.18,
+        axa.fill_between(overlaps, ci_lo, ci_hi, color=color, alpha=0.15,
                          linewidth=0, zorder=1)
-        axa.plot(overlaps, means, color=color, lw=2.0, marker="o",
-                 markersize=7, markeredgecolor="black", markeredgewidth=0.6,
+        axa.plot(overlaps, means, color=color, lw=1.4, marker="o",
+                 markersize=4.5, markeredgecolor="white", markeredgewidth=0.6,
                  label=label, zorder=3)
 
     axa.set_xlabel("Target test-subject overlap fraction")
@@ -93,21 +85,21 @@ def main() -> int:
     axa.set_xticks([0.0, 0.25, 0.50, 0.75, 1.0])
     axa.set_xticklabels(["0%", "25%", "50%", "75%", "100%"])
     axa.set_ylim(0.79, 0.97)
-    axa.grid(axis="y", linestyle=":", alpha=0.5)
-    axa.set_title("(a) Per-seed AUROC, mean ± 95% CI")
-    axa.legend(loc="lower right")
+    axa.set_title("(a) Per-seed AUROC, mean $\\pm$ 95% CI", loc="left")
+    thin_y_grid(axa)
 
-    # Anchor annotations: Protocol C and Protocol A reference levels
-    axa.axhline(0.819, color=NEUTRAL, lw=0.7, linestyle=":", zorder=0)
-    axa.text(0.02, 0.821, "Protocol C baseline (0.819)", fontsize=7.5,
-             color=NEUTRAL, va="bottom")
-    axa.axhline(0.949, color=NEUTRAL, lw=0.7, linestyle=":", zorder=0)
-    axa.text(0.02, 0.951, "Protocol A leaky (0.949)", fontsize=7.5,
-             color=NEUTRAL, va="bottom")
+    # Anchor lines — labels placed INSIDE Panel A (top-left / lower-left),
+    # not in the right margin where they spill into Panel B.
+    axa.axhline(0.819, color=NEUTRAL, lw=0.4, linestyle=(0, (1, 2)), zorder=0)
+    axa.axhline(0.949, color=NEUTRAL, lw=0.4, linestyle=(0, (1, 2)), zorder=0)
+    axa.text(0.02, 0.952, "Protocol A — leaky (0.949)",
+             fontsize=7, color=NEUTRAL, va="bottom", ha="left")
+    axa.text(0.02, 0.812, "Protocol C — baseline (0.819)",
+             fontsize=7, color=NEUTRAL, va="top", ha="left")
 
     # ── Panel B: linear fits ──────────────────────────────────────────────
     grid = np.linspace(0, 1, 100)
-    for arch, color, label in [
+    for arch, color, label_short in [
         ("resnet18",    RESNET_COLOR,   "ResNet-18"),
         ("densenet121", DENSENET_COLOR, "DenseNet-121"),
     ]:
@@ -118,13 +110,12 @@ def main() -> int:
         for k, dd in agg.items():
             o = float(k)
             for v in dd["per_seed"]:
-                axb.scatter([o], [v], s=18, color=color, alpha=0.40,
+                axb.scatter([o], [v], s=12, color=color, alpha=0.35,
                             edgecolor="none", zorder=2)
-        # Fit line
-        axb.plot(grid, intercept + slope * grid, color=color, lw=2.0,
-                 zorder=3,
-                 label=(f"{label}: AUROC = {intercept:.3f} + "
-                        f"{slope:.3f}·overlap (R²={r2:.2f})"))
+        # Fit line — short legend (slope + R² only); full intercept-slope
+        # equation is fine for the caption, not the figure.
+        axb.plot(grid, intercept + slope * grid, color=color, lw=1.4, zorder=3,
+                 label=f"{label_short} (slope $= +{slope:.3f}$, $R^2 = {r2:.2f}$)")
 
     axb.set_xlabel("Target test-subject overlap fraction")
     axb.set_ylabel("Test AUROC")
@@ -132,26 +123,29 @@ def main() -> int:
     axb.set_xticks([0.0, 0.25, 0.50, 0.75, 1.0])
     axb.set_xticklabels(["0%", "25%", "50%", "75%", "100%"])
     axb.set_ylim(0.79, 0.97)
-    axb.grid(axis="y", linestyle=":", alpha=0.5)
-    axb.set_title("(b) Linear dose-response fits")
-    axb.legend(loc="lower right", fontsize=8)
+    axb.set_title("(b) Linear dose-response fits", loc="left")
+    thin_y_grid(axb)
 
-    # Headline annotation in panel B inset
+    # Headline (per-10pp slope) as quiet in-axes text, top-left.
     rn = d["linear_fits"]["resnet18"]
     axb.text(0.02, 0.97,
-             f"ResNet-18 slope = +{rn['slope']:.3f} AUROC per unit overlap\n"
-             f"(i.e. +{rn['slope']*0.1:.3f} AUROC per 10pp of overlap)",
+             f"ResNet-18: $+{rn['slope']*0.1:.3f}$ AUROC per 10pp overlap",
              transform=axb.transAxes, ha="left", va="top",
-             fontsize=8.5, color="black", weight="bold",
-             bbox=dict(boxstyle="round,pad=0.35", facecolor="white",
-                       edgecolor="0.7", linewidth=0.6, alpha=0.92))
+             fontsize=7.5, color=NEUTRAL)
 
-    fig.tight_layout()
+    # Combined legend below both panels (Panel A: architecture lines;
+    # Panel B: same architectures with linear-fit slope + R²).
+    handles_a, labels_a = axa.get_legend_handles_labels()
+    handles_b, labels_b = axb.get_legend_handles_labels()
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.91, bottom=0.26, wspace=0.30)
+    fig.legend(handles_b, labels_b, loc="lower center",
+               bbox_to_anchor=(0.5, 0.02), ncol=2, frameon=False, fontsize=8,
+               columnspacing=2.0, handlelength=1.8)
     OUT_STEM.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(f"{OUT_STEM}.pdf", bbox_inches="tight")
-    fig.savefig(f"{OUT_STEM}.png", bbox_inches="tight")
+    fig.savefig(f"{OUT_STEM}.pdf")
+    fig.savefig(f"{OUT_STEM}.png")
     plt.close(fig)
-    print(f"Wrote {OUT_STEM}.pdf + .png")
+    print(f"  wrote paper/{OUT_STEM.name}.pdf + .png")
     return 0
 
 
