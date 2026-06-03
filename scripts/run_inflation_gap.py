@@ -161,10 +161,26 @@ def load_splitguard_split(manifest_path: Path) -> dict[str, list[dict]]:
 
 
 # ── Model + Training ──────────────────────────────────────────────────────────
-def make_model(pretrained=True):
-    weights = models.ResNet18_Weights.DEFAULT if pretrained else None
-    model = models.resnet18(weights=weights)
-    model.fc = nn.Linear(model.fc.in_features, 1)
+def make_model(pretrained: bool = True, arch: str = "resnet18"):
+    """Build the binary classifier head.
+
+    Supported architectures (all ImageNet-pretrained):
+      - resnet18    (default; primary manuscript results)
+      - densenet121 (architecture-breadth sensitivity arm)
+    """
+    arch = arch.lower()
+    if arch == "resnet18":
+        weights = models.ResNet18_Weights.DEFAULT if pretrained else None
+        model = models.resnet18(weights=weights)
+        model.fc = nn.Linear(model.fc.in_features, 1)
+    elif arch == "densenet121":
+        weights = models.DenseNet121_Weights.DEFAULT if pretrained else None
+        model = models.densenet121(weights=weights)
+        model.classifier = nn.Linear(model.classifier.in_features, 1)
+    else:
+        raise ValueError(
+            f"Unsupported --arch {arch!r}; expected 'resnet18' or 'densenet121'."
+        )
     return model
 
 
@@ -176,7 +192,7 @@ def make_loader(rows, transform, batch_size, shuffle, device):
 
 def train_and_eval(splits: dict, device: torch.device, epochs: int,
                    batch_size: int, lr: float, seed: int,
-                   label: str) -> dict:
+                   label: str, arch: str = "resnet18") -> dict:
     set_seed(seed)
     train_tf, eval_tf = make_transforms()
 
@@ -184,7 +200,7 @@ def train_and_eval(splits: dict, device: torch.device, epochs: int,
     val_loader   = make_loader(splits["val"],   eval_tf, batch_size, False, device)
     test_loader  = make_loader(splits["test"],  eval_tf, batch_size, False, device)
 
-    model = make_model(pretrained=True).to(device)
+    model = make_model(pretrained=True, arch=arch).to(device)
 
     # Weighted loss (balanced classes in safe split, may be unbalanced in leaky)
     n_pos = sum(LABEL_TO_TARGET[r["binary_label"]] for r in splits["train"])
@@ -283,6 +299,13 @@ def main():
     parser.add_argument("--lr",         type=float, default=3e-4)
     parser.add_argument("--seed",       type=int,   default=42)
     parser.add_argument("--device",     default="auto")
+    parser.add_argument(
+        "--arch", default="resnet18",
+        choices=["resnet18", "densenet121"],
+        help="Backbone architecture. Default resnet18 matches the primary "
+             "manuscript results; use densenet121 for the cross-cohort "
+             "architecture-breadth sensitivity arm.",
+    )
     args = parser.parse_args()
 
     device = choose_device(args.device)
@@ -303,11 +326,11 @@ def main():
     # ── Run both protocols
     result_a = train_and_eval(
         leaky_splits, device, args.epochs, args.batch_size, args.lr, args.seed,
-        label="A_LEAKY_random_image_split"
+        label="A_LEAKY_random_image_split", arch=args.arch,
     )
     result_b = train_and_eval(
         safe_splits, device, args.epochs, args.batch_size, args.lr, args.seed,
-        label="B_SAFE_splitguard_component"
+        label="B_SAFE_splitguard_component", arch=args.arch,
     )
 
     # ── Inflation gap table
@@ -331,15 +354,21 @@ def main():
     # ── Save results
     result = {
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "arch":   args.arch,
         "epochs": args.epochs,
-        "seed": args.seed,
+        "seed":   args.seed,
         "device": str(device),
         "leaky_subject_overlap": overlap_info,
         "protocol_A_leaky": result_a,
         "protocol_B_safe": result_b,
         "inflation_gap": inflation_gap,
     }
-    out_path = RESULTS_DIR / "inflation_gap_experiment.json"
+    # Namespace output filename by arch so DenseNet runs don't clobber the
+    # primary ResNet-18 results.
+    if args.arch == "resnet18":
+        out_path = RESULTS_DIR / "inflation_gap_experiment.json"
+    else:
+        out_path = RESULTS_DIR / f"inflation_gap_experiment__{args.arch}__seed{args.seed}.json"
     out_path.write_text(json.dumps(result, indent=2))
     print(f"\n✅ Full results saved to {out_path}")
 

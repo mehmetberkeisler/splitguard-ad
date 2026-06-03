@@ -243,10 +243,26 @@ def make_loader(
     )
 
 
-def make_model(pretrained: bool) -> nn.Module:
-    weights = models.ResNet18_Weights.DEFAULT if pretrained else None
-    model = models.resnet18(weights=weights)
-    model.fc = nn.Linear(model.fc.in_features, 1)
+def make_model(pretrained: bool, arch: str = "resnet18") -> nn.Module:
+    """Build the binary classifier head.
+
+    Supported architectures (all ImageNet-pretrained):
+      - resnet18    (default; primary manuscript results)
+      - densenet121 (architecture-breadth sensitivity arm)
+    """
+    arch = arch.lower()
+    if arch == "resnet18":
+        weights = models.ResNet18_Weights.DEFAULT if pretrained else None
+        model = models.resnet18(weights=weights)
+        model.fc = nn.Linear(model.fc.in_features, 1)
+    elif arch == "densenet121":
+        weights = models.DenseNet121_Weights.DEFAULT if pretrained else None
+        model = models.densenet121(weights=weights)
+        model.classifier = nn.Linear(model.classifier.in_features, 1)
+    else:
+        raise ValueError(
+            f"Unsupported --arch {arch!r}; expected 'resnet18' or 'densenet121'."
+        )
     return model
 
 
@@ -275,6 +291,7 @@ def train_and_eval(
     image_size: int,
     pretrained: bool,
     checkpoint_path: Path,
+    arch: str = "resnet18",
 ) -> dict:
     set_seed(seed)
     train_tf, eval_tf = make_transforms(image_size)
@@ -282,7 +299,7 @@ def train_and_eval(
     val_loader = make_loader(splits["val"], eval_tf, batch_size, False, device)
     test_loader = make_loader(splits["test"], eval_tf, batch_size, False, device)
 
-    model = make_model(pretrained=pretrained).to(device)
+    model = make_model(pretrained=pretrained, arch=arch).to(device)
     train_targets = np.array([LABEL_TO_TARGET[row["binary_label"]] for row in splits["train"]])
     positive = int(np.sum(train_targets == 1))
     negative = int(np.sum(train_targets == 0))
@@ -368,7 +385,18 @@ def main() -> int:
     parser.add_argument("--max-val-samples", type=int)
     parser.add_argument("--max-test-samples", type=int)
     parser.add_argument("--output", type=Path, default=RESULTS_DIR / "oasis1_inflation_gap_experiment.json")
+    parser.add_argument(
+        "--arch", default="resnet18",
+        choices=["resnet18", "densenet121"],
+        help="Backbone architecture. Default resnet18 matches the primary "
+             "manuscript results; use densenet121 for the cross-cohort "
+             "architecture-breadth sensitivity arm.",
+    )
     args = parser.parse_args()
+    # Namespace output filename by arch so DenseNet runs don't clobber the
+    # primary ResNet-18 results.
+    if args.arch != "resnet18" and args.output == RESULTS_DIR / "oasis1_inflation_gap_experiment.json":
+        args.output = RESULTS_DIR / f"oasis1_inflation_gap_experiment__{args.arch}__seed{args.seed}.json"
 
     set_seed(args.seed)
     device = choose_device(args.device)
@@ -395,6 +423,7 @@ def main() -> int:
     )
 
     run_suffix = "smoke" if args.smoke_test else f"seed{args.seed}"
+    arch_suffix = "" if args.arch == "resnet18" else f"_{args.arch}"
     result_a = train_and_eval(
         leaky_splits,
         device,
@@ -405,7 +434,8 @@ def main() -> int:
         "A_LEAKY_random_slice_split",
         args.image_size,
         pretrained=not args.no_pretrained,
-        checkpoint_path=CHECKPOINT_DIR / f"oasis1_leaky_{run_suffix}.pt",
+        checkpoint_path=CHECKPOINT_DIR / f"oasis1_leaky_{run_suffix}{arch_suffix}.pt",
+        arch=args.arch,
     )
     result_b = train_and_eval(
         safe_splits,
@@ -417,7 +447,8 @@ def main() -> int:
         "B_SAFE_splitguard_subject_component",
         args.image_size,
         pretrained=not args.no_pretrained,
-        checkpoint_path=CHECKPOINT_DIR / f"oasis1_safe_{run_suffix}.pt",
+        checkpoint_path=CHECKPOINT_DIR / f"oasis1_safe_{run_suffix}{arch_suffix}.pt",
+        arch=args.arch,
     )
 
     metrics = ["auroc", "balanced_accuracy", "f1_demented", "sensitivity", "specificity"]
@@ -433,8 +464,9 @@ def main() -> int:
     result = {
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "split_manifest": str(args.split),
+        "arch":   args.arch,
         "epochs": args.epochs,
-        "seed": args.seed,
+        "seed":   args.seed,
         "device": str(device),
         "smoke_test": args.smoke_test,
         "pretrained": not args.no_pretrained,
