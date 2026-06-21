@@ -21,9 +21,6 @@ If you use SplitGuard-AD in your work, please cite:
   title   = {{SplitGuard-AD}: A Leakage-Audit and Prevention Framework for
              {Alzheimer's} Disease {MRI} Deep Learning Benchmarks},
   author  = {Isler, Mehmet Berke and Ilter, Irem and Ozdemir, Mehmet Kemal},
-  journal = {arXiv preprint arXiv:XXXX.XXXXX},
-  year    = {2026},
-  note    = {Submitted to Medical Image Analysis}
 }
 ```
 
