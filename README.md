@@ -3,8 +3,6 @@
 > **Paper.** "SplitGuard-AD: A Leakage-Audit and Prevention Framework for
 > Alzheimer's Disease MRI Deep Learning Benchmarks."
 > Mehmet Berke Isler, Irem Ilter, Mehmet Kemal Ozdemir. 2026.
-> Submitted to *Medical Image Analysis* (Elsevier).
-> Pre-print: arXiv:XXXX.XXXXX *(to be added on deposit)*.
 > Licence: Apache-2.0.
 
 A leakage-audit and prevention framework for Alzheimer's disease MRI deep
