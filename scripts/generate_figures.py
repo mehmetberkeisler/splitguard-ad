@@ -65,9 +65,9 @@ def fig1():
     ax.fill_between(epochs, auc_b, auc_a, alpha=0.08, color=LEAKY,
                     linewidth=0, zorder=1)
     ax.plot(epochs, auc_a, color=LEAKY, lw=1.6, zorder=3,
-            label="Protocol A — Random (leaky)")
+            label="Protocol A, Random (leaky)")
     ax.plot(epochs, auc_b, color=SPLIT, lw=1.6, zorder=3,
-            label="Protocol C — SplitGuard-AD")
+            label="Protocol C, SplitGuard-AD")
     # endpoint dots
     ax.scatter([epochs[-1]], [auc_a[-1]], s=12, color=LEAKY, zorder=4)
     ax.scatter([epochs[-1]], [auc_b[-1]], s=12, color=SPLIT, zorder=4)
@@ -111,7 +111,10 @@ def fig2():
     ax.bar(x + w/2, safe_auroc, w, color=SPLIT,
            edgecolor="none", label="Protocol C (SplitGuard-AD)", zorder=3)
 
-    # subtle value labels, only on the SafeGuard bars (leaky bars saturate at ~1)
+    # value labels above each bar (both protocols for symmetry)
+    for i, v in enumerate(leaky_auroc):
+        ax.text(x[i] - w/2, v + 0.005, f"{v:.3f}",
+                ha="center", va="bottom", fontsize=7, color=LEAKY)
     for i, v in enumerate(safe_auroc):
         ax.text(x[i] + w/2, v + 0.005, f"{v:.3f}",
                 ha="center", va="bottom", fontsize=7, color=SPLIT)
@@ -120,7 +123,7 @@ def fig2():
     ax.set_ylabel("Test AUROC")
     ax.set_xticks(x)
     ax.set_xticklabels([str(s) for s in seeds])
-    ax.set_ylim(0.78, 1.04)
+    ax.set_ylim(0.78, 1.06)
     thin_y_grid(ax)
     ax.text(0.01, 0.99,
             rf"$\Delta$AUROC $= {gap_mean:.3f}\,\pm\,{gap_std:.3f}$ (n=5)",
@@ -191,7 +194,10 @@ def fig4():
            label="Protocol A (leaky)", zorder=3)
     ax.bar(x + w/2, vals_b, w, color=SPLIT, edgecolor="none",
            label="Protocol C (SplitGuard-AD)", zorder=3)
-    # value labels only on SplitGuard side (leaky saturates near 1.0)
+    # value labels on both bars for symmetry
+    for i, v in enumerate(vals_a):
+        ax.text(x[i] - w/2, v + 0.012, f"{v:.3f}",
+                ha="center", va="bottom", fontsize=7, color=LEAKY)
     for i, v in enumerate(vals_b):
         ax.text(x[i] + w/2, v + 0.012, f"{v:.3f}",
                 ha="center", va="bottom", fontsize=7, color=SPLIT)

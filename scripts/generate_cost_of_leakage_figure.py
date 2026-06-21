@@ -125,10 +125,10 @@ def main() -> int:
         axa.plot(xs, ys, color=SPLIT, alpha=0.14, lw=0.6, zorder=2)
     gx, gy = mean_curves["random"]
     axa.plot(gx, gy, color=LEAKY, lw=1.4, zorder=3,
-             label="Protocol A — Random (leaky)")
+             label="Protocol A, Random (leaky)")
     gx, gy = mean_curves["component_safe"]
     axa.plot(gx, gy, color=SPLIT, lw=1.4, zorder=3,
-             label="Protocol C — SplitGuard-AD")
+             label="Protocol C, SplitGuard-AD")
 
     # Operating-point markers at spec=0.90
     op_fpr = 1 - TARGET_SPEC

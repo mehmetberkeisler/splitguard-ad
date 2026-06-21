@@ -1,10 +1,33 @@
 # SplitGuard-AD
 
+> **Paper.** "SplitGuard-AD: A Leakage-Audit and Prevention Framework for
+> Alzheimer's Disease MRI Deep Learning Benchmarks."
+> Mehmet Berke Isler, Irem Ilter, Mehmet Kemal Ozdemir. 2026.
+> Submitted to *Medical Image Analysis* (Elsevier).
+> Pre-print: arXiv:XXXX.XXXXX *(to be added on deposit)*.
+> Licence: Apache-2.0.
+
 A leakage-audit and prevention framework for Alzheimer's disease MRI deep
 learning benchmarks. SplitGuard-AD reconstructs subject, session,
 near-duplicate, and longitudinal edges in the data; emits a frozen
 component-safe train / validation / test partition; and turns leakage
-detection into a reproducible pre-training gate.
+detection into a reproducible pre-training gate with a binary GO/NO-GO
+decision rule.
+
+## Citation
+
+If you use SplitGuard-AD in your work, please cite:
+
+```bibtex
+@article{isler2026splitguardad,
+  title   = {{SplitGuard-AD}: A Leakage-Audit and Prevention Framework for
+             {Alzheimer's} Disease {MRI} Deep Learning Benchmarks},
+  author  = {Isler, Mehmet Berke and Ilter, Irem and Ozdemir, Mehmet Kemal},
+  journal = {arXiv preprint arXiv:XXXX.XXXXX},
+  year    = {2026},
+  note    = {Submitted to Medical Image Analysis}
+}
+```
 
 The framework is designed around three concrete validation cohorts:
 
@@ -15,9 +38,10 @@ The framework is designed around three concrete validation cohorts:
 - **Tier 3** — ADNI1: Complete 3Yr 1.5T (longitudinal clinical-research
   cohort, visit-level diagnosis through DXSUM, multi-phase coverage).
 
-## What's new in v0.2.0
+## Evidence streams
 
-Three new evidence streams built on top of the v0.1.0 inflation-gap core:
+Beyond the basic inflation-gap measurement, the framework includes
+three further evidence streams used in the paper:
 
 - **Sex-related performance disparity that leakage hides** — paired-bootstrap
   female-minus-male AUROC delta of +0.106 to +0.109 under both honest
@@ -28,12 +52,12 @@ Three new evidence streams built on top of the v0.1.0 inflation-gap core:
 - **Clinical cost-of-leakage translation** — converts the AUROC inflation
   into missed-diagnosis counts per 1000 screened patients at literature-
   cited prevalence anchors (Rajan 2021 US 75-84 stratum = 13.8%; PROMPT
-  2025 tertiary memory clinic = 58.9%). Headline: ~3.2× understatement of
+  2024 tertiary memory clinic = 58.9%). Headline: ~3.2× understatement of
   clinical harm at the screening operating point.
   See `scripts/clinical_cost_of_leakage_adni.py`.
 - **Leakage dose-response stress test** — controlled 5×5×2 subject-
   substitution matrix on ADNI yields a near-linear AUROC-vs-overlap
-  relationship: AUROC ≈ 0.832 + 0.107·p on ResNet-18 (R²=0.69). Every 10pp
+  relationship: AUROC ≈ 0.832 + 0.106·p on ResNet-18 (R²=0.69). Every 10pp
   of test-subject overlap inflates reported AUROC by ~0.011.
   See `scripts/inject_leakage_split.py` + `scripts/run_dose_response_matrix.sh`.
 
@@ -111,7 +135,7 @@ python3 scripts/subgroup_analysis_adni.py
 python3 scripts/run_biometric_probe_adni.py
 ```
 
-#### v0.2.0 follow-up experiments
+#### Follow-up experiments
 
 The dose-response stress test and the clinical cost-of-leakage analysis
 both run on the converter-inclusive ADNI sensitivity arm and reuse the
@@ -125,7 +149,7 @@ python3 scripts/clinical_cost_of_leakage_adni.py \
     --prev-pop 0.138 \
     --prev-pop-citation "Rajan et al. 2021, Alz&Dement, doi:10.1002/alz.12362" \
     --prev-clinic 0.589 \
-    --prev-clinic-citation "Thomas et al. 2025 PROMPT registry, PMC11716007"
+    --prev-clinic-citation "Thomas G et al. 2024 PROMPT registry (Alz&Dement), PMC11716007"
 python3 scripts/generate_cost_of_leakage_figure.py
 
 # Dose-response stress test: inject controlled test-subject overlap at
