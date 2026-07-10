@@ -51,6 +51,13 @@ def set_seed(seed: int) -> None:
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+        torch.mps.manual_seed(seed)
+    try:
+        torch.use_deterministic_algorithms(True, warn_only=True)
+    except (RuntimeError, AttributeError):
+        pass
 
 def choose_device(requested: str) -> torch.device:
     if requested != "auto":
@@ -70,8 +77,10 @@ def expected_calibration_error(y_true, y_prob, n_bins=10):
 
 def compute_metrics(y_true, y_prob, threshold=0.5):
     y_pred = (y_prob >= threshold).astype(int)
-    try:    auc = float(roc_auc_score(y_true, y_prob))
-    except: auc = float("nan")
+    try:
+        auc = float(roc_auc_score(y_true, y_prob))
+    except (ValueError, RuntimeError):
+        auc = float("nan")
     cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
     tn, fp, fn, tp = cm.ravel()
     return {
@@ -254,10 +263,16 @@ def train_and_eval(splits: dict, device: torch.device, epochs: int,
                 p = torch.sigmoid(model(imgs.to(device)).squeeze(1)).cpu()
                 probs.append(p); targets.append(lbls)
         yp = torch.cat(probs).numpy(); yt = torch.cat(targets).numpy().astype(int)
-        try:    val_auc = roc_auc_score(yt, yp)
-        except: val_auc = 0.0
+        try:
+            val_auc = float(roc_auc_score(yt, yp))
+        except (ValueError, RuntimeError) as exc:
+            # Single-class batch, NaN predictions, etc. Log and fall
+            # through with NaN so best-model selection cannot promote
+            # a spurious "0.0" epoch to the checkpoint.
+            print(f"    [epoch {epoch}] val AUROC unavailable ({type(exc).__name__}: {exc})")
+            val_auc = float("nan")
 
-        if val_auc > best_val_auc:
+        if not (val_auc != val_auc) and val_auc > best_val_auc:  # NaN-safe compare
             best_val_auc = val_auc
             best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
 

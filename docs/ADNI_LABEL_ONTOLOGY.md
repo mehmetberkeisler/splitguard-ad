@@ -205,71 +205,29 @@ plus the new fields this ontology requires:
 
 ---
 
-## 7. Manifest-builder bugs that block G3a
+## 7. Historical manifest-builder bugs (resolved as of v1.0)
 
-The current [scripts/build_adni_manifest.py](../scripts/build_adni_manifest.py)
-implements ~70% of this ontology. Two patches are required for G3a to
-return non-zero CN/AD counts on this export.
+The two builder gaps described below were present in the pre-release
+drafts of `scripts/build_adni_manifest.py` and are documented here for
+historical reference. **Both are resolved in the released code**; the
+current manifest yields `CN = 756 / MCI = 768 / AD = 656 / unknown = 2`
+across the 2,182-scan ADNI1: Complete 3Yr 1.5T export (< 0.1 % unknown),
+satisfying G3a.
 
-### Bug 7.1 — Diagnosis parser ignores ADNI1 legacy flags
+### Resolved 7.1 — ADNI1 legacy-flag fallback in `diagnosis_from_row()`
 
-`diagnosis_from_row()` at lines 183–198 currently checks only
-`DIAGNOSIS`, `DXCURREN`, `DXCHANGE`, `DX_BL`. Add a fallback at the end
-implementing §4.2:
+`diagnosis_from_row()` now falls back to the mutually exclusive
+`DXAD` / `DXMCI` / `DXNORM` flags (§4.2) after `DIAGNOSIS`, `DXCURREN`,
+`DXCHANGE`, and `DX_BL` are exhausted. See the tail of the function in
+[scripts/build_adni_manifest.py](../scripts/build_adni_manifest.py).
 
-```python
-# §4.2 ADNI1 legacy flags (mutually exclusive)
-if pick(row, "dxad") == "1":
-    return "AD", "DXAD", "clinical_table"
-if pick(row, "dxmci") == "1":
-    return "MCI", "DXMCI", "clinical_table"
-if pick(row, "dxnorm") == "1":
-    return "CN", "DXNORM", "clinical_table"
-```
+### Resolved 7.2 — MRIMETA / MRI3META join by (PTID, EXAMDATE)
 
-Without this patch, 901/1,299 of our DXSUM rows label as `unknown` and
-G3a fails its "no CN or AD rows" check.
-
-### Bug 7.2 — MRIMETA join uses non-existent column
-
-`build_manifest_row()` at lines 286–293 does
-`meta = mri_meta.get(image_uid) or mri_meta.get(series_uid)`, but the
-MRIMETA / MRI3META exports do not contain an image-UID or series-UID
-column (only PHASE/PTID/RID/VISCODE/VISCODE2/EXAMDATE/FIELD_STRENGTH/…).
-The lookup always returns `{}`, so `viscode` is empty and the
-`(rid, viscode)` DXSUM join silently misses every row.
-
-Replace the lookup with the path → MRIMETA-by-(PTID, EXAMDATE) join
-documented in §5. Pseudocode:
-
-```python
-# Index MRIMETA by PTID with rows sorted by EXAMDATE
-mri_by_ptid: dict[str, list[dict]] = defaultdict(list)
-for row in mri_rows_all:
-    mri_by_ptid[row["ptid"]].append(row)
-for rows in mri_by_ptid.values():
-    rows.sort(key=lambda r: r["examdate"])
-
-# Per-image: pick the row with min |EXAMDATE - acq_date|, within 180 days
-def closest_mri_row(ptid: str, acq_date: str) -> dict:
-    rows = mri_by_ptid.get(ptid, [])
-    if not rows or not acq_date:
-        return {}
-    target = date.fromisoformat(acq_date)
-    best, best_delta = {}, timedelta(days=10**6)
-    for r in rows:
-        try:
-            d = date.fromisoformat(r["examdate"])
-        except ValueError:
-            continue
-        delta = abs(d - target)
-        if delta < best_delta:
-            best, best_delta = r, delta
-    return best if best_delta <= timedelta(days=180) else {}
-```
-
-Then use the returned row's `VISCODE2` (or `VISCODE`) for the DXSUM
-join, and its `FIELD_STRENGTH` for the manifest column.
+`build_manifest_row()` now uses `closest_row_by_date()` on
+`mri_meta_by_ptid` keyed by PTID, picking the MRIMETA row with the
+smallest `|EXAMDATE − acq_date|` inside the 180-day window (§5). The
+returned row supplies `VISCODE2` for the DXSUM join and `FIELD_STRENGTH`
+for the manifest column.
 
 ---
 

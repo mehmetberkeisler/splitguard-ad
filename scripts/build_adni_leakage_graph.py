@@ -101,11 +101,14 @@ def read_manifest(path: Path) -> list[dict[str, str]]:
     return rows
 
 
-def build_graph(rows: list[dict[str, str]]) -> tuple[UnionFind, Counter]:
+def build_graph(
+    rows: list[dict[str, str]],
+) -> tuple[UnionFind, Counter, list[tuple[str, str, str]]]:
     uf = UnionFind()
     for row in rows:
         uf.add(row["image_id"])
     reason_counts: Counter = Counter()
+    edges: list[tuple[str, str, str]] = []  # (anchor, image_id, reason)
 
     # same_subject
     for subject, ids in group_by(rows, "subject_id").items():
@@ -117,6 +120,7 @@ def build_graph(rows: list[dict[str, str]]) -> tuple[UnionFind, Counter]:
         for image_id in ids[1:]:
             uf.union(anchor, image_id)
             reason_counts["same_subject"] += 1
+            edges.append((anchor, image_id, "same_subject"))
 
     # same_session
     session_groups: dict[tuple[str, str], list[str]] = defaultdict(list)
@@ -132,6 +136,7 @@ def build_graph(rows: list[dict[str, str]]) -> tuple[UnionFind, Counter]:
         for image_id in ids[1:]:
             uf.union(anchor, image_id)
             reason_counts["same_session"] += 1
+            edges.append((anchor, image_id, "same_session"))
 
     # same_series_uid
     for series, ids in group_by(rows, "series_uid").items():
@@ -141,6 +146,7 @@ def build_graph(rows: list[dict[str, str]]) -> tuple[UnionFind, Counter]:
         for image_id in ids[1:]:
             uf.union(anchor, image_id)
             reason_counts["same_series_uid"] += 1
+            edges.append((anchor, image_id, "same_series_uid"))
 
     # same_acq_date (subject-scoped)
     acq_groups: dict[tuple[str, str], list[str]] = defaultdict(list)
@@ -156,8 +162,9 @@ def build_graph(rows: list[dict[str, str]]) -> tuple[UnionFind, Counter]:
         for image_id in ids[1:]:
             uf.union(anchor, image_id)
             reason_counts["same_acq_date"] += 1
+            edges.append((anchor, image_id, "same_acq_date"))
 
-    return uf, reason_counts
+    return uf, reason_counts, edges
 
 
 def label_component(rows: list[dict[str, str]]) -> str:
@@ -174,10 +181,18 @@ def write_components(
     manifest_rows: list[dict[str, str]],
     uf: UnionFind,
     output_path: Path,
+    edges: list[tuple[str, str, str]] | None = None,
 ) -> tuple[list[dict[str, str]], dict[str, list[str]]]:
     by_root: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in manifest_rows:
         by_root[uf.find(row["image_id"])].append(row)
+
+    # Aggregate the edge reasons that actually formed each component so
+    # component_primary_reason reflects the real graph structure rather
+    # than a hard-coded label.
+    component_reason_counts: dict[str, Counter] = defaultdict(Counter)
+    for anchor, image_id, reason in edges or []:
+        component_reason_counts[uf.find(anchor)][reason] += 1
 
     root_to_component_id: dict[str, str] = {}
     components_by_id: dict[str, list[str]] = {}
@@ -187,11 +202,18 @@ def write_components(
         root_to_component_id[root] = component_id
         components_by_id[component_id] = [row["image_id"] for row in rows]
         component_label = label_component(rows)
+        reasons = component_reason_counts.get(root, Counter())
+        if not reasons:
+            primary_reason = "singleton"
+        elif len(reasons) == 1:
+            primary_reason = next(iter(reasons))
+        else:
+            primary_reason = "+".join(sorted(reasons))
         for row in rows:
             out = dict(row)
             out["component_id"] = component_id
             out["component_size"] = str(len(rows))
-            out["component_primary_reason"] = "same_subject"
+            out["component_primary_reason"] = primary_reason
             out["component_label"] = component_label
             output_rows.append(out)
 
@@ -263,8 +285,8 @@ def main() -> int:
         args.summary.write_text(json.dumps({"n_nodes": 0}, indent=2), encoding="utf-8")
         return 1
 
-    uf, reason_counts = build_graph(rows)
-    _, components = write_components(rows, uf, args.components)
+    uf, reason_counts, edges = build_graph(rows)
+    _, components = write_components(rows, uf, args.components, edges=edges)
     summary = summarize(rows, components, reason_counts)
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     args.summary.write_text(json.dumps(summary, indent=2), encoding="utf-8")

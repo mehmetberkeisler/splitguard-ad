@@ -62,6 +62,13 @@ def set_seed(seed: int) -> None:
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+        torch.mps.manual_seed(seed)
+    try:
+        torch.use_deterministic_algorithms(True, warn_only=True)
+    except (RuntimeError, AttributeError):
+        pass
 
 
 def choose_device(requested: str) -> torch.device:

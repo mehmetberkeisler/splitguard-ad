@@ -128,6 +128,15 @@ python3 scripts/run_adni_inflation_gap.py \
 # Optional probes.
 python3 scripts/subgroup_analysis_adni.py
 python3 scripts/run_biometric_probe_adni.py
+
+# DUA-safe release: emit a hashed component-safe manifest for Tier 3
+# (SHA-256 of salted subject IDs, component_size, binary label, and
+# non-identifying acquisition fields; participant-level identifiers
+# are dropped). A downstream auditor can verify component-safety,
+# class balance, and site-level Cramer's V without holding ADNI data.
+python3 scripts/build_hashed_manifest_tier3.py \
+    --split data/splits/adni/adni_splitguard_seed0.csv \
+    --output data/splits/adni_hashed_manifest_seed0.csv
 ```
 
 #### Follow-up experiments

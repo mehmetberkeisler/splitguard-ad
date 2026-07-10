@@ -1,3 +1,4 @@
+# Core deep-learning and scientific stack
 torch==2.9.1
 torchvision==0.24.1
 scikit-learn==1.5.1
@@ -6,3 +7,10 @@ Pillow==10.4.0
 nibabel==5.3.3
 openpyxl==3.1.5
 matplotlib==3.9.2
+
+# Report / document generation (used by build_aihealth_template_docx.py
+# and render_aihealth_camera_ready_pdf.py; safe to omit if only the
+# core inflation-gap pipeline is being run)
+python-docx==1.1.2
+reportlab==4.2.5
+pypdf==5.1.0

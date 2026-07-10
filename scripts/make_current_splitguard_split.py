@@ -44,13 +44,27 @@ def class_targets(total: int, ratios: dict[str, float]) -> dict[str, int]:
 
 
 def choose_subset_by_size(components: list[dict], target: int) -> set[str]:
-    """Return component IDs with total image count closest to target."""
+    """Return component IDs with total image count closest to target.
+
+    The DP iteration order depends on the input list order, so callers
+    that pass a differently-ordered list can end up with different
+    subsets on ties. We therefore start by sorting the components on
+    ``(-n_images, component_id)`` so this function is a pure function of
+    the component set (identities + sizes), independent of the caller's
+    ordering. This guarantee is a prerequisite for byte-reproducible
+    manifests.
+    """
     if target <= 0:
         return set()
 
+    sorted_components = sorted(
+        components,
+        key=lambda component: (-int(component["n_images"]), str(component["component_id"])),
+    )
+
     # dp[sum] = tuple(component_ids)
     dp: dict[int, tuple[str, ...]] = {0: ()}
-    for component in components:
+    for component in sorted_components:
         component_id = component["component_id"]
         size = component["n_images"]
         additions: dict[int, tuple[str, ...]] = {}
@@ -107,7 +121,12 @@ def assign_splits(components: list[dict], seed: int, ratios: dict[str, float]) -
 
         shuffled = class_components[:]
         rng.shuffle(shuffled)
-        shuffled.sort(key=lambda item: item["n_images"], reverse=True)
+        # Deterministic tie-break by component_id ensures the same seed
+        # produces a byte-identical component ordering even when multiple
+        # components share the same n_images.
+        shuffled.sort(
+            key=lambda item: (-int(item["n_images"]), str(item["component_id"])),
+        )
 
         total_images = sum(component["n_images"] for component in shuffled)
         targets = class_targets(total_images, ratios)

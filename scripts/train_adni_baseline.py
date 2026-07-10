@@ -94,6 +94,12 @@ def set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+    if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+        torch.mps.manual_seed(seed)
+    try:
+        torch.use_deterministic_algorithms(True, warn_only=True)
+    except (RuntimeError, AttributeError):
+        pass
 
 
 def choose_device(requested: str):
@@ -197,9 +203,31 @@ def make_transforms(size: int):
     return train_tf, eval_tf
 
 
-def make_loader(rows, transform, batch_size, shuffle, device):
+def _worker_init_fn(worker_id: int) -> None:
+    """Seed each DataLoader worker so augmentation RNG is reproducible.
+
+    Without this, ``num_workers > 0`` spawns worker processes with an
+    uncontrolled RNG state (inherited from ``os.fork``), which makes the
+    per-image ``RandomHorizontalFlip`` and ``RandomRotation`` transforms
+    non-reproducible across runs even when the main-thread seed is fixed.
+    Each worker gets a deterministic per-worker seed derived from the
+    PyTorch base seed set by ``set_seed()``.
+    """
+    import torch as _torch  # local import to avoid touching module scope
+    base_seed = _torch.initial_seed() % (2**32)
+    random.seed(base_seed + worker_id)
+    __import__("numpy").random.seed(base_seed + worker_id)
+
+
+def make_loader(rows, transform, batch_size, shuffle, device, seed: int = 42):
     deps = lazy_imports()
+    torch_mod = deps["torch"]
     DataLoader = deps["DataLoader"]
+    # A seeded Generator makes the DataLoader sampler's shuffle order
+    # deterministic; combined with ``worker_init_fn`` this covers both
+    # sampler ordering and per-worker augmentation RNG.
+    generator = torch_mod.Generator()
+    generator.manual_seed(seed)
     return DataLoader(
         VolumeSliceDataset(rows, transform=transform),
         batch_size=batch_size,
@@ -213,6 +241,8 @@ def make_loader(rows, transform, batch_size, shuffle, device):
         pin_memory=device.type == "cuda",
         persistent_workers=True,
         prefetch_factor=4,
+        worker_init_fn=_worker_init_fn,
+        generator=generator,
     )
 
 
@@ -343,9 +373,9 @@ def train_and_eval(
     set_seed(seed)
     device = choose_device(device_str)
     train_tf, eval_tf = make_transforms(image_size)
-    train_loader = make_loader(splits["train"], train_tf, batch_size, True, device)
-    val_loader = make_loader(splits["val"], eval_tf, batch_size, False, device)
-    test_loader = make_loader(splits["test"], eval_tf, batch_size, False, device)
+    train_loader = make_loader(splits["train"], train_tf, batch_size, True, device, seed=seed)
+    val_loader = make_loader(splits["val"], eval_tf, batch_size, False, device, seed=seed)
+    test_loader = make_loader(splits["test"], eval_tf, batch_size, False, device, seed=seed)
 
     model = make_model(pretrained=pretrained, arch=arch).to(device)
     train_targets = np.array([LABEL_TO_TARGET[row["diagnosis_group"]] for row in splits["train"]])

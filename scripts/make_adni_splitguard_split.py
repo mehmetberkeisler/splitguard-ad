@@ -85,11 +85,15 @@ def choose_subset_by_size(
     closest to ``target`` from below, breaking ties toward smaller totals."""
     if target <= 0:
         return set()
-    # Sort descending by size and greedily fill toward the target.
+    # Sort descending by size; deterministic tie-break by component_id so
+    # components with identical n_images are ordered consistently across
+    # runs and platforms (byte-reproducible manifest requirement).
     sorted_components = sorted(
         components,
-        key=lambda component: int(component["n_images"]),
-        reverse=True,
+        key=lambda component: (
+            -int(component["n_images"]),
+            str(component["component_id"]),
+        ),
     )
     chosen: set[str] = set()
     remaining = target
