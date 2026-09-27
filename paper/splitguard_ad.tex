@@ -2022,10 +2022,14 @@ and the seed-averaged dose-response curves with $95\%$ paired-bootstrap
 CIs. The seed-averaged curves increase with test-subject overlap for
 both architectures, though per-seed monotonicity holds in only
 $4/5$ ResNet-18 and $0/5$ DenseNet-121 seeds (Supplementary~S4);
-the ResNet-18 endpoints
-(0.837 at $p=0$, 0.942 at $p=1$) align cleanly with the honest
-Protocol~C and the leaky Protocol~A reference levels reported in
-\S\ref{sec:exp6_adni}. The straight-line OLS fit
+the fitted ResNet-18 endpoints
+(\DoseAtZero{} at $p=0$, \DoseAtOne{} at $p=1$) sit within $0.02$ of
+the converter-inclusive arm's honest and leaky levels
+(\AdniConvSafeAUROC{} and \AdniConvRandomAUROC{},
+\S\ref{sec:exp6_adni}), which is the arm the injected splits are built
+from. We read that agreement as a sanity check and not as a
+calibration, because the matrix and those levels come from separate
+runs of the same trainer (\S Declarations). The straight-line OLS fit
 (Figure~\ref{fig:dose_response}(b)) recovers
 \begin{equation}
 \widehat{\mathrm{AUROC}}_{\text{ResNet-18}}
@@ -2088,12 +2092,11 @@ qualifications and finer-grid trade-offs are discussed in
 sensitivity arm. (a) Per-seed test AUROCs (small dots), seed-averaged
 mean (markers + line) and $95\%$ paired-bootstrap CI band for each architecture as a function of the target test-subject overlap fraction $p$; ResNet-18 is drawn in black and DenseNet-121 in grey (dashed), and the reference lines take the colour of the protocol they mark. Reference lines mark the \emph{primary-arm} Protocol~C
 component-safe baseline (\AdniSafeAUROC{}) and Protocol~A leaky
-benchmark (\AdniRandomAUROC{}) from \S\ref{sec:exp6_adni}, shown for cross-arm
-comparability; the dose-response matrix itself is run on the
-converter-inclusive arm where the corresponding $p=0$ and $p=1$
-endpoints land at $\approx 0.837$ and $\approx 0.942$ on ResNet-18
-(panel a), one bootstrap-CI width above and below the primary-arm
-reference levels respectively.
+benchmark (\AdniRandomAUROC{}) from \S\ref{sec:exp6_adni}, shown for
+cross-arm comparability. The matrix itself is built on the
+converter-inclusive arm, whose own levels are \AdniConvSafeAUROC{} and
+\AdniConvRandomAUROC{}; the fitted endpoints are \DoseAtZero{} and
+\DoseAtOne{} (panel a).
 (b) OLS linear fits to the per-seed points show the dose-response slope;
 the ResNet-18 slope of $+\DoseSlope{}$ AUROC per unit overlap is a cohort- and
 architecture-specific calibration point on this ADNI universe and this
@@ -2277,7 +2280,9 @@ Protocol~C, against \ProvParticipantTenSubject{} of test
 \emph{participants} under Protocol~B. Read through
 Equation~\ref{eq:dose_response}, that is $+\ComposedTenSubject{}$ AUROC
 of expected optimism under Protocol~B against $+\ComposedTenSafe{}$
-under Protocol~C. Table~\ref{tab:provenance_degradation} reports the
+under Protocol~C. The slope and the shares come from different runs of
+the same trainer (\S Declarations), which is one more reason to read
+the composition as an order of magnitude rather than a coefficient. Table~\ref{tab:provenance_degradation} reports the
 participant share $p$ alongside it, because that is what a split audit
 shows a reader.
 

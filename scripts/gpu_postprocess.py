@@ -338,6 +338,10 @@ def gpu_values(summary: dict) -> dict[str, object]:
         fit = ((analysis.get("adni_dose_response.json") or {}).get("linear_fits") or {}).get("resnet18") or {}
         return fit.get(field)
 
+    def dose_dense(field):
+        fit = ((analysis.get("adni_dose_response.json") or {}).get("linear_fits") or {}).get("densenet121") or {}
+        return fit.get(field)
+
     def cost(protocol):
         by = ((analysis.get("adni_cost_of_leakage.json") or {}).get("by_protocol") or {}).get(protocol) or {}
         return by.get("mean_sens_at_fixed_spec")
@@ -423,6 +427,14 @@ def gpu_values(summary: dict) -> dict[str, object]:
         "CardNPVClinic": pct(card.get("npv_memory_clinic")),
         "GpuHours": None if summary.get("gpu_hours") is None else f"{summary['gpu_hours']:.1f}",
         "DoseSlope": dose("slope"),
+        "DoseAtZero": None if dose("intercept") is None else round(dose("intercept"), 3),
+        "DoseDenseAtZero": (None if dose_dense("intercept") is None
+                            else round(dose_dense("intercept"), 3)),
+        "DoseDenseSlope": dose_dense("slope"),
+        "DoseAtOne": (None if dose("intercept") is None or dose("slope") is None
+                      else round(dose("intercept") + dose("slope"), 3)),
+        "AdniConvRandomAUROC": adni("adni_with_converters", "random"),
+        "AdniConvSafeAUROC": adni("adni_with_converters", "component_safe"),
         "DoseIntercept": dose("intercept"),
         "DoseRSq": dose("r2"),
         "SensLeaky": cost("random"),
