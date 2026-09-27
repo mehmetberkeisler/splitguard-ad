@@ -47,6 +47,10 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 DEFAULT_MANIFEST = PROJECT_ROOT / "data" / "manifests" / "adni" / "adni_manifest.csv"
 DEFAULT_COMPONENTS = PROJECT_ROOT / "data" / "manifests" / "adni" / "adni_leakage_components.csv"
 DEFAULT_SUMMARY = PROJECT_ROOT / "reports" / "audits" / "adni" / "adni_leakage_graph_summary.json"
@@ -123,12 +127,27 @@ def build_graph(
             edges.append((anchor, image_id, "same_subject"))
 
     # same_session
-    session_groups: dict[tuple[str, str], list[str]] = defaultdict(list)
+    #
+    # Keyed on the manifest's own ``session_id``, not on a reconstruction from
+    # ``(subject_id, viscode)``. The two agree exactly whenever ``subject_id``
+    # is present -- ``same_subject`` has already merged every pair a
+    # subject-scoped session rule could reach, so this cannot change a single
+    # component on intact data. They diverge only where ``subject_id`` is
+    # missing or wrong, and there the difference is the whole point: a session
+    # rule that takes ``subject_id`` as an input disappears at exactly the
+    # moment it is supposed to provide redundancy against losing it.
+    #
+    # Verified on the ADNI1 manifest: 1,003 distinct ``session_id`` values, no
+    # blanks, and no value shared by two subjects, so grouping on it alone
+    # cannot merge scans from different participants. (``viscode`` carries only
+    # five values -- bl/m06/m12/m24/m36 -- which is why it was subject-scoped
+    # in the first place; ``acq_date`` must stay subject-scoped for the same
+    # reason, as 246 of its values are shared across participants.)
+    session_groups: dict[str, list[str]] = defaultdict(list)
     for row in rows:
-        subject = (row.get("subject_id") or "").strip()
-        viscode = (row.get("viscode") or "").strip()
-        if subject and subject != "unknown" and viscode:
-            session_groups[(subject, viscode)].append(row["image_id"])
+        session = (row.get("session_id") or "").strip()
+        if session and session != "unknown":
+            session_groups[session].append(row["image_id"])
     for ids in session_groups.values():
         if len(ids) < 2:
             continue
@@ -265,6 +284,19 @@ def summarize(
     }
 
 
+
+def _display_path(path: Path) -> str:
+    """Repo-relative path when possible, absolute otherwise.
+
+    Unguarded ``Path.relative_to`` raised for any output path outside the
+    repository, so passing a scratch directory crashed the script after it had
+    already written its results.
+    """
+    try:
+        return display_path(path)
+    except ValueError:
+        return str(path)
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
@@ -290,8 +322,8 @@ def main() -> int:
     summary = summarize(rows, components, reason_counts)
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     args.summary.write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    print(f"Wrote {args.components.relative_to(PROJECT_ROOT)}")
-    print(f"Wrote {args.summary.relative_to(PROJECT_ROOT)}")
+    print(f"Wrote {_display_path(args.components)}")
+    print(f"Wrote {_display_path(args.summary)}")
     print(
         f"Graph: {summary['n_nodes']} nodes, "
         f"{summary['n_edges']} edges, "

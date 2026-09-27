@@ -31,6 +31,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 
 
 def auroc(y_true: list[int], y_score: list[float]) -> float:
@@ -220,10 +224,10 @@ def main() -> int:
 
     out = {
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "runs_root": str(args.runs_root.resolve().relative_to(PROJECT_ROOT))
+        "runs_root": display_path(args.runs_root)
                      if str(args.runs_root.resolve()).startswith(str(PROJECT_ROOT))
                      else str(args.runs_root),
-        "manifest": str(args.manifest.resolve().relative_to(PROJECT_ROOT))
+        "manifest": display_path(args.manifest)
                     if str(args.manifest.resolve()).startswith(str(PROJECT_ROOT))
                     else str(args.manifest),
         "age_median_for_stratification": round(age_median, 2),
@@ -255,7 +259,7 @@ def main() -> int:
                   f"n_test~{d['n_test_mean']:.0f}")
         print()
     try:
-        out_rel = str(args.output.resolve().relative_to(PROJECT_ROOT))
+        out_rel = display_path(args.output)
     except ValueError:
         out_rel = str(args.output)
     print(f"  Wrote {out_rel}")

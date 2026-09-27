@@ -51,6 +51,10 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 DEFAULT_COMPONENTS = PROJECT_ROOT / "data" / "manifests" / "adni" / "adni_leakage_components.csv"
 DEFAULT_SPLIT_DIR = PROJECT_ROOT / "data" / "splits" / "adni"
 DEFAULT_SUMMARY_DIR = PROJECT_ROOT / "reports" / "audits" / "adni"
@@ -85,14 +89,27 @@ def choose_subset_by_size(
     closest to ``target`` from below, breaking ties toward smaller totals."""
     if target <= 0:
         return set()
-    # Sort descending by size; deterministic tie-break by component_id so
-    # components with identical n_images are ordered consistently across
-    # runs and platforms (byte-reproducible manifest requirement).
+    # Sort descending by size, breaking ties by the caller's seeded shuffle
+    # position (``_shuffle_rank``, assigned in assign_components_for_label).
+    #
+    # This tie-break is load-bearing for BOTH contracts at once:
+    #   * byte-reproducibility — the rank is an explicit integer key, so the
+    #     ordering does not depend on sort stability, dict iteration order or
+    #     the platform;
+    #   * seed sensitivity — the rank comes from ``random.Random(seed)``, so
+    #     different seeds genuinely produce different val/test subsets.
+    #
+    # Do NOT replace the rank with ``component_id``. A total order on a
+    # seed-independent key erases the shuffle entirely and silently makes the
+    # seed inert: every "per-seed" manifest then regenerates byte-identically
+    # and the reported seed-to-seed variability collapses to training noise
+    # alone. That regression shipped once (commit 877ca72) and is what
+    # ``tests/test_manifest_reproducibility.py`` now guards against.
     sorted_components = sorted(
         components,
         key=lambda component: (
             -int(component["n_images"]),
-            str(component["component_id"]),
+            int(component["_shuffle_rank"]),
         ),
     )
     chosen: set[str] = set()
@@ -107,6 +124,36 @@ def choose_subset_by_size(
     return chosen
 
 
+def choose_subset_shuffled(
+    components: list[dict[str, Any]],
+    target: int,
+) -> set[str]:
+    """Fill ``target`` by visiting components in seeded-shuffle order.
+
+    Control for ``choose_subset_by_size``. Visiting the largest components
+    first means val, filled first, takes the largest participants and train
+    keeps the smallest, so partitions differ in how many scans a participant
+    contributes. Visiting in shuffle order removes that ordering while keeping
+    both contracts the default relies on: the rank is an explicit integer key
+    (byte-reproducible) and it comes from the seed (seed-sensitive).
+    """
+    if target <= 0:
+        return set()
+    chosen: set[str] = set()
+    remaining = target
+    for component in sorted(components, key=lambda c: int(c["_shuffle_rank"])):
+        size = int(component["n_images"])
+        if size <= remaining:
+            chosen.add(str(component["component_id"]))
+            remaining -= size
+            if remaining <= 0:
+                break
+    return chosen
+
+
+CHOOSERS = {"size_descending": choose_subset_by_size, "shuffled": choose_subset_shuffled}
+
+
 def bucket_field_strength(rows: list[dict[str, str]]) -> str:
     counts = Counter(row.get("scanner_field_strength") or "missing" for row in rows)
     return counts.most_common(1)[0][0]
@@ -115,10 +162,15 @@ def bucket_field_strength(rows: list[dict[str, str]]) -> str:
 def assign_components_for_label(
     components: list[dict[str, Any]],
     seed: int,
+    chooser=choose_subset_by_size,
 ) -> dict[str, str]:
     """Return component_id → split assignment for one label group."""
     rng = random.Random(seed)
     rng.shuffle(components)
+    # Freeze the seeded order into an explicit key so downstream sorts can
+    # break ties on it without depending on Python's sort stability.
+    for rank, component in enumerate(components):
+        component["_shuffle_rank"] = rank
     # Group by majority field strength, then split each bucket independently.
     by_bucket: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for component in components:
@@ -128,9 +180,9 @@ def assign_components_for_label(
     for bucket, bucket_components in by_bucket.items():
         total = sum(int(c["n_images"]) for c in bucket_components)
         targets = class_targets(total, DEFAULT_RATIOS)
-        val_ids = choose_subset_by_size(bucket_components, targets["val"])
+        val_ids = chooser(bucket_components, targets["val"])
         remaining = [c for c in bucket_components if c["component_id"] not in val_ids]
-        test_ids = choose_subset_by_size(remaining, targets["test"])
+        test_ids = chooser(remaining, targets["test"])
         for component in bucket_components:
             cid = str(component["component_id"])
             if cid in val_ids:
@@ -145,10 +197,11 @@ def assign_components_for_label(
 def build_assignments(
     components_by_label: dict[str, list[dict[str, Any]]],
     seed: int,
+    chooser=choose_subset_by_size,
 ) -> dict[str, str]:
     assignments: dict[str, str] = {}
     for label in sorted(components_by_label):
-        per_label = assign_components_for_label(components_by_label[label], seed)
+        per_label = assign_components_for_label(components_by_label[label], seed, chooser)
         assignments.update(per_label)
     return assignments
 
@@ -210,6 +263,12 @@ def main() -> int:
     parser.add_argument("--summary-dir", type=Path, default=DEFAULT_SUMMARY_DIR)
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     parser.add_argument(
+        "--assignment", choices=sorted(CHOOSERS), default="size_descending",
+        help="Order in which components fill val and test. size_descending is "
+             "the frozen protocol; shuffled is the composition control and "
+             "must be written to its own --split-dir.",
+    )
+    parser.add_argument(
         "--labels",
         nargs="+",
         default=sorted(PRIMARY_LABELS),
@@ -226,6 +285,8 @@ def main() -> int:
              "assigned to a single partition.",
     )
     args = parser.parse_args()
+    if args.assignment != "size_descending" and args.split_dir == DEFAULT_SPLIT_DIR:
+        raise SystemExit("--assignment shuffled would overwrite the frozen splits; pass --split-dir and --summary-dir.")
 
     if not args.components.exists():
         raise FileNotFoundError(
@@ -290,14 +351,14 @@ def main() -> int:
             writer.writeheader()
             writer.writerows(excluded)
         try:
-            excluded_rel = str(excluded_path.resolve().relative_to(PROJECT_ROOT))
+            excluded_rel = display_path(excluded_path)
         except ValueError:
             excluded_rel = str(excluded_path)
         print(f"Wrote {excluded_rel} ({len(excluded)} excluded rows)")
 
     overall: dict[int, dict[str, Any]] = {}
     for seed in args.seeds:
-        assignments = build_assignments(components_by_label, seed)
+        assignments = build_assignments(components_by_label, seed, CHOOSERS[args.assignment])
         out_path = args.split_dir / f"adni_splitguard_seed{seed}.csv"
         stats = write_split(rows, assignments, out_path)
         assert_zero_contamination(stats)
@@ -316,7 +377,7 @@ def main() -> int:
         )
         overall[seed] = stats
         try:
-            out_rel = str(out_path.resolve().relative_to(PROJECT_ROOT))
+            out_rel = display_path(out_path)
         except ValueError:
             out_rel = str(out_path)
         print(f"Wrote {out_rel} (split_counts={stats['split_counts']})")

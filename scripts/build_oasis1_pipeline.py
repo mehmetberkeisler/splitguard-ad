@@ -31,6 +31,10 @@ from PIL import Image
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 OASIS_ROOT = PROJECT_ROOT / "oasis1"
 TAR_DIR = OASIS_ROOT / "tar"
 METADATA_DIR = OASIS_ROOT / "metadata"
@@ -294,7 +298,7 @@ def write_inventory_audit(inventory_rows: list[dict[str, object]]) -> None:
         "",
         "## Summary",
         "",
-        f"- Inventory CSV: `{INVENTORY_CSV.relative_to(PROJECT_ROOT)}`",
+        f"- Inventory CSV: `{display_path(INVENTORY_CSV)}`",
         f"- Clinical/session rows: **{len(inventory_rows)}**",
         f"- Unique subjects: **{len({row['subject_id'] for row in inventory_rows})}**",
         f"- Archives expected: **12**",
@@ -393,7 +397,7 @@ def volume_record(meta: MetadataRow) -> dict[str, object]:
         "scan_id": meta.session_id,
         "path": str(hdr_path.resolve()),
         "img_path": str(img_path.resolve()),
-        "relative_path": str(hdr_path.relative_to(PROJECT_ROOT)),
+        "relative_path": display_path(hdr_path),
         "source_dataset": SOURCE_DATASET,
         "source_archive": archive.name,
         "source_disc": disc,
@@ -476,7 +480,7 @@ def generate_slices(volume_rows: list[dict[str, object]], force: bool = False) -
                     "subject_id": volume["subject_id"],
                     "scan_id": volume["scan_id"],
                     "path": str(output_path.resolve()),
-                    "relative_path": str(output_path.relative_to(PROJECT_ROOT)),
+                    "relative_path": display_path(output_path),
                     "source_dataset": volume["source_dataset"],
                     "source_archive": volume["source_archive"],
                     "source_disc": volume["source_disc"],
@@ -507,13 +511,79 @@ def generate_slices(volume_rows: list[dict[str, object]], force: bool = False) -
     return slice_rows
 
 
+class _UnionFind:
+    """Minimal union-find that records which rule joined each component."""
+
+    def __init__(self) -> None:
+        self.parent: dict[str, str] = {}
+        self.reasons: dict[str, set[str]] = defaultdict(set)
+
+    def add(self, node: str) -> None:
+        self.parent.setdefault(node, node)
+
+    def find(self, node: str) -> str:
+        while self.parent[node] != node:
+            self.parent[node] = self.parent[self.parent[node]]
+            node = self.parent[node]
+        return node
+
+    def union(self, a: str, b: str, reason: str) -> None:
+        self.add(a)
+        self.add(b)
+        ra, rb = self.find(a), self.find(b)
+        if ra == rb:
+            self.reasons[ra].add(reason)
+            return
+        self.parent[rb] = ra
+        self.reasons[ra] |= self.reasons[rb]
+        self.reasons[ra].add(reason)
+
+
 def build_components(slice_rows: list[dict[str, object]]) -> list[dict[str, object]]:
-    by_subject: dict[str, list[dict[str, object]]] = defaultdict(list)
+    """Build OASIS-1 components with the same graph construction as the other tiers.
+
+    This previously grouped rows by ``subject_id`` and wrote
+    ``component_primary_reason = "same_subject"`` as a literal. That shortcut
+    happens to give the right answer on OASIS-1 --- subject grouping subsumes
+    session grouping, so the components are identical either way --- but it
+    asserted the reason instead of deriving it, and it meant the tier did not
+    actually run the framework the paper describes. Two consequences mattered:
+    the released reason column could not be trusted as evidence of what the
+    graph did, and a cohort where subject identity was missing or wrong would
+    have been silently mislabelled rather than surfacing as a distinct
+    component structure.
+
+    We now union on the identifiers OASIS-1 supplies --- subject, session and
+    source volume --- and derive the reason from the edges that actually fired.
+    """
+    uf = _UnionFind()
     for row in slice_rows:
-        by_subject[str(row["subject_id"])].append(row)
+        uf.add(str(row["image_id"]))
+
+    def _join(key: str, reason: str) -> None:
+        groups: dict[str, list[str]] = defaultdict(list)
+        for row in slice_rows:
+            value = str(row.get(key) or "").strip()
+            if value and value != "unknown":
+                groups[value].append(str(row["image_id"]))
+        for ids in groups.values():
+            anchor = ids[0]
+            for image_id in ids[1:]:
+                uf.union(anchor, image_id, reason)
+
+    _join("subject_id", "same_subject")
+    _join("session_id", "same_session")
+    _join("volume_id", "same_source_volume")
+
+    by_root: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for row in slice_rows:
+        by_root[uf.find(str(row["image_id"]))].append(row)
 
     output_rows: list[dict[str, object]] = []
-    for subject_id, rows in sorted(by_subject.items()):
+    for root, rows in sorted(by_root.items()):
+        # Keep the historical component_id scheme so previously frozen splits
+        # and any downstream reference to a component remain resolvable.
+        subject_id = str(rows[0]["subject_id"])
         component_id = f"oasis1_comp_{stable_token(subject_id)}"
         non_missing_labels = sorted(
             {str(row["binary_label"]) for row in rows if row["binary_label"] != "label_missing"}
@@ -524,13 +594,17 @@ def build_components(slice_rows: list[dict[str, object]]) -> list[dict[str, obje
             component_label = "label_missing"
         else:
             component_label = "mixed_label"
+
+        reasons = sorted(uf.reasons.get(root, set()))
+        reason = "+".join(reasons) if reasons else "singleton"
+
         for row in rows:
             out = dict(row)
             out.update(
                 {
                     "component_id": component_id,
                     "component_size": len(rows),
-                    "component_primary_reason": "same_subject",
+                    "component_primary_reason": reason,
                     "component_binary_label": component_label,
                     "subject_id_confidence": "true_oasis_subject_id",
                     "subject_parse_status": "metadata_subject_id",
@@ -699,8 +773,8 @@ def write_manifest_audit(volume_rows: list[dict[str, object]], slice_rows: list[
         "",
         "## Summary",
         "",
-        f"- Volume manifest: `{VOLUME_MANIFEST_CSV.relative_to(PROJECT_ROOT)}`",
-        f"- Slice manifest: `{SLICE_MANIFEST_CSV.relative_to(PROJECT_ROOT)}`",
+        f"- Volume manifest: `{display_path(VOLUME_MANIFEST_CSV)}`",
+        f"- Slice manifest: `{display_path(SLICE_MANIFEST_CSV)}`",
         f"- Sessions in metadata: **{len(sessions)}**",
         f"- Unique subjects: **{len(subjects)}**",
         f"- Extracted processed volume pairs: **{extracted_pairs}**",
@@ -740,7 +814,7 @@ def write_split_audit(summary: dict) -> None:
         "",
         "## Summary",
         "",
-        f"- Split manifest: `{SPLIT_CSV.relative_to(PROJECT_ROOT)}`",
+        f"- Split manifest: `{display_path(SPLIT_CSV)}`",
         "- Split policy: `oasis1_subject_component_safe_binary_cdr_v1`",
         "- Component rule: same OASIS subject, including MR1/MR2 reliability sessions",
         "- Seed: **42**",

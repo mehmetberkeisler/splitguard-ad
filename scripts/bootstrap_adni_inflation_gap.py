@@ -39,6 +39,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 DEFAULT_INPUT = PROJECT_ROOT / "reports" / "tables" / "adni" / "adni_inflation_gap.csv"
 DEFAULT_OUTPUT = PROJECT_ROOT / "reports" / "tables" / "adni" / "adni_inflation_gap_bootstrap.json"
 
@@ -134,16 +138,23 @@ def main() -> int:
     lo_q = (100.0 - args.ci) / 2.0
     hi_q = 100.0 - lo_q
 
-    def summarize(samples: list[float]) -> dict[str, float]:
+    def summarize(samples: list[float], observed: float | None = None) -> dict[str, float]:
+        """Interval from the resamples, point estimate from the observed seeds.
+
+        Reporting the bootstrap mean as the point estimate is what made the
+        published AUROCs and the published gap fail to reconcile: a reader
+        subtracting two protocol means got a different number from the gap,
+        and both moved with the resampling seed.
+        """
         return {
-            "point_estimate": round(mean(samples), 4),
+            "point_estimate": round(mean(samples) if observed is None else observed, 4),
             "boot_mean": round(mean(samples), 4),
             "ci_lo": round(percentile(samples, lo_q), 4),
             "ci_hi": round(percentile(samples, hi_q), 4),
         }
 
     try:
-        input_rel = str(args.input.resolve().relative_to(PROJECT_ROOT))
+        input_rel = display_path(args.input)
     except ValueError:
         input_rel = str(args.input)
     out = {
@@ -173,22 +184,40 @@ def main() -> int:
             for p in PROTOCOL_ORDER
         },
         "inflation_gap": {
-            "total_random_minus_component_safe": summarize(boot_total_gap),
-            "subject_leakage_random_minus_subject_only": summarize(boot_subject_leakage),
-            "component_leakage_subject_only_minus_component_safe": summarize(boot_component_leakage),
+            "total_random_minus_component_safe": summarize(
+                boot_total_gap, mean(point_auroc["random"]) - mean(point_auroc["component_safe"])),
+            "subject_leakage_random_minus_subject_only": summarize(
+                boot_subject_leakage, mean(point_auroc["random"]) - mean(point_auroc["subject_only"])),
+            "component_leakage_subject_only_minus_component_safe": summarize(
+                boot_component_leakage,
+                mean(point_auroc["subject_only"]) - mean(point_auroc["component_safe"])),
         },
+        # The manuscript quotes direction preservation as an exact count
+        # ("10,000/10,000", "6,172/10,000"), so emit the integer numerator and
+        # the resample total alongside the share. A rounded share alone cannot
+        # reconstruct the count: 0.9999 and 1.0000 both print as 1.0 at four
+        # decimals while meaning 9,999/10,000 and 10,000/10,000 respectively.
+        "seeds_with_positive_gap": sum(
+            1 for a, c in zip(point_auroc["random"], point_auroc["component_safe"]) if a > c),
+        "n_seeds": n_seeds,
+        "direction_preserved_count": sum(1 for g in boot_total_gap if g > 0),
+        "direction_preserved_total": len(boot_total_gap),
         "direction_preserved_share": round(
             sum(1 for g in boot_total_gap if g > 0) / len(boot_total_gap), 4
         ),
+        "subject_leakage_positive_count": sum(1 for g in boot_subject_leakage if g > 0),
+        "subject_leakage_positive_total": len(boot_subject_leakage),
         "subject_leakage_positive_share": round(
             sum(1 for g in boot_subject_leakage if g > 0) / len(boot_subject_leakage), 4
         ),
+        "component_marginal_positive_count": sum(1 for g in boot_component_leakage if g > 0),
+        "component_marginal_positive_total": len(boot_component_leakage),
     }
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(out, indent=2), encoding="utf-8")
     try:
-        output_rel = str(args.output.resolve().relative_to(PROJECT_ROOT))
+        output_rel = display_path(args.output)
     except ValueError:
         output_rel = str(args.output)
 
@@ -202,7 +231,9 @@ def main() -> int:
     print(f"  inflation gap (random − component_safe):")
     g = out["inflation_gap"]["total_random_minus_component_safe"]
     print(f"    point {g['point_estimate']:+.4f}   {args.ci:.0f}% CI [{g['ci_lo']:+.4f}, {g['ci_hi']:+.4f}]")
-    print(f"    bootstrap share with gap > 0: {out['direction_preserved_share']:.4f}")
+    print(f"    direction preserved: {out['direction_preserved_count']}/"
+          f"{out['direction_preserved_total']} resamples "
+          f"({out['direction_preserved_share']:.4f})")
     print(f"  subject-leakage component (random − subject_only):")
     g = out["inflation_gap"]["subject_leakage_random_minus_subject_only"]
     print(f"    point {g['point_estimate']:+.4f}   {args.ci:.0f}% CI [{g['ci_lo']:+.4f}, {g['ci_hi']:+.4f}]")

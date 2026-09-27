@@ -43,6 +43,10 @@ import json
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 
 
 # ── ROC primitives, no sklearn dep ────────────────────────────────────────
@@ -61,6 +65,46 @@ def roc_points(y_true: list[int], y_prob: list[float]):
         spec = 1.0 - fp / N if N > 0 else 0.0
         pts.append((prob, sens, spec))
     return pts
+
+
+def threshold_at_fixed_spec(val_pts, target_spec: float) -> float:
+    """Threshold that maximises VALIDATION sensitivity at spec >= target_spec.
+
+    Selection happens on validation and nowhere else. Choosing this threshold
+    on the test ROC — as this module previously did — makes the reported
+    sensitivity the best value obtainable in hindsight, which then propagates
+    straight into the missed-diagnosis counts and the headline understatement
+    factor. That is exactly the optimism this manuscript exists to measure.
+    """
+    best_sens, best_thr = -1.0, float("inf")
+    for thr, sens, spec in val_pts:
+        if spec >= target_spec and sens > best_sens:
+            best_sens, best_thr = sens, thr
+    return best_thr
+
+
+def threshold_at_youden(val_pts) -> float:
+    """Youden-J-optimal threshold, selected on validation."""
+    best_j, best_thr = -1.0, float("inf")
+    for thr, sens, spec in val_pts:
+        j = sens + spec - 1
+        if j > best_j:
+            best_j, best_thr = j, thr
+    return best_thr
+
+
+def sens_spec_at_threshold(y_true, y_prob, threshold):
+    """(sensitivity, specificity) on the given data at a FIXED threshold."""
+    tp = fn = fp = tn = 0
+    for t, s in zip(y_true, y_prob):
+        pred = 1 if s >= threshold else 0
+        if t == 1 and pred == 1: tp += 1
+        elif t == 1:             fn += 1
+        elif pred == 1:          fp += 1
+        else:                    tn += 1
+    sens = tp / (tp + fn) if (tp + fn) else float("nan")
+    spec = tn / (tn + fp) if (tn + fp) else float("nan")
+    return sens, spec
 
 
 def sens_at_fixed_spec(pts, target_spec: float) -> float:
@@ -130,23 +174,47 @@ def main() -> int:
     for proto in args.protocols:
         per_seed = []
         for seed in args.seeds:
-            path = args.runs_root / f"inflation_gap_seed{seed}" / proto / "test_predictions.csv"
+            run_dir = args.runs_root / f"inflation_gap_seed{seed}" / proto
+            path = run_dir / "test_predictions.csv"
+            val_path = run_dir / "val_predictions.csv"
             if not path.exists():
                 raise SystemExit(f"Missing predictions: {path}")
+            if not val_path.exists():
+                raise SystemExit(
+                    f"Missing {val_path}.\n"
+                    "The screening threshold must be selected on validation, not on\n"
+                    "test. Run scripts/regenerate_val_predictions.py to backfill this\n"
+                    "artefact from the run's saved checkpoint (inference only)."
+                )
             rows = list(csv.DictReader(path.open()))
             y_true = [int(r["y_true"])  for r in rows]
             y_prob = [float(r["y_prob"]) for r in rows]
             pts = roc_points(y_true, y_prob)
-            j, j_sens, j_spec, j_thr = youden_optimum(pts)
+
+            val_rows = list(csv.DictReader(val_path.open()))
+            v_true = [int(r["y_true"])  for r in val_rows]
+            v_prob = [float(r["y_prob"]) for r in val_rows]
+            val_pts = roc_points(v_true, v_prob)
+
+            # Select on validation, measure on test.
+            thr_spec = threshold_at_fixed_spec(val_pts, args.target_spec)
+            sens_fixed, spec_realised = sens_spec_at_threshold(y_true, y_prob, thr_spec)
+            thr_j = threshold_at_youden(val_pts)
+            j_sens, j_spec = sens_spec_at_threshold(y_true, y_prob, thr_j)
+
             per_seed.append({
                 "seed": seed,
+                "n_val": len(val_rows),
                 "n_test": len(rows),
                 "auroc":               round(auroc_from_pts(pts), 4),
-                "sens_at_fixed_spec":  round(sens_at_fixed_spec(pts, args.target_spec), 4),
-                "youden_j":            round(j, 4),
+                "threshold_selection": "validation",
+                "sens_at_fixed_spec":  round(sens_fixed, 4),
+                "realised_spec":       round(spec_realised, 4),
+                "threshold_fixed_spec": round(float(thr_spec), 6),
+                "youden_j":            round(j_sens + j_spec - 1.0, 4),
                 "youden_sens":         round(j_sens, 4),
                 "youden_spec":         round(j_spec, 4),
-                "youden_threshold":    round(j_thr, 4) if j_thr != float("inf") else None,
+                "youden_threshold":    round(float(thr_j), 6) if thr_j != float("inf") else None,
             })
         proto_results[proto] = {
             "per_seed":                per_seed,
@@ -195,7 +263,7 @@ def main() -> int:
         "target_spec":              args.target_spec,
         "seeds":                    args.seeds,
         "protocols":                args.protocols,
-        "runs_root":                str(args.runs_root.relative_to(PROJECT_ROOT)
+        "runs_root":                str(display_path(args.runs_root)
                                        if str(args.runs_root).startswith(str(PROJECT_ROOT))
                                        else args.runs_root),
         "by_protocol":              proto_results,
@@ -232,7 +300,7 @@ def main() -> int:
         print(f"    Honest deployment actually misses:  {c['honest_actual_missed_per_1000']:>6.1f} missed AD diagnoses / 1000")
         print(f"    Additional missed if trusting leaky: {c['additional_missed_if_trusting_leaky']:>6.1f} per 1000")
     try:
-        rel = str(args.output.relative_to(PROJECT_ROOT))
+        rel = display_path(args.output)
     except ValueError:
         rel = str(args.output)
     print(f"\n  Wrote {rel}")

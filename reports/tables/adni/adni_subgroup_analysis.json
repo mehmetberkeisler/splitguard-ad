@@ -1,0 +1,493 @@
+{
+  "created_at": "2026-09-27T16:40:28+00:00",
+  "runs_root": "runs/adni_with_converters",
+  "manifest": "data/manifests/adni/adni_manifest.csv",
+  "age_median_for_stratification": 76.0,
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "protocols": [
+    "random",
+    "subject_only",
+    "component_safe"
+  ],
+  "subgroups": [
+    "age_old",
+    "age_young",
+    "overall",
+    "sex_F",
+    "sex_F_age_old",
+    "sex_F_age_young",
+    "sex_M",
+    "sex_M_age_old",
+    "sex_M_age_young"
+  ],
+  "n_boot": 10000,
+  "ci_pct": 95.0,
+  "results": {
+    "random__age_old": {
+      "n_seeds": 5,
+      "n_test_mean": 118.2,
+      "auroc_per_seed": [
+        0.9411,
+        0.9395,
+        0.9476,
+        0.9564,
+        0.9612
+      ],
+      "point_mean": 0.9492,
+      "ci_lo": 0.9418,
+      "ci_hi": 0.9566
+    },
+    "random__age_young": {
+      "n_seeds": 5,
+      "n_test_mean": 94.8,
+      "auroc_per_seed": [
+        0.9683,
+        0.939,
+        0.9734,
+        0.9978,
+        0.9537
+      ],
+      "point_mean": 0.9664,
+      "ci_lo": 0.9507,
+      "ci_hi": 0.9841
+    },
+    "random__overall": {
+      "n_seeds": 5,
+      "n_test_mean": 213.0,
+      "auroc_per_seed": [
+        0.9527,
+        0.9381,
+        0.9574,
+        0.9783,
+        0.9576
+      ],
+      "point_mean": 0.9568,
+      "ci_lo": 0.9459,
+      "ci_hi": 0.969
+    },
+    "random__sex_F": {
+      "n_seeds": 5,
+      "n_test_mean": 101.6,
+      "auroc_per_seed": [
+        0.9173,
+        0.8988,
+        0.9599,
+        0.9916,
+        0.964
+      ],
+      "point_mean": 0.9463,
+      "ci_lo": 0.9155,
+      "ci_hi": 0.9742
+    },
+    "random__sex_F_age_old": {
+      "n_seeds": 5,
+      "n_test_mean": 58.0,
+      "auroc_per_seed": [
+        0.9172,
+        0.9072,
+        0.9538,
+        0.9816,
+        0.9987
+      ],
+      "point_mean": 0.9517,
+      "ci_lo": 0.9205,
+      "ci_hi": 0.9829
+    },
+    "random__sex_F_age_young": {
+      "n_seeds": 5,
+      "n_test_mean": 43.6,
+      "auroc_per_seed": [
+        0.9342,
+        0.9003,
+        0.9872,
+        1.0,
+        0.9307
+      ],
+      "point_mean": 0.9505,
+      "ci_lo": 0.9192,
+      "ci_hi": 0.9836
+    },
+    "random__sex_M": {
+      "n_seeds": 5,
+      "n_test_mean": 111.4,
+      "auroc_per_seed": [
+        0.9801,
+        0.9735,
+        0.9569,
+        0.9691,
+        0.9511
+      ],
+      "point_mean": 0.9661,
+      "ci_lo": 0.9569,
+      "ci_hi": 0.9753
+    },
+    "random__sex_M_age_old": {
+      "n_seeds": 5,
+      "n_test_mean": 60.2,
+      "auroc_per_seed": [
+        0.9644,
+        0.9594,
+        0.9462,
+        0.9355,
+        0.9126
+      ],
+      "point_mean": 0.9436,
+      "ci_lo": 0.9265,
+      "ci_hi": 0.9588
+    },
+    "random__sex_M_age_young": {
+      "n_seeds": 5,
+      "n_test_mean": 51.2,
+      "auroc_per_seed": [
+        0.9909,
+        0.9931,
+        0.9711,
+        0.9962,
+        0.9808
+      ],
+      "point_mean": 0.9864,
+      "ci_lo": 0.9781,
+      "ci_hi": 0.9939
+    },
+    "subject_only__age_old": {
+      "n_seeds": 5,
+      "n_test_mean": 126.6,
+      "auroc_per_seed": [
+        0.7994,
+        0.6612,
+        0.8624,
+        0.8032,
+        0.7092
+      ],
+      "point_mean": 0.7671,
+      "ci_lo": 0.6996,
+      "ci_hi": 0.8261
+    },
+    "subject_only__age_young": {
+      "n_seeds": 5,
+      "n_test_mean": 93.4,
+      "auroc_per_seed": [
+        0.9382,
+        0.916,
+        0.9172,
+        0.6702,
+        0.7735
+      ],
+      "point_mean": 0.843,
+      "ci_lo": 0.7402,
+      "ci_hi": 0.9253
+    },
+    "subject_only__overall": {
+      "n_seeds": 5,
+      "n_test_mean": 220.0,
+      "auroc_per_seed": [
+        0.8588,
+        0.7497,
+        0.8836,
+        0.7449,
+        0.7058
+      ],
+      "point_mean": 0.7886,
+      "ci_lo": 0.7302,
+      "ci_hi": 0.8509
+    },
+    "subject_only__sex_F": {
+      "n_seeds": 5,
+      "n_test_mean": 103.4,
+      "auroc_per_seed": [
+        0.89,
+        0.8047,
+        0.9568,
+        0.833,
+        0.7385
+      ],
+      "point_mean": 0.8446,
+      "ci_lo": 0.782,
+      "ci_hi": 0.913
+    },
+    "subject_only__sex_F_age_old": {
+      "n_seeds": 5,
+      "n_test_mean": 63.0,
+      "auroc_per_seed": [
+        0.7969,
+        0.8967,
+        0.9769,
+        0.8749,
+        0.7769
+      ],
+      "point_mean": 0.8644,
+      "ci_lo": 0.8045,
+      "ci_hi": 0.9249
+    },
+    "subject_only__sex_F_age_young": {
+      "n_seeds": 5,
+      "n_test_mean": 40.4,
+      "auroc_per_seed": [
+        0.9947,
+        0.795,
+        0.9444,
+        0.7709,
+        NaN
+      ],
+      "point_mean": 0.8763,
+      "ci_lo": 0.7789,
+      "ci_hi": 0.9779
+    },
+    "subject_only__sex_M": {
+      "n_seeds": 5,
+      "n_test_mean": 116.6,
+      "auroc_per_seed": [
+        0.8276,
+        0.7153,
+        0.8146,
+        0.6806,
+        0.676
+      ],
+      "point_mean": 0.7428,
+      "ci_lo": 0.6857,
+      "ci_hi": 0.8
+    },
+    "subject_only__sex_M_age_old": {
+      "n_seeds": 5,
+      "n_test_mean": 63.6,
+      "auroc_per_seed": [
+        0.7671,
+        0.4783,
+        0.7858,
+        0.7167,
+        0.6022
+      ],
+      "point_mean": 0.67,
+      "ci_lo": 0.5608,
+      "ci_hi": 0.7645
+    },
+    "subject_only__sex_M_age_young": {
+      "n_seeds": 5,
+      "n_test_mean": 53.0,
+      "auroc_per_seed": [
+        0.8871,
+        0.9837,
+        0.8978,
+        0.6397,
+        0.662
+      ],
+      "point_mean": 0.8141,
+      "ci_lo": 0.6958,
+      "ci_hi": 0.93
+    },
+    "component_safe__age_old": {
+      "n_seeds": 5,
+      "n_test_mean": 86.6,
+      "auroc_per_seed": [
+        0.7535,
+        0.7829,
+        0.789,
+        0.8764,
+        0.8767
+      ],
+      "point_mean": 0.8157,
+      "ci_lo": 0.7724,
+      "ci_hi": 0.8591
+    },
+    "component_safe__age_young": {
+      "n_seeds": 5,
+      "n_test_mean": 116.6,
+      "auroc_per_seed": [
+        0.848,
+        0.8227,
+        0.8344,
+        0.8187,
+        0.8399
+      ],
+      "point_mean": 0.8327,
+      "ci_lo": 0.8234,
+      "ci_hi": 0.842
+    },
+    "component_safe__overall": {
+      "n_seeds": 5,
+      "n_test_mean": 203.2,
+      "auroc_per_seed": [
+        0.7805,
+        0.7992,
+        0.8184,
+        0.8447,
+        0.8324
+      ],
+      "point_mean": 0.815,
+      "ci_lo": 0.7954,
+      "ci_hi": 0.8345
+    },
+    "component_safe__sex_F": {
+      "n_seeds": 5,
+      "n_test_mean": 82.2,
+      "auroc_per_seed": [
+        0.9245,
+        0.8351,
+        0.8317,
+        0.9503,
+        0.9167
+      ],
+      "point_mean": 0.8917,
+      "ci_lo": 0.8501,
+      "ci_hi": 0.9333
+    },
+    "component_safe__sex_F_age_old": {
+      "n_seeds": 5,
+      "n_test_mean": 52.6,
+      "auroc_per_seed": [
+        0.9211,
+        0.8252,
+        0.797,
+        0.9201,
+        0.9542
+      ],
+      "point_mean": 0.8835,
+      "ci_lo": 0.8274,
+      "ci_hi": 0.9341
+    },
+    "component_safe__sex_F_age_young": {
+      "n_seeds": 5,
+      "n_test_mean": 29.6,
+      "auroc_per_seed": [
+        0.943,
+        0.8325,
+        0.8611,
+        0.9852,
+        0.9286
+      ],
+      "point_mean": 0.9101,
+      "ci_lo": 0.8631,
+      "ci_hi": 0.957
+    },
+    "component_safe__sex_M": {
+      "n_seeds": 5,
+      "n_test_mean": 121.0,
+      "auroc_per_seed": [
+        0.6983,
+        0.7858,
+        0.8239,
+        0.7918,
+        0.7813
+      ],
+      "point_mean": 0.7762,
+      "ci_lo": 0.7345,
+      "ci_hi": 0.8077
+    },
+    "component_safe__sex_M_age_old": {
+      "n_seeds": 5,
+      "n_test_mean": 34.0,
+      "auroc_per_seed": [
+        0.6094,
+        0.6513,
+        0.732,
+        0.7644,
+        0.7691
+      ],
+      "point_mean": 0.7052,
+      "ci_lo": 0.6497,
+      "ci_hi": 0.7598
+    },
+    "component_safe__sex_M_age_young": {
+      "n_seeds": 5,
+      "n_test_mean": 87.0,
+      "auroc_per_seed": [
+        0.8132,
+        0.7903,
+        0.8384,
+        0.7812,
+        0.8181
+      ],
+      "point_mean": 0.8083,
+      "ci_lo": 0.7904,
+      "ci_hi": 0.8252
+    }
+  },
+  "sex_gap_paired_bootstrap": {
+    "random": {
+      "n_seeds_paired": 5,
+      "delta_per_seed": [
+        -0.0628,
+        -0.0747,
+        0.003,
+        0.0226,
+        0.0129
+      ],
+      "delta_mean": -0.0198,
+      "delta_ci_lo": -0.0548,
+      "delta_ci_hi": 0.0148,
+      "direction_preserved_iters": 8893,
+      "n_boot": 10000
+    },
+    "subject_only": {
+      "n_seeds_paired": 5,
+      "delta_per_seed": [
+        0.0624,
+        0.0894,
+        0.1422,
+        0.1523,
+        0.0625
+      ],
+      "delta_mean": 0.1018,
+      "delta_ci_lo": 0.0678,
+      "delta_ci_hi": 0.1357,
+      "direction_preserved_iters": 10000,
+      "n_boot": 10000
+    },
+    "component_safe": {
+      "n_seeds_paired": 5,
+      "delta_per_seed": [
+        0.2262,
+        0.0494,
+        0.0078,
+        0.1585,
+        0.1354
+      ],
+      "delta_mean": 0.1154,
+      "delta_ci_lo": 0.0463,
+      "delta_ci_hi": 0.1809,
+      "direction_preserved_iters": 10000,
+      "n_boot": 10000
+    }
+  },
+  "ad_prevalence_by_subgroup": {
+    "random": {
+      "age_old": 0.4644,
+      "age_young": 0.4747,
+      "overall": 0.4685,
+      "sex_F": 0.4516,
+      "sex_F_age_old": 0.4205,
+      "sex_F_age_young": 0.4933,
+      "sex_M": 0.4836,
+      "sex_M_age_old": 0.5058,
+      "sex_M_age_young": 0.4587
+    },
+    "subject_only": {
+      "age_old": 0.4328,
+      "age_young": 0.5848,
+      "overall": 0.4981,
+      "sex_F": 0.4868,
+      "sex_F_age_old": 0.4028,
+      "sex_F_age_young": 0.6451,
+      "sex_M": 0.5106,
+      "sex_M_age_old": 0.4636,
+      "sex_M_age_young": 0.5524
+    },
+    "component_safe": {
+      "age_old": 0.4213,
+      "age_young": 0.5294,
+      "overall": 0.4766,
+      "sex_F": 0.4284,
+      "sex_F_age_old": 0.359,
+      "sex_F_age_young": 0.5743,
+      "sex_M": 0.5093,
+      "sex_M_age_old": 0.5319,
+      "sex_M_age_young": 0.515
+    }
+  }
+}

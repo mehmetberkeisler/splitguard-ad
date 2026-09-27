@@ -12,13 +12,32 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 DEFAULT_MANIFEST = PROJECT_ROOT / "data" / "manifests" / "current_jpeg_manifest.csv"
 DEFAULT_COMPONENTS = PROJECT_ROOT / "data" / "manifests" / "current_jpeg_leakage_components.csv"
 DEFAULT_SPLIT = PROJECT_ROOT / "data" / "splits" / "current_jpeg_splitguard_seed42.csv"
 DEFAULT_AUDIT = PROJECT_ROOT / "reports" / "audits" / "current_jpeg_splitguard_seed42_audit.md"
 DEFAULT_SUMMARY_JSON = PROJECT_ROOT / "reports" / "audits" / "current_jpeg_splitguard_seed42_summary.json"
 
+# Preferred ordering for the Tier-1 benchmark's own four classes. It fixes the
+# order in which classes are stratified, which is what keeps a given seed
+# byte-reproducible. It is NOT the set of permitted classes: any class present
+# in the manifest but absent here is stratified after these, in sorted order.
+# Treating it as a permitted set is what it used to do, and a component whose
+# label fell outside it was silently skipped during assignment and then raised
+# KeyError on lookup -- so the splitter worked on this benchmark and crashed on
+# anybody else's cohort.
 RAW_CLASS_ORDER = ["NonDemented", "VeryMildDemented", "MildDemented", "ModerateDemented"]
+
+
+def class_order(components: list[dict]) -> list[str]:
+    """Stratification order: the known classes first, then whatever else is present."""
+    present = {component["raw_class_label"] for component in components}
+    known = [label for label in RAW_CLASS_ORDER if label in present]
+    return known + sorted(present - set(RAW_CLASS_ORDER))
 SPLIT_ORDER = ["train", "val", "test"]
 DEFAULT_RATIOS = {"train": 0.70, "val": 0.15, "test": 0.15}
 
@@ -59,7 +78,11 @@ def choose_subset_by_size(components: list[dict], target: int) -> set[str]:
 
     sorted_components = sorted(
         components,
-        key=lambda component: (-int(component["n_images"]), str(component["component_id"])),
+        key=lambda component: (
+            -int(component["n_images"]),
+            # Seeded rank, not component_id — see assign_splits() for why.
+            int(component.get("_shuffle_rank", 0)),
+        ),
     )
 
     # dp[sum] = tuple(component_ids)
@@ -114,18 +137,22 @@ def assign_splits(components: list[dict], seed: int, ratios: dict[str, float]) -
     for component in components:
         components_by_raw_class[component["raw_class_label"]].append(component)
 
-    for raw_class in RAW_CLASS_ORDER:
+    for raw_class in class_order(components):
         class_components = components_by_raw_class.get(raw_class, [])
         if not class_components:
             continue
 
         shuffled = class_components[:]
         rng.shuffle(shuffled)
-        # Deterministic tie-break by component_id ensures the same seed
-        # produces a byte-identical component ordering even when multiple
-        # components share the same n_images.
+        # Freeze the seeded order into an explicit key, then sort by size with
+        # that rank as the tie-break. This keeps the ordering byte-identical
+        # for a given seed WITHOUT making it seed-independent: tie-breaking on
+        # ``component_id`` instead would impose a total order that erases the
+        # shuffle, leaving the seed inert and every per-seed manifest identical.
+        for rank, item in enumerate(shuffled):
+            item["_shuffle_rank"] = rank
         shuffled.sort(
-            key=lambda item: (-int(item["n_images"]), str(item["component_id"])),
+            key=lambda item: (-int(item["n_images"]), int(item["_shuffle_rank"])),
         )
 
         total_images = sum(component["n_images"] for component in shuffled)
@@ -174,6 +201,20 @@ def build_split_rows(
     assignments: dict[str, str],
     seed: int,
 ) -> list[dict[str, object]]:
+    # Fail on the manifest as a whole rather than on the first row that happens
+    # to be missing something. A bare KeyError raised inside this loop names one
+    # column and gives no indication that the caller's manifest is simply a
+    # different shape, which is what a third party supplying their own cohort
+    # actually hits. Descriptive columns are optional and default to empty.
+    required = {"image_id"}
+    if manifest_rows:
+        missing = sorted(required - set(manifest_rows[0]))
+        if missing:
+            raise SystemExit(
+                f"Manifest is missing required column(s): {missing}. "
+                f"Present columns: {sorted(manifest_rows[0])}"
+            )
+
     manifest_by_id = {row["image_id"]: row for row in manifest_rows}
 
     output_rows = []
@@ -191,17 +232,17 @@ def build_split_rows(
                 "component_primary_reason": component_row["component_primary_reason"],
                 "split_policy": "splitguard_component_safe_raw_class_stratified_v1",
                 "split_seed": seed,
-                "path": manifest_row["path"],
+                "path": manifest_row.get("path", ""),
                 "relative_path": component_row["relative_path"],
-                "source_dataset": manifest_row["source_dataset"],
+                "source_dataset": manifest_row.get("source_dataset", ""),
                 "raw_class_label": component_row["raw_class_label"],
                 "binary_label": component_row["binary_label"],
-                "clinical_label": manifest_row["clinical_label"],
-                "label_confidence": manifest_row["label_confidence"],
+                "clinical_label": manifest_row.get("clinical_label", ""),
+                "label_confidence": manifest_row.get("label_confidence", ""),
                 "subject_id": component_row["subject_id"],
                 "subject_id_confidence": component_row["subject_id_confidence"],
                 "subject_parse_status": component_row["subject_parse_status"],
-                "preprocessing_version": manifest_row["preprocessing_version"],
+                "preprocessing_version": manifest_row.get("preprocessing_version", ""),
             }
         )
     return output_rows
@@ -274,25 +315,40 @@ def write_audit(summary: dict, split_path: Path, audit_path: Path, seed: int) ->
             for split in SPLIT_ORDER
         ],
     )
+    # Column headers come from the labels the split actually contains. Hardcoding
+    # this benchmark's own label names produced a table of zeros for any cohort
+    # that names its classes differently, which reads as a finding rather than
+    # as a mismatch and is worse than failing outright.
+    binary_labels = sorted(
+        {label for counts in summary["binary_by_split"].values() for label in counts}
+    )
     binary_by_split = markdown_table(
-        ["Split", "Demented", "NonDemented"],
+        ["Split", *binary_labels],
         [
             [
                 split,
-                summary["binary_by_split"].get(split, {}).get("Demented", 0),
-                summary["binary_by_split"].get(split, {}).get("NonDemented", 0),
+                *[
+                    summary["binary_by_split"].get(split, {}).get(label, 0)
+                    for label in binary_labels
+                ],
             ]
             for split in SPLIT_ORDER
         ],
     )
+    present_raw = {
+        label for counts in summary["raw_class_by_split"].values() for label in counts
+    }
+    raw_labels = [c for c in RAW_CLASS_ORDER if c in present_raw] + sorted(
+        present_raw - set(RAW_CLASS_ORDER)
+    )
     raw_by_split = markdown_table(
-        ["Split", *RAW_CLASS_ORDER],
+        ["Split", *raw_labels],
         [
             [
                 split,
                 *[
                     summary["raw_class_by_split"].get(split, {}).get(raw_class, 0)
-                    for raw_class in RAW_CLASS_ORDER
+                    for raw_class in raw_labels
                 ],
             ]
             for split in SPLIT_ORDER
@@ -323,7 +379,7 @@ def write_audit(summary: dict, split_path: Path, audit_path: Path, seed: int) ->
 
 ## Summary
 
-- Split manifest: `{split_path.relative_to(PROJECT_ROOT)}`
+- Split manifest: `{display_path(split_path)}`
 - Split policy: `splitguard_component_safe_raw_class_stratified_v1`
 - Seed: **{seed}**
 - Total images: **{summary["total_images"]}**

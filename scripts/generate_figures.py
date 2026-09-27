@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
 """Tier-1 figures for the SplitGuard-AD paper, publication-quality.
 
+Tier 1 is trained under three protocols that differ only in what they group
+by: random images (A), the filename key the release ships (B'), and the
+participant identity recovered in the provenance audit (C'). Every figure here
+shows all three, because the point of the tier is that B' looks honest from
+inside the release and is not.
+
 Produces:
-  paper/fig1_learning_curves.{pdf,png}   — validation AUROC by epoch
-  paper/fig2_seed_stability.{pdf,png}    — per-seed AUROC bars (Tier-1)
-  paper/fig3_degradation_curve.{pdf,png} — three-point degradation A→B→C
-  paper/fig4_metric_comparison.{pdf,png} — Tier-1 test-metric bars
+  paper/fig05_learning_curves.{pdf,png}    — validation AUROC by epoch
+  paper/fig04a_seed_stability.{pdf,png}    — per-seed AUROC bars
+  paper/fig08_degradation_curve.{pdf,png}  — three-point degradation A → B' → C'
+  paper/fig04b_metric_comparison.{pdf,png} — test-metric bars
+
+Input is the per-seed JSON written by scripts/run_inflation_gap.py for each
+grouping rule (``tier1_<arch>_<rule>_seed<seed>.json``), so the figures follow
+whichever run directory is passed with --results-dir.
 
 Style is shared with the other matplotlib generators via
 scripts/_publication_style.py: STIX serif (matches the LaTeX paper),
@@ -16,6 +26,7 @@ the text remains editable in the published PDF.
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -24,8 +35,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _publication_style import (
     apply_publication_style, thin_y_grid,
-    LEAKY, SPLIT, INTER, NEUTRAL,
-    SINGLE_COL_W, TWO_COL_W,
+    INK, MUTED, NEUTRAL, PROTOCOL_COLOR, PROTOCOL_MARKER, PROTOCOL_LINESTYLE,
+    MARKER_SIZE, SERIES_LW, TWO_COL_W,
 )
 apply_publication_style()
 
@@ -36,15 +47,32 @@ ROOT    = Path(__file__).resolve().parents[1]
 FIG_DIR = ROOT / "paper"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
+SEEDS = [42, 0, 1, 2, 3]
+RULES = [("random", "A"), ("filename_subject", "B"), ("true_participant", "C")]
+# Tier-1 protocol names differ from the ADNI ones: B groups by the release's
+# filename key, C by the participant identity recovered from OASIS-1.
+LABEL = {"A": "A: random images",
+         "B": "B′: filename key",
+         "C": "C′: recovered participant"}
 
-# ── Data load ────────────────────────────────────────────────────────────
-with (ROOT / "reports" / "tables" / "inflation_gap_experiment.json").open() as f:
-    ig = json.load(f)
-with (ROOT / "reports" / "tables" / "overnight_results.json").open() as f:
-    on = json.load(f)
 
-hist_a = ig["protocol_A_leaky"]["history"]
-hist_b = ig["protocol_B_safe"]["history"]
+def load_results(results_dir: Path, arch: str) -> dict[str, dict[int, dict]]:
+    """protocol key -> seed -> the run block for that protocol."""
+    out: dict[str, dict[int, dict]] = {key: {} for _, key in RULES}
+    label_to_key = {rule: key for rule, key in RULES}
+    for seed in SEEDS:
+        for rule, _ in RULES:
+            path = results_dir / f"tier1_{arch}_{rule}_seed{seed}.json"
+            if not path.is_file():
+                continue
+            payload = json.loads(path.read_text())
+            for block in ("protocol_A_leaky", "protocol_B_safe"):
+                run = payload.get(block)
+                if run and run.get("label") in label_to_key:
+                    out[label_to_key[run["label"]]][seed] = run
+    if not any(out[key] for _, key in RULES):
+        raise SystemExit(f"No Tier-1 results in {results_dir}. Run the GPU programme's tier1_truth stage first.")
+    return out
 
 
 def _save(fig, stem: str) -> None:
@@ -54,172 +82,151 @@ def _save(fig, stem: str) -> None:
     print(f"  wrote paper/{stem}.pdf + paper/{stem}.png")
 
 
-# ── Figure 1 — Learning curves (validation AUROC by epoch) ───────────────
-def fig1():
-    epochs = [h["epoch"] for h in hist_a]
-    auc_a  = [h["val_auc"] for h in hist_a]
-    auc_b  = [h["val_auc"] for h in hist_b]
+def _present(results, seed=None):
+    """Protocol keys that have a result, optionally for one seed."""
+    return [key for _, key in RULES if (seed in results[key] if seed is not None else results[key])]
 
-    fig, ax = plt.subplots(figsize=(TWO_COL_W, 2.6))
 
-    ax.fill_between(epochs, auc_b, auc_a, alpha=0.08, color=LEAKY,
-                    linewidth=0, zorder=1)
-    ax.plot(epochs, auc_a, color=LEAKY, lw=1.6, zorder=3,
-            label="Protocol A, Random (leaky)")
-    ax.plot(epochs, auc_b, color=SPLIT, lw=1.6, zorder=3,
-            label="Protocol C, SplitGuard-AD")
-    # endpoint dots
-    ax.scatter([epochs[-1]], [auc_a[-1]], s=12, color=LEAKY, zorder=4)
-    ax.scatter([epochs[-1]], [auc_b[-1]], s=12, color=SPLIT, zorder=4)
-    ax.text(epochs[-1] + 0.4, auc_a[-1] - 0.005, f"{auc_a[-1]:.3f}",
-            ha="left", va="center", color=LEAKY, fontsize=7.5)
-    ax.text(epochs[-1] + 0.4, auc_b[-1] - 0.005, f"{auc_b[-1]:.3f}",
-            ha="left", va="center", color=SPLIT, fontsize=7.5)
+def _legend_below(ax, ncol):
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=ncol, frameon=False)
 
+
+# ── Figure — Learning curves (validation AUROC by epoch, seed 42) ─────────
+def learning_curves(results):
+    keys = _present(results, seed=42)
+    fig, ax = plt.subplots(figsize=(TWO_COL_W, 2.8))
+    for key in keys:
+        history = results[key][42]["history"]
+        ax.plot([h["epoch"] for h in history], [h["val_auc"] for h in history],
+                color=PROTOCOL_COLOR[key], linestyle=PROTOCOL_LINESTYLE[key],
+                marker=PROTOCOL_MARKER[key], markersize=MARKER_SIZE, markevery=3,
+                lw=SERIES_LW, label=LABEL[key], zorder=3)
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Validation AUROC")
-    ax.set_xlim(0.5, max(epochs) + 4)
-    ax.set_ylim(0.55, 1.02)
     thin_y_grid(ax)
-    # Legend BELOW the axes, two-column, so it can never overlap data
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.20),
-              ncol=2, frameon=False)
+    _legend_below(ax, len(keys))
     fig.tight_layout()
-    _save(fig, "fig1_learning_curves")
+    _save(fig, "fig05_learning_curves")
 
 
-# ── Figure 2 — Per-seed AUROC bars (Tier 1) ───────────────────────────────
-def fig2():
-    seeds = [42, 0, 1, 2, 3]
-    leaky_auroc = [ig["protocol_A_leaky"]["test_metrics"]["auroc"]]
-    safe_auroc  = [ig["protocol_B_safe"]["test_metrics"]["auroc"]]
-    for s in [0, 1, 2, 3]:
-        sd = on["E1b"][f"seed{s}"]
-        leaky_auroc.append(sd["leaky"]["auroc"])
-        safe_auroc.append(sd["safe"]["auroc"])
-
-    summary = on["E1b"]["summary"]
-    gap_mean = summary["auroc_gap_mean"]
-    gap_std  = summary["auroc_gap_std"]
-
+# ── Figure — Per-seed AUROC bars ─────────────────────────────────────────
+def seed_stability(results):
+    keys = _present(results)
+    seeds = [s for s in SEEDS if all(s in results[key] for key in keys)]
     x = np.arange(len(seeds))
-    w = 0.36
+    width = 0.8 / max(1, len(keys))
 
-    fig, ax = plt.subplots(figsize=(TWO_COL_W, 2.6))
-    ax.bar(x - w/2, leaky_auroc, w, color=LEAKY,
-           edgecolor="none", label="Protocol A (leaky)", zorder=3)
-    ax.bar(x + w/2, safe_auroc, w, color=SPLIT,
-           edgecolor="none", label="Protocol C (SplitGuard-AD)", zorder=3)
+    fig, ax = plt.subplots(figsize=(TWO_COL_W, 2.8))
+    for i, key in enumerate(keys):
+        values = [results[key][s]["test_metrics"]["auroc"] for s in seeds]
+        offset = (i - (len(keys) - 1) / 2) * width
+        ax.bar(x + offset, values, width, color=PROTOCOL_COLOR[key],
+               edgecolor="none", label=LABEL[key], zorder=3)
+        for xi, v in zip(x, values):
+            ax.text(xi + offset, v + 0.006, f"{v:.3f}", ha="center", va="bottom",
+                    fontsize=6.5, color=INK)
 
-    # value labels above each bar (both protocols for symmetry)
-    for i, v in enumerate(leaky_auroc):
-        ax.text(x[i] - w/2, v + 0.005, f"{v:.3f}",
-                ha="center", va="bottom", fontsize=7, color=LEAKY)
-    for i, v in enumerate(safe_auroc):
-        ax.text(x[i] + w/2, v + 0.005, f"{v:.3f}",
-                ha="center", va="bottom", fontsize=7, color=SPLIT)
-
+    lowest = min(results[keys[-1]][s]["test_metrics"]["auroc"] for s in seeds)
+    if len(keys) == 3:
+        gaps = [results["A"][s]["test_metrics"]["auroc"] - results["C"][s]["test_metrics"]["auroc"] for s in seeds]
+        ax.text(0.01, 0.99, rf"$\Delta$AUROC (A$-$C$'$) $= {np.mean(gaps):.3f}\,\pm\,{np.std(gaps):.3f}$ (n={len(seeds)})",
+                transform=ax.transAxes, ha="left", va="top", fontsize=8, color=MUTED)
     ax.set_xlabel("Random seed")
     ax.set_ylabel("Test AUROC")
     ax.set_xticks(x)
     ax.set_xticklabels([str(s) for s in seeds])
-    ax.set_ylim(0.78, 1.06)
+    ax.set_ylim(max(0.0, lowest - 0.10), 1.08)
     thin_y_grid(ax)
-    ax.text(0.01, 0.99,
-            rf"$\Delta$AUROC $= {gap_mean:.3f}\,\pm\,{gap_std:.3f}$ (n=5)",
-            transform=ax.transAxes, ha="left", va="top",
-            fontsize=8, color=NEUTRAL)
-    # Legend BELOW the axes, two-column, so it can never overlap bars
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22),
-              ncol=2, frameon=False)
+    _legend_below(ax, len(keys))
     fig.tight_layout()
-    _save(fig, "fig2_seed_stability")
+    _save(fig, "fig04a_seed_stability")
 
 
-# ── Figure 3 — Three-point degradation curve A → B → C ───────────────────
-def fig3():
-    dc = on["E3"]["degradation_curve_auroc"]
-    values = [dc["A_leaky"], dc["Aprime_subject_only"], dc["B_splitguard"]]
-    colors = [LEAKY, INTER, SPLIT]
-    labels = ["A\nRandom\n(leaky)",
-              "B\nSubject‑only",
-              "C\nComponent‑safe"]
-    gaps = [values[0] - values[1], values[1] - values[2]]
+# ── Figure — Three-point degradation A → B' → C' ─────────────────────────
+def degradation_curve(results):
+    keys = _present(results)
+    if len(keys) < 3:
+        print("  skipping fig08_degradation_curve: needs all three protocols")
+        return
+    means = [float(np.mean([r["test_metrics"]["auroc"] for r in results[key].values()])) for key in keys]
+    gaps = [means[0] - means[1], means[1] - means[2]]
 
-    fig, ax = plt.subplots(figsize=(TWO_COL_W, 2.6))
-    ax.plot([0, 1, 2], values, color=NEUTRAL, lw=1.0, zorder=2)
-    for i, (v, c) in enumerate(zip(values, colors)):
-        ax.scatter(i, v, s=55, color=c, edgecolor="white", linewidth=1.0,
-                   zorder=3)
-        ax.text(i, v + 0.012, f"{v:.3f}", ha="center", va="bottom",
-                fontsize=8.5, color=c)
+    fig, ax = plt.subplots(figsize=(TWO_COL_W, 2.8))
+    ax.plot([0, 1, 2], means, color=NEUTRAL, lw=1.0, zorder=2)
+    for i, (key, value) in enumerate(zip(keys, means)):
+        ax.plot(i, value, linestyle="none", marker=PROTOCOL_MARKER[key], markersize=7,
+                color=PROTOCOL_COLOR[key], markeredgecolor="white", markeredgewidth=1.0, zorder=3)
+        ax.text(i, value + 0.012, f"{value:.3f}", ha="center", va="bottom", fontsize=8.5, color=INK)
 
-    # Transition annotations sit on top of the connecting line; a thin
-    # white halo keeps text crisp where it crosses the grey line.
-    _halo = dict(facecolor="white", edgecolor="none", pad=1.2, alpha=0.92)
-    ax.annotate(rf"$\Delta = {gaps[0]:.3f}$" + "\nsubject-ID leak",
-                xy=(0.5, (values[0] + values[1]) / 2),
-                ha="center", va="center", fontsize=7.5, color=LEAKY,
-                bbox=_halo)
-    ax.annotate(rf"$\Delta = {gaps[1]:.3f}$" + "\ncomponent/near-dup",
-                xy=(1.5, (values[1] + values[2]) / 2 - 0.012),
-                ha="center", va="top", fontsize=7.5, color=NEUTRAL,
-                bbox=_halo)
+    halo = dict(facecolor="white", edgecolor="none", pad=1.2, alpha=0.92)
+    ax.annotate(rf"$\Delta = {gaps[0]:.3f}$" + "\nremoved by the\nfilename key",
+                xy=(0.5, (means[0] + means[1]) / 2), ha="center", va="center",
+                fontsize=7.5, color=INK, bbox=halo)
+    ax.annotate(rf"$\Delta = {gaps[1]:.3f}$" + "\nthe key could\nnot see",
+                xy=(1.5, (means[1] + means[2]) / 2), ha="center", va="center",
+                fontsize=7.5, color=MUTED, bbox=halo)
 
     ax.set_xticks([0, 1, 2])
-    ax.set_xticklabels(labels)
+    ax.set_xticklabels([LABEL[key].replace(": ", ":\n") for key in keys])
     ax.set_xlim(-0.4, 2.4)
-    ax.set_ylabel("Test AUROC")
-    ax.set_ylim(0.80, 1.02)
+    ax.set_ylabel("Test AUROC (mean over seeds)")
+    ax.set_ylim(min(means) - 0.08, max(means) + 0.06)
     thin_y_grid(ax)
     fig.tight_layout()
-    _save(fig, "fig3_degradation_curve")
+    _save(fig, "fig08_degradation_curve")
 
 
-# ── Figure 4 — Test metric comparison (Tier 1) ───────────────────────────
-def fig4():
-    ma = ig["protocol_A_leaky"]["test_metrics"]
-    mb = ig["protocol_B_safe"]["test_metrics"]
-    metrics = ["AUROC", "Balanced\naccuracy",
-               "Sensitivity\n(recall)", "Specificity", "F1\n(demented)"]
-    vals_a = [ma["auroc"], ma["balanced_accuracy"],
-              ma["sensitivity"], ma["specificity"], ma["f1_demented"]]
-    vals_b = [mb["auroc"], mb["balanced_accuracy"],
-              mb["sensitivity"], mb["specificity"], mb["f1_demented"]]
+# ── Figure — Test metric comparison (seed 42) ────────────────────────────
+def metric_comparison(results):
+    keys = _present(results, seed=42)
+    names = ["AUROC", "Balanced\naccuracy", "Sensitivity\n(recall)", "Specificity", "F1\n(demented)"]
+    fields = ["auroc", "balanced_accuracy", "sensitivity", "specificity", "f1_demented"]
+    x = np.arange(len(names))
+    width = 0.8 / max(1, len(keys))
 
-    x = np.arange(len(metrics))
-    w = 0.36
-    fig, ax = plt.subplots(figsize=(TWO_COL_W, 2.7))
-    ax.bar(x - w/2, vals_a, w, color=LEAKY, edgecolor="none",
-           label="Protocol A (leaky)", zorder=3)
-    ax.bar(x + w/2, vals_b, w, color=SPLIT, edgecolor="none",
-           label="Protocol C (SplitGuard-AD)", zorder=3)
-    # value labels on both bars for symmetry
-    for i, v in enumerate(vals_a):
-        ax.text(x[i] - w/2, v + 0.012, f"{v:.3f}",
-                ha="center", va="bottom", fontsize=7, color=LEAKY)
-    for i, v in enumerate(vals_b):
-        ax.text(x[i] + w/2, v + 0.012, f"{v:.3f}",
-                ha="center", va="bottom", fontsize=7, color=SPLIT)
-    # Δsensitivity highlight — clinical headline as plain text below the
-    # bar pair (no arrow leader: the pairing already implies the comparison,
-    # and the leader was clipping the SplitGuard sensitivity bar).
-    ax.text(x[2], 0.48,
-            rf"$\Delta$sens $= -{(vals_a[2]-vals_b[2])*100:.1f}$ pp",
-            ha="center", va="bottom", fontsize=8, color=NEUTRAL)
+    fig, ax = plt.subplots(figsize=(TWO_COL_W, 2.9))
+    lowest = 1.0
+    for i, key in enumerate(keys):
+        metrics = results[key][42]["test_metrics"]
+        values = [metrics[f] for f in fields]
+        lowest = min(lowest, min(values))
+        offset = (i - (len(keys) - 1) / 2) * width
+        ax.bar(x + offset, values, width, color=PROTOCOL_COLOR[key],
+               edgecolor="none", label=LABEL[key], zorder=3)
+        for xi, v in zip(x, values):
+            ax.text(xi + offset, v + 0.012, f"{v:.3f}", ha="center", va="bottom",
+                    fontsize=6.5, color=INK)
 
+    if "A" in keys and keys[-1] != "A":
+        drop = (results["A"][42]["test_metrics"]["sensitivity"]
+                - results[keys[-1]][42]["test_metrics"]["sensitivity"]) * 100
+        ax.text(0.01, 0.99, rf"$\Delta$sens $= -{drop:.1f}$ pp",
+                transform=ax.transAxes, ha="left", va="top", fontsize=8, color=MUTED)
     ax.set_xticks(x)
-    ax.set_xticklabels(metrics)
+    ax.set_xticklabels(names)
     ax.set_ylabel("Score")
-    ax.set_ylim(0.45, 1.10)
+    ax.set_ylim(max(0.0, lowest - 0.12), 1.12)
     thin_y_grid(ax)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22),
-              ncol=2, frameon=False)
+    _legend_below(ax, len(keys))
     fig.tight_layout()
-    _save(fig, "fig4_metric_comparison")
+    _save(fig, "fig04b_metric_comparison")
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--results-dir", type=Path, default=ROOT / "reports" / "gpu" / "tier1")
+    ap.add_argument("--arch", default="resnet18")
+    args = ap.parse_args()
+
+    print("Regenerating Tier-1 paper figures (publication-quality style)...")
+    results = load_results(args.results_dir, args.arch)
+    learning_curves(results)
+    seed_stability(results)
+    degradation_curve(results)
+    metric_comparison(results)
+    print("Done.")
+    return 0
 
 
 if __name__ == "__main__":
-    print("Regenerating Tier-1 paper figures (publication-quality style)...")
-    fig1(); fig2(); fig3(); fig4()
-    print("Done.")
+    raise SystemExit(main())

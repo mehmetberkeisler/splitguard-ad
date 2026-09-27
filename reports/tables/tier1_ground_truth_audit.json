@@ -1,0 +1,161 @@
+{
+  "source_cohort": "OASIS-1 cross-sectional (t88_masked_gfc axial slices)",
+  "mapping": {
+    "n_images": 6400,
+    "n_oasis_volumes_searched": 436,
+    "min_self_correlation": 0.9996,
+    "max_other_participant_correlation": 0.9623,
+    "n_unambiguous": 6400,
+    "n_participants": 200,
+    "images_per_participant": [
+      32
+    ],
+    "axial_slice_range": [
+      71,
+      102
+    ],
+    "reliability_rescan_sessions_used": 0,
+    "participants_split_across_folders": 0,
+    "n_images_agreeing_with_cdr": 6400
+  },
+  "labels_vs_cdr": {
+    "participants_with_expected_cdr": 200,
+    "participants": 200,
+    "table": {
+      "MildDemented|CDR=1": 28,
+      "ModerateDemented|CDR=2": 2,
+      "NonDemented|CDR=0": 100,
+      "VeryMildDemented|CDR=0.5": 70
+    }
+  },
+  "tier2_overlap": {
+    "tier1_participants": 200,
+    "tier2_participants": 235,
+    "shared": 200
+  },
+  "filename_identity": {
+    "filename_subject_ids": 324,
+    "ids_that_are_one_participant": 149,
+    "ids_merging_participants": 175,
+    "participants_per_filename_id": {
+      "1": 149,
+      "2": 113,
+      "3": 62
+    },
+    "filename_ids_per_participant": {
+      "1": 21,
+      "2": 113,
+      "3": 59,
+      "8": 3,
+      "27": 3,
+      "32": 1
+    },
+    "unparsed_images": 128
+  },
+  "frozen_split_true_leakage": {
+    "participants_straddling_partitions": 85,
+    "test_images": 960,
+    "test_images_whose_participant_is_in_train": 647,
+    "test_participants": 58,
+    "test_participants_also_in_train": 46
+  },
+  "near_duplicates": {
+    "candidates": 1582,
+    "same_participant": 1559,
+    "slice_gap_of_same_participant_pairs": {
+      "1": 1526,
+      "2": 32,
+      "3": 1
+    },
+    "cross_partition": 57,
+    "cross_partition_by_filename_resolution": {
+      "both_resolved": {
+        "same_participant": 31,
+        "different_participants": 5
+      },
+      "neither_resolved": {
+        "same_participant": 18
+      },
+      "one_resolved": {
+        "same_participant": 3
+      }
+    }
+  },
+  "dhash_calibration": {
+    "hash_bits": 256,
+    "pairs": 20476800,
+    "same_participant_pairs": 99200,
+    "adjacent_slice_pairs": 6200,
+    "median_distance": {
+      "same_participant": 33,
+      "adjacent_slices": 6,
+      "different_participants": 35
+    },
+    "by_threshold": [
+      {
+        "max_hamming_distance": 0,
+        "pairs_flagged": 11,
+        "same_participant_pair_coverage": 0.0001,
+        "recall_adjacent_slices": 0.0018,
+        "false_positive_rate": 0.0,
+        "precision": 1.0
+      },
+      {
+        "max_hamming_distance": 2,
+        "pairs_flagged": 297,
+        "same_participant_pair_coverage": 0.003,
+        "recall_adjacent_slices": 0.0477,
+        "false_positive_rate": 0.0,
+        "precision": 1.0
+      },
+      {
+        "max_hamming_distance": 4,
+        "pairs_flagged": 1582,
+        "same_participant_pair_coverage": 0.0157,
+        "recall_adjacent_slices": 0.2461,
+        "false_positive_rate": 1.1286903266331658e-06,
+        "precision": 0.9855
+      },
+      {
+        "max_hamming_distance": 8,
+        "pairs_flagged": 8636,
+        "same_participant_pair_coverage": 0.0608,
+        "recall_adjacent_slices": 0.8156,
+        "false_positive_rate": 0.00012759108040201006,
+        "precision": 0.6989
+      },
+      {
+        "max_hamming_distance": 12,
+        "pairs_flagged": 72922,
+        "same_participant_pair_coverage": 0.1073,
+        "recall_adjacent_slices": 0.9873,
+        "false_positive_rate": 0.0030561989635678392,
+        "precision": 0.146
+      },
+      {
+        "max_hamming_distance": 16,
+        "pairs_flagged": 484621,
+        "same_participant_pair_coverage": 0.1579,
+        "recall_adjacent_slices": 0.9997,
+        "false_positive_rate": 0.023013603172110552,
+        "precision": 0.0323
+      },
+      {
+        "max_hamming_distance": 24,
+        "pairs_flagged": 3773261,
+        "same_participant_pair_coverage": 0.2947,
+        "recall_adjacent_slices": 1.0,
+        "false_positive_rate": 0.1837322844692211,
+        "precision": 0.0077
+      },
+      {
+        "max_hamming_distance": 32,
+        "pairs_flagged": 8840404,
+        "same_participant_pair_coverage": 0.4923,
+        "recall_adjacent_slices": 1.0,
+        "false_positive_rate": 0.431432896906407,
+        "precision": 0.0055
+      }
+    ]
+  }
+}

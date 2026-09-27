@@ -12,11 +12,21 @@ manifests for the ADNI tier so that downstream auditors can verify
 This script consumes an ADNI split manifest produced by
 ``make_adni_splitguard_split.py`` and outputs one row per component with
 
-* ``subject_id_hash``   — SHA-256 of the salted subject_id (PTID). The
-                          salt is committed to the release together
-                          with the hashed manifest and is documented in
-                          the accompanying README; changing the salt
-                          changes every hash.
+* ``subject_id_hash``   — PBKDF2-HMAC-SHA256 of the subject_id (PTID)
+                          under a **secret** per-release salt supplied
+                          by the operator. The salt is NEVER committed
+                          to this repository and must not be published
+                          alongside the hashed manifest.
+
+  Why key stretching and a secret salt are both mandatory here: ADNI
+  PTIDs are drawn from the low-entropy space ``NNN_S_NNNN`` (at most
+  10^7 candidates, realistically ~10^4 in use). A single-round digest
+  under a *published* salt is therefore trivially invertible — the
+  entire PTID space can be enumerated in well under a minute on a
+  laptop, which would fully re-identify every released component and
+  defeat the DUA-safety claim this release rests on. PBKDF2 with a
+  high iteration count plus an unpublished salt is what makes the
+  released hashes non-invertible in practice.
 * ``component_id``      — opaque component identifier, safe to release.
 * ``component_size``    — integer count of scans in the component.
 * ``binary_label``      — CN / AD (from the primary CN-vs-AD universe).
@@ -28,7 +38,7 @@ The following participant-level fields are **deliberately dropped**:
 ``ptid``, ``rid``, ``viscode``, ``image_uid``, ``series_uid``,
 ``acq_date``, ``image_path``, ``relative_path``, ``age``, ``sex``,
 ``session_id``, ``slice_index``, and the raw ``subject_id`` PTID (only
-its SHA-256 hash is emitted).
+its salted PBKDF2 derivation is emitted).
 """
 
 from __future__ import annotations
@@ -37,6 +47,7 @@ import argparse
 import csv
 import hashlib
 import json
+import os
 from collections import defaultdict
 from pathlib import Path
 
@@ -47,9 +58,17 @@ DEFAULT_SPLIT = REPO_ROOT / "data" / "splits" / "adni_splitguard_seed42.csv"
 DEFAULT_OUTPUT = REPO_ROOT / "data" / "splits" / "adni_hashed_manifest_seed42.csv"
 DEFAULT_AUDIT = REPO_ROOT / "data" / "splits" / "adni_hashed_manifest_seed42.audit.json"
 
-# Fixed, versioned salt for the public release. Changing this value
-# changes every hash and invalidates prior audits against the release.
-DEFAULT_SALT = "splitguard-ad.v1.0.public-release"
+# PBKDF2 work factor. Chosen so that a full sweep of the ~10^7 ADNI PTID
+# space costs on the order of CPU-weeks rather than seconds.
+PBKDF2_ITERATIONS = 600_000
+PBKDF2_DKLEN = 32
+
+# There is deliberately NO default salt. A committed default would be
+# published with the code and would make every released hash invertible
+# by enumerating the PTID space. The operator must supply a secret salt
+# via --salt or the SPLITGUARD_RELEASE_SALT environment variable, and
+# must keep it out of the repository.
+SALT_ENV_VAR = "SPLITGUARD_RELEASE_SALT"
 
 # Fields released per component (in this order).
 RELEASE_FIELDS = [
@@ -73,12 +92,19 @@ DROPPED_FIELDS = {
 
 
 def hash_subject_id(subject_id: str, salt: str) -> str:
-    """SHA-256 of the salted subject_id. Irreversible under the released salt."""
-    digest = hashlib.sha256()
-    digest.update(salt.encode("utf-8"))
-    digest.update(b"\0")  # explicit separator, avoids collision ambiguity
-    digest.update(subject_id.encode("utf-8"))
-    return digest.hexdigest()
+    """PBKDF2-HMAC-SHA256 of the subject_id under a secret per-release salt.
+
+    Key stretching is load-bearing, not decorative: ADNI PTIDs occupy a
+    ~10^7 space, so a single-round digest would be enumerable in seconds.
+    """
+    derived = hashlib.pbkdf2_hmac(
+        "sha256",
+        subject_id.encode("utf-8"),
+        salt.encode("utf-8"),
+        PBKDF2_ITERATIONS,
+        dklen=PBKDF2_DKLEN,
+    )
+    return derived.hex()
 
 
 def read_split(path: Path) -> list[dict[str, str]]:
@@ -180,19 +206,30 @@ def write_audit(
     for row in hashed_rows:
         split_counts[row["split"]] += 1
         label_counts[row["binary_label"]] += 1
+    # NEVER write the salt itself: this audit file ships next to the hashed
+    # manifest, and publishing the salt would make every hash invertible.
+    # A truncated fingerprint lets two releases be told apart without
+    # disclosing the secret.
+    salt_fingerprint = hashlib.pbkdf2_hmac(
+        "sha256", b"salt-fingerprint", salt.encode("utf-8"),
+        PBKDF2_ITERATIONS, dklen=8,
+    ).hex()
     audit = {
         "input": str(input_path),
         "output": str(output_path),
-        "salt_version": salt,
+        "salt_fingerprint": salt_fingerprint,
+        "salt_disclosed": False,
+        "kdf": f"PBKDF2-HMAC-SHA256, {PBKDF2_ITERATIONS} iterations, dklen={PBKDF2_DKLEN}",
         "released_fields": RELEASE_FIELDS,
         "dropped_fields": sorted(DROPPED_FIELDS),
         "n_components": len(hashed_rows),
         "components_per_split": dict(split_counts),
         "components_per_label": dict(label_counts),
         "note": (
-            "The salt is the versioned release identifier. Recomputing "
-            "hashes with a different salt will not match; the release is "
-            "keyed to this salt."
+            "Subject identifiers are protected with PBKDF2-HMAC-SHA256 under a "
+            "secret per-release salt that is deliberately not recorded here. "
+            "Recomputing hashes requires the operator's salt; without it the "
+            "released hashes are not invertible by enumerating the PTID space."
         ),
     }
     audit_path.parent.mkdir(parents=True, exist_ok=True)
@@ -208,9 +245,32 @@ def main() -> int:
                         help="Output hashed manifest CSV.")
     parser.add_argument("--audit", type=Path, default=DEFAULT_AUDIT,
                         help="Path for the audit JSON summary.")
-    parser.add_argument("--salt", default=DEFAULT_SALT,
-                        help="Salt string prepended to each subject_id before hashing.")
+    parser.add_argument("--salt", default=None,
+                        help=("SECRET per-release salt. Required. May instead be "
+                              f"supplied via ${SALT_ENV_VAR}. Never commit this "
+                              "value or publish it with the manifest."))
     args = parser.parse_args()
+
+    salt = args.salt or os.environ.get(SALT_ENV_VAR)
+    if not salt:
+        raise SystemExit(
+            "No release salt supplied.\n\n"
+            f"Pass --salt or set ${SALT_ENV_VAR}. There is no default salt on\n"
+            "purpose: ADNI PTIDs occupy a ~10^7 space, so a published salt would\n"
+            "let anyone invert every released subject hash in under a minute and\n"
+            "re-identify the components. Generate one with:\n\n"
+            f"    export {SALT_ENV_VAR}=$(python3 -c "
+            "'import secrets; print(secrets.token_hex(32))')\n\n"
+            "Store it outside this repository. Losing it means future releases\n"
+            "cannot be matched to this one; publishing it voids the DUA-safety\n"
+            "property of the release."
+        )
+    if len(salt) < 16:
+        raise SystemExit(
+            f"Release salt is too short ({len(salt)} chars). Use at least 16 "
+            "characters of high-entropy secret; a guessable salt is equivalent "
+            "to no salt for a low-entropy identifier space like ADNI PTIDs."
+        )
 
     if not args.split.exists():
         raise SystemExit(
@@ -222,9 +282,9 @@ def main() -> int:
     if not rows:
         raise SystemExit(f"Input split manifest is empty: {args.split}")
 
-    hashed = aggregate_components(rows, args.salt)
+    hashed = aggregate_components(rows, salt)
     write_manifest(hashed, args.output)
-    audit = write_audit(hashed, args.split, args.output, args.salt, args.audit)
+    audit = write_audit(hashed, args.split, args.output, salt, args.audit)
 
     print(f"Wrote {len(hashed)} hashed component rows to {args.output}")
     print(f"Audit summary: {audit['components_per_split']}, "

@@ -1,0 +1,152 @@
+{
+  "densenet121": {
+    "mixed_effects": {
+      "fit": "iterated feasible GLS, random intercept per seed (compound symmetry), cluster-robust sandwich SE with finite-cluster correction and t(G-1) critical value",
+      "slope": 0.065535,
+      "intercept": 0.870325,
+      "pooled_ols_slope": 0.065535,
+      "pooled_ols_intercept": 0.870325,
+      "pooled_ols_r2": 0.3548,
+      "sigma_u": 0.019762,
+      "sigma_eps": 0.026299,
+      "rho_sigma_u2_over_sigma2": 0.564665,
+      "cluster_robust_se": 0.016089,
+      "finite_cluster_correction": 1.3043,
+      "t_crit_975": 2.776,
+      "df": 4,
+      "ci_lo_95": 0.020871,
+      "ci_hi_95": 0.110198,
+      "n_iter": 1,
+      "converged": true,
+      "n_obs": 25,
+      "n_seeds": 5
+    },
+    "per_seed_slopes": {
+      "per_seed": {
+        "0": {
+          "slope": 0.0945,
+          "intercept": 0.8269,
+          "r2": 0.7603,
+          "monotonic": false,
+          "n_points": 5
+        },
+        "1": {
+          "slope": 0.1026,
+          "intercept": 0.8427,
+          "r2": 0.8694,
+          "monotonic": false,
+          "n_points": 5
+        },
+        "2": {
+          "slope": 0.0417,
+          "intercept": 0.9031,
+          "r2": 0.6267,
+          "monotonic": false,
+          "n_points": 5
+        },
+        "3": {
+          "slope": 0.0698,
+          "intercept": 0.8943,
+          "r2": 0.6776,
+          "monotonic": false,
+          "n_points": 5
+        },
+        "4": {
+          "slope": 0.0191,
+          "intercept": 0.8845,
+          "r2": 0.0373,
+          "monotonic": false,
+          "n_points": 5
+        }
+      },
+      "slope_min": 0.0191,
+      "slope_max": 0.1026,
+      "slope_median": 0.0698,
+      "monotonic_count": 0,
+      "n_seeds": 5
+    },
+    "cluster_bootstrap": {
+      "n_boot": 10000,
+      "slope_median": 0.0655,
+      "ci_lo_cluster_boot": 0.0383,
+      "ci_hi_cluster_boot": 0.0928
+    },
+    "spearman_rho_pooled": 0.553,
+    "n_records": 25
+  },
+  "resnet18": {
+    "mixed_effects": {
+      "fit": "iterated feasible GLS, random intercept per seed (compound symmetry), cluster-robust sandwich SE with finite-cluster correction and t(G-1) critical value",
+      "slope": 0.106474,
+      "intercept": 0.832998,
+      "pooled_ols_slope": 0.106474,
+      "pooled_ols_intercept": 0.832998,
+      "pooled_ols_r2": 0.7165,
+      "sigma_u": 0.015687,
+      "sigma_eps": 0.019466,
+      "rho_sigma_u2_over_sigma2": 0.649404,
+      "cluster_robust_se": 0.010691,
+      "finite_cluster_correction": 1.3043,
+      "t_crit_975": 2.776,
+      "df": 4,
+      "ci_lo_95": 0.076796,
+      "ci_hi_95": 0.136153,
+      "n_iter": 1,
+      "converged": true,
+      "n_obs": 25,
+      "n_seeds": 5
+    },
+    "per_seed_slopes": {
+      "per_seed": {
+        "0": {
+          "slope": 0.136,
+          "intercept": 0.7897,
+          "r2": 0.8083,
+          "monotonic": true,
+          "n_points": 5
+        },
+        "1": {
+          "slope": 0.0894,
+          "intercept": 0.8559,
+          "r2": 0.9672,
+          "monotonic": true,
+          "n_points": 5
+        },
+        "2": {
+          "slope": 0.0841,
+          "intercept": 0.8394,
+          "r2": 0.6306,
+          "monotonic": false,
+          "n_points": 5
+        },
+        "3": {
+          "slope": 0.096,
+          "intercept": 0.8534,
+          "r2": 0.9561,
+          "monotonic": true,
+          "n_points": 5
+        },
+        "4": {
+          "slope": 0.1269,
+          "intercept": 0.8266,
+          "r2": 0.9579,
+          "monotonic": true,
+          "n_points": 5
+        }
+      },
+      "slope_min": 0.0841,
+      "slope_max": 0.136,
+      "slope_median": 0.096,
+      "monotonic_count": 4,
+      "n_seeds": 5
+    },
+    "cluster_bootstrap": {
+      "n_boot": 10000,
+      "slope_median": 0.1065,
+      "ci_lo_cluster_boot": 0.0886,
+      "ci_hi_cluster_boot": 0.1249
+    },
+    "spearman_rho_pooled": 0.8747,
+    "n_records": 25
+  }
+}

@@ -13,7 +13,7 @@ Style: shared publication-quality from scripts/_publication_style.py
 axes, 600 dpi PDF, Type-42 embedded fonts).
 
 Reads:  reports/tables/adni/adni_dose_response.json
-Writes: paper/fig10_dose_response.{pdf,png}
+Writes: paper/fig11_dose_response.{pdf,png}
 """
 
 from __future__ import annotations
@@ -26,7 +26,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _publication_style import (
     apply_publication_style, thin_y_grid,
-    SPLIT, DENSENET, NEUTRAL, TWO_COL_W,
+    INK, MUTED, NEUTRAL, PROTOCOL_COLOR, PROTOCOL_LABEL,
+    BAND_ALPHA, MARKER_SIZE, REF_LW, REF_STYLE, SERIES_LW, TWO_COL_W,
 )
 apply_publication_style()
 
@@ -36,24 +37,29 @@ import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA = PROJECT_ROOT / "reports" / "tables" / "adni" / "adni_dose_response.json"
-OUT_STEM = PROJECT_ROOT / "paper" / "fig10_dose_response"
+OUT_STEM = PROJECT_ROOT / "paper" / "fig11_dose_response"
 
 
 def main() -> int:
     d = json.loads(DATA.read_text())
 
-    RESNET_COLOR   = SPLIT
-    DENSENET_COLOR = DENSENET
+    # Colour is reserved for protocol identity. These series are two backbones
+    # trained on the same Protocol C splits, so they are told apart by ink
+    # weight, line style and marker rather than by hue.
+    ARCH = (
+        ("resnet18",    "ResNet-18",
+         dict(color=INK, marker="o", linestyle="-")),
+        ("densenet121", "DenseNet-121",
+         dict(color=NEUTRAL, marker="s", linestyle=(0, (4, 2)))),
+    )
 
     fig, (axa, axb) = plt.subplots(
         1, 2, figsize=(TWO_COL_W, 3.2), gridspec_kw={"wspace": 0.30}
     )
 
     # ── Panel A: per-seed scatter + mean with CI band ─────────────────────
-    for arch, color, label in [
-        ("resnet18",    RESNET_COLOR,   "ResNet-18"),
-        ("densenet121", DENSENET_COLOR, "DenseNet-121"),
-    ]:
+    for arch, label, style in ARCH:
+        color = style["color"]
         agg = d["by_arch"][arch]
         overlaps = sorted(float(k) for k in agg)
 
@@ -69,15 +75,15 @@ def main() -> int:
         # Per-seed scatter (small markers, semitransparent)
         for o in overlaps:
             for v in get_d(o)["per_seed"]:
-                axa.scatter([o], [v], s=12, color=color, alpha=0.40,
+                axa.scatter([o], [v], s=12, color=color, alpha=0.35,
                             edgecolor="none", zorder=2)
 
         # Mean line + CI band
-        axa.fill_between(overlaps, ci_lo, ci_hi, color=color, alpha=0.15,
-                         linewidth=0, zorder=1)
-        axa.plot(overlaps, means, color=color, lw=1.4, marker="o",
-                 markersize=4.5, markeredgecolor="white", markeredgewidth=0.6,
-                 label=label, zorder=3)
+        axa.fill_between(overlaps, ci_lo, ci_hi, color=color,
+                         alpha=BAND_ALPHA, linewidth=0, zorder=1)
+        axa.plot(overlaps, means, lw=SERIES_LW, markersize=MARKER_SIZE,
+                 markeredgecolor="white", markeredgewidth=0.6,
+                 label=label, zorder=3, **style)
 
     axa.set_xlabel("Target test-subject overlap fraction")
     axa.set_ylabel("Test AUROC")
@@ -88,21 +94,20 @@ def main() -> int:
     axa.set_title("(a) Per-seed AUROC, mean $\\pm$ 95% CI", loc="left")
     thin_y_grid(axa)
 
-    # Anchor lines — labels placed INSIDE Panel A (top-left / lower-left),
-    # not in the right margin where they spill into Panel B.
-    axa.axhline(0.819, color=NEUTRAL, lw=0.4, linestyle=(0, (1, 2)), zorder=0)
-    axa.axhline(0.949, color=NEUTRAL, lw=0.4, linestyle=(0, (1, 2)), zorder=0)
-    axa.text(0.02, 0.952, "Protocol A — leaky (0.949)",
-             fontsize=7, color=NEUTRAL, va="bottom", ha="left")
-    axa.text(0.02, 0.812, "Protocol C — baseline (0.819)",
-             fontsize=7, color=NEUTRAL, va="top", ha="left")
+    # Reference levels are protocol results, so they carry the protocol's
+    # colour. Labels sit inside Panel A rather than in the right margin,
+    # where they spilled into Panel B.
+    for key, level, dy, va in (("A", 0.949, 0.003, "bottom"),
+                               ("C", 0.819, -0.007, "top")):
+        axa.axhline(level, color=PROTOCOL_COLOR[key], lw=REF_LW,
+                    linestyle=REF_STYLE, zorder=0)
+        axa.text(0.02, level + dy, f"{PROTOCOL_LABEL[key]}, {level:.3f}",
+                 fontsize=7, color=MUTED, va=va, ha="left")
 
     # ── Panel B: linear fits ──────────────────────────────────────────────
     grid = np.linspace(0, 1, 100)
-    for arch, color, label_short in [
-        ("resnet18",    RESNET_COLOR,   "ResNet-18"),
-        ("densenet121", DENSENET_COLOR, "DenseNet-121"),
-    ]:
+    for arch, label_short, style in ARCH:
+        color = style["color"]
         f = d["linear_fits"][arch]
         intercept = f["intercept"]; slope = f["slope"]; r2 = f["r2"]
         # Scatter the per-seed points
@@ -112,9 +117,10 @@ def main() -> int:
             for v in dd["per_seed"]:
                 axb.scatter([o], [v], s=12, color=color, alpha=0.35,
                             edgecolor="none", zorder=2)
-        # Fit line — short legend (slope + R² only); full intercept-slope
-        # equation is fine for the caption, not the figure.
-        axb.plot(grid, intercept + slope * grid, color=color, lw=1.4, zorder=3,
+        # Fit line: short legend (slope + R\u00b2 only); the full
+        # intercept-slope equation belongs in the caption, not the figure.
+        axb.plot(grid, intercept + slope * grid, color=color,
+                 linestyle=style["linestyle"], lw=SERIES_LW, zorder=3,
                  label=f"{label_short} (slope $= +{slope:.3f}$, $R^2 = {r2:.2f}$)")
 
     axb.set_xlabel("Target test-subject overlap fraction")
@@ -131,16 +137,15 @@ def main() -> int:
     axb.text(0.02, 0.97,
              f"ResNet-18: $+{rn['slope']*0.1:.3f}$ AUROC per 10pp overlap",
              transform=axb.transAxes, ha="left", va="top",
-             fontsize=7.5, color=NEUTRAL)
+             fontsize=7.5, color=MUTED)
 
-    # Combined legend below both panels (Panel A: architecture lines;
-    # Panel B: same architectures with linear-fit slope + R²).
-    handles_a, labels_a = axa.get_legend_handles_labels()
+    # Legend below both panels, from Panel B: the same backbones, with the
+    # fitted slope and R\u00b2.
     handles_b, labels_b = axb.get_legend_handles_labels()
     fig.subplots_adjust(left=0.07, right=0.97, top=0.91, bottom=0.26, wspace=0.30)
     fig.legend(handles_b, labels_b, loc="lower center",
                bbox_to_anchor=(0.5, 0.02), ncol=2, frameon=False, fontsize=8,
-               columnspacing=2.0, handlelength=1.8)
+               columnspacing=2.0, handlelength=2.2)
     OUT_STEM.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{OUT_STEM}.pdf")
     fig.savefig(f"{OUT_STEM}.png")

@@ -13,7 +13,10 @@ estimate. This script adds a second resampling level:
          resampled predictions
 
 The reported 95% CI is the percentile interval over the outer bootstrap
-distribution. Subject-level resampling is enabled by the trainer's
+distribution. Gaps are taken in ``--protocols`` order, leakiest first: the
+total gap is the first protocol minus the last, and with three protocols the
+middle one splits it into first minus middle and middle minus last. The
+output keys keep the ADNI protocol names. Subject-level resampling is enabled by the trainer's
 per-image-prediction persistence (test_predictions.csv).
 
 Inputs (per protocol, per seed)
@@ -44,6 +47,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 PROTOCOLS = ("random", "subject_only", "component_safe")
 
 
@@ -154,12 +161,13 @@ def main() -> int:
                 boot_means[proto].append(float("nan"))
         # Paired gap
         if all(boot_means[p][-1] == boot_means[p][-1] for p in args.protocols):
-            r = boot_means["random"][-1]
-            so = boot_means["subject_only"][-1]
-            cs = boot_means["component_safe"][-1]
+            r = boot_means[args.protocols[0]][-1]
+            cs = boot_means[args.protocols[-1]][-1]
             boot_gaps_total.append(r - cs)
-            boot_gaps_subj.append(r - so)
-            boot_gaps_comp.append(so - cs)
+            if len(args.protocols) == 3:
+                so = boot_means[args.protocols[1]][-1]
+                boot_gaps_subj.append(r - so)
+                boot_gaps_comp.append(so - cs)
 
     lo_q = (100.0 - args.ci) / 2.0
     hi_q = 100.0 - lo_q
@@ -183,7 +191,7 @@ def main() -> int:
 
     out = {
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "runs_root": str(args.runs_root.resolve().relative_to(PROJECT_ROOT))
+        "runs_root": display_path(args.runs_root)
                      if str(args.runs_root.resolve()).startswith(str(PROJECT_ROOT)) else str(args.runs_root),
         "seeds": seed_list,
         "protocols": args.protocols,
@@ -208,25 +216,33 @@ def main() -> int:
             }
             for p in args.protocols
         },
+        "gap_protocols": {"leaky": args.protocols[0], "safe": args.protocols[-1],
+                          "middle": args.protocols[1] if len(args.protocols) == 3 else None},
         "inflation_gap": {
             "total_random_minus_component_safe": {
-                "point": round(mean(boot_gaps_total), 4),
+                "point": round(mean([point_aurocs[(s, args.protocols[0])]
+                                     - point_aurocs[(s, args.protocols[-1])] for s in seed_list]), 4),
+                "boot_mean": round(mean(boot_gaps_total), 4),
                 "ci_lo": round(pct(boot_gaps_total, lo_q), 4),
                 "ci_hi": round(pct(boot_gaps_total, hi_q), 4),
                 "direction_preserved_share": round(
                     sum(1 for g in boot_gaps_total if g > 0) / max(1, len(boot_gaps_total)), 4
                 ),
             },
-            "subject_leakage_random_minus_subject_only": {
-                "point": round(mean(boot_gaps_subj), 4),
+            **({"subject_leakage_random_minus_subject_only": {
+                "point": round(mean([point_aurocs[(s, args.protocols[0])]
+                                     - point_aurocs[(s, args.protocols[1])] for s in seed_list]), 4),
+                "boot_mean": round(mean(boot_gaps_subj), 4),
                 "ci_lo": round(pct(boot_gaps_subj, lo_q), 4),
                 "ci_hi": round(pct(boot_gaps_subj, hi_q), 4),
             },
-            "component_leakage_subject_only_minus_component_safe": {
-                "point": round(mean(boot_gaps_comp), 4),
+                "component_leakage_subject_only_minus_component_safe": {
+                "point": round(mean([point_aurocs[(s, args.protocols[1])]
+                                     - point_aurocs[(s, args.protocols[-1])] for s in seed_list]), 4),
+                "boot_mean": round(mean(boot_gaps_comp), 4),
                 "ci_lo": round(pct(boot_gaps_comp, lo_q), 4),
                 "ci_hi": round(pct(boot_gaps_comp, hi_q), 4),
-            },
+            }} if len(args.protocols) == 3 else {}),
         },
     }
 
@@ -241,10 +257,11 @@ def main() -> int:
     print()
     g = out["inflation_gap"]["total_random_minus_component_safe"]
     print(f"  Total gap     {g['point']:+.4f}   {args.ci:.0f}%CI [{g['ci_lo']:+.4f}, {g['ci_hi']:+.4f}]")
-    g = out["inflation_gap"]["subject_leakage_random_minus_subject_only"]
-    print(f"  Subject-leak  {g['point']:+.4f}   {args.ci:.0f}%CI [{g['ci_lo']:+.4f}, {g['ci_hi']:+.4f}]")
-    g = out["inflation_gap"]["component_leakage_subject_only_minus_component_safe"]
-    print(f"  Component-lvl {g['point']:+.4f}   {args.ci:.0f}%CI [{g['ci_lo']:+.4f}, {g['ci_hi']:+.4f}]")
+    for key, label in (("subject_leakage_random_minus_subject_only", "Subject-leak "),
+                       ("component_leakage_subject_only_minus_component_safe", "Component-lvl")):
+        g = out["inflation_gap"].get(key)
+        if g:
+            print(f"  {label} {g['point']:+.4f}   {args.ci:.0f}%CI [{g['ci_lo']:+.4f}, {g['ci_hi']:+.4f}]")
     print(f"\n  Wrote {args.output}")
     return 0
 

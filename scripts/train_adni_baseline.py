@@ -45,6 +45,9 @@ from pathlib import Path
 from typing import Iterable
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import resolve_data_path  # noqa: E402
 DEFAULT_MANIFEST = PROJECT_ROOT / "data" / "manifests" / "adni" / "adni_manifest.csv"
 DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "runs" / "adni"
 
@@ -163,7 +166,7 @@ class VolumeSliceDataset:
         torch = deps["torch"]
         Image = deps["Image"]
         row = self.rows[index]
-        path = Path(row["image_path"])
+        path = resolve_data_path(row, keys=("image_path",))
         # Preprocessed slices live as single-channel PNGs (or .npy). For .nii
         # / .nii.gz we fall back to on-the-fly center-slice extraction via
         # nibabel so the script stays backwards-compatible with the volume
@@ -253,6 +256,10 @@ def make_model(pretrained: bool, arch: str = "resnet18"):
       - resnet18 (default; primary results)
       - densenet121 (architecture-breadth sensitivity arm)
       - efficientnet_b0 (additional architecture, optional)
+      - vit_b_16 (transformer family; spans a second modelling paradigm
+        rather than a third convolutional variant, so that the inflation
+        gap can be shown not to be an artefact of convolutional inductive
+        bias). Requires image_size=224, which is already the default.
     Each architecture's classification head is replaced with a single
     logit output for BCE-with-logits training.
     """
@@ -272,10 +279,17 @@ def make_model(pretrained: bool, arch: str = "resnet18"):
         weights = models.EfficientNet_B0_Weights.DEFAULT if pretrained else None
         model = models.efficientnet_b0(weights=weights)
         model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, 1)
+    elif arch == "vit_b_16":
+        weights = models.ViT_B_16_Weights.DEFAULT if pretrained else None
+        model = models.vit_b_16(weights=weights)
+        # torchvision's ViT keeps its classifier in an OrderedDict head under
+        # ``heads.head``; replacing ``heads`` wholesale would drop the
+        # pre-logits layer on variants that carry one.
+        model.heads.head = nn.Linear(model.heads.head.in_features, 1)
     else:
         raise ValueError(
             f"Unsupported --arch {arch!r}; expected one of "
-            "'resnet18', 'densenet121', 'efficientnet_b0'."
+            "'resnet18', 'densenet121', 'efficientnet_b0', 'vit_b_16'."
         )
     return model
 
@@ -427,6 +441,13 @@ def train_and_eval(
     if best_state is not None:
         model.load_state_dict(best_state)
     test_metrics, y_true, y_prob = evaluate(model, test_loader, device)
+    # Validation predictions under the SAME best checkpoint. These are what
+    # downstream analyses must use to choose any threshold (fixed-specificity
+    # anchors, Youden-J). Selecting an operating point on the test ROC and then
+    # reporting sensitivity at that point is test-set selection: it reports the
+    # best achievable value rather than an achievable one, in a paper whose
+    # subject is exactly that class of error.
+    _val_metrics_final, val_y_true, val_y_prob = evaluate(model, val_loader, device)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     metrics_path = output_dir / "metrics.json"
@@ -453,6 +474,25 @@ def train_and_eval(
                 "y_prob": round(float(y_p), 6),
             })
 
+    # Validation predictions, written in the same schema. Threshold selection
+    # belongs here, never on test_predictions.csv.
+    val_predictions_path = output_dir / "val_predictions.csv"
+    with val_predictions_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=["image_id", "subject_id", "diagnosis_group",
+                        "y_true", "y_prob"],
+        )
+        writer.writeheader()
+        for row, y_t, y_p in zip(splits["val"], val_y_true.tolist(), val_y_prob.tolist()):
+            writer.writerow({
+                "image_id": row.get("image_id", ""),
+                "subject_id": row.get("subject_id", ""),
+                "diagnosis_group": row.get("diagnosis_group", ""),
+                "y_true": int(y_t),
+                "y_prob": round(float(y_p), 6),
+            })
+
     # Persist best model state for the WP6 biometric-persistence probe.
     torch.save({"state": model.state_dict(), "seed": seed, "label": label},
                checkpoint_path)
@@ -469,6 +509,12 @@ def train_and_eval(
         "lr": lr,
         "image_size": image_size,
         "pretrained": pretrained,
+        # Provenance: previously neither was recorded, so a run's architecture
+        # and compute backend could only be recovered by inspecting the
+        # checkpoint's layer names or the surrounding shell logs. Both belong
+        # in the artefact the manuscript's hyperparameter table is built from.
+        "arch": arch,
+        "device": str(device),
         "best_val_auroc": round(best_val_auc, 4),
         "wall_time_sec": round(time.time() - started_at, 1),
         "label_distribution": dict(Counter(row["diagnosis_group"] for row in splits["train"])),

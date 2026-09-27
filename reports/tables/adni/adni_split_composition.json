@@ -1,0 +1,52 @@
+{
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "unit": "leakage component (one participant on this cohort)",
+  "by_partition": {
+    "train": {
+      "n_components": 855,
+      "n_images": 3975,
+      "component_size_mean": 4.65,
+      "component_size_median": 5,
+      "component_size_min": 4,
+      "component_size_max": 6,
+      "ad_share_by_image": 0.391
+    },
+    "val": {
+      "n_components": 110,
+      "n_images": 825,
+      "component_size_mean": 7.5,
+      "component_size_median": 7.0,
+      "component_size_min": 7,
+      "component_size_max": 9,
+      "ad_share_by_image": 0.382
+    },
+    "test": {
+      "n_components": 135,
+      "n_images": 825,
+      "component_size_mean": 6.11,
+      "component_size_median": 6,
+      "component_size_min": 5,
+      "component_size_max": 7,
+      "ad_share_by_image": 0.4
+    }
+  },
+  "component_size_by_diagnosis": {
+    "CN": {
+      "n_participants": 123,
+      "scans_mean": 5.56,
+      "scans_sd": 1.0
+    },
+    "AD": {
+      "n_participants": 97,
+      "scans_mean": 4.55,
+      "scans_sd": 0.97
+    }
+  },
+  "interpretation": "Partitions that are disjoint by construction can still differ systematically in composition. Here the size-descending bin-packer routes larger components to validation and test, so the partitions are nearly disjoint in component size while remaining balanced by class. Because scan count tracks retention, the test partition is enriched for longer-followed participants within each class. The released audit gate does not check this and would pass the split."
+}

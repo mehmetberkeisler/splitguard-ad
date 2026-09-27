@@ -24,8 +24,9 @@ from pathlib import Path
 # Project-shared style ------------------------------------------------------
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _publication_style import (
-    apply_publication_style, thin_y_grid,
-    LEAKY, SPLIT, INTER, NEUTRAL, TWO_COL_W,
+    apply_publication_style, thin_y_grid, reference_line, protocol_handles,
+    INK, NEUTRAL, PROTOCOL_COLOR, PROTOCOL_LABEL, PROTOCOL_MARKER,
+    CAPSIZE, ERROR_LW, MARKER_SIZE, TWO_COL_W,
 )
 apply_publication_style()
 
@@ -34,7 +35,7 @@ import numpy as np
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-OUT_STEM = PROJECT_ROOT / "paper" / "fig5_cross_cohort_inflation"
+OUT_STEM = PROJECT_ROOT / "paper" / "fig06_cross_cohort_inflation"
 
 
 def load_oasis():
@@ -87,7 +88,7 @@ def load_jpeg():
 
 def main() -> int:
     cohorts = [
-        ("Public 2D JPEG", load_jpeg()),
+        ("Tier 1 (redistributed)", load_jpeg()),
         ("OASIS-1",        load_oasis()),
         ("ADNI1",          load_adni()),
     ]
@@ -117,12 +118,13 @@ def main() -> int:
                     [c[1]["splitguard"][1] for c in cohorts],
                     [c[1]["splitguard"][2] for c in cohorts])
 
-    ax_a.errorbar(leaky_xs, leaky_y, yerr=leaky_err, fmt="o", color=LEAKY,
-                  capsize=2.0, lw=1.0, markersize=5,
-                  label="Random / leaky split")
-    ax_a.errorbar(sgd_xs, sgd_y, yerr=sgd_err, fmt="s", color=SPLIT,
-                  capsize=2.0, lw=1.0, markersize=5,
-                  label="SplitGuard-AD component-safe")
+    for key, xs_, ys_, err_ in (("A", leaky_xs, leaky_y, leaky_err),
+                                ("C", sgd_xs, sgd_y, sgd_err)):
+        ax_a.errorbar(xs_, ys_, yerr=err_, fmt=PROTOCOL_MARKER[key],
+                      color=PROTOCOL_COLOR[key], capsize=CAPSIZE,
+                      lw=ERROR_LW, markersize=MARKER_SIZE,
+                      markeredgecolor="white", markeredgewidth=0.6,
+                      label=PROTOCOL_LABEL[key])
     for i in range(len(cohorts)):
         ax_a.plot([leaky_xs[i], sgd_xs[i]], [leaky_y[i], sgd_y[i]],
                   color=NEUTRAL, lw=0.5, alpha=0.5, zorder=0)
@@ -138,9 +140,12 @@ def main() -> int:
     gap_lo = [c[1]["gap"][1] for c in cohorts]
     gap_hi = [c[1]["gap"][2] for c in cohorts]
     gap_err = err(gap_y, gap_lo, gap_hi)
-    ax_b.errorbar(x, gap_y, yerr=gap_err, fmt="D", color=INTER,
-                  capsize=2.0, lw=1.0, markersize=5)
-    ax_b.axhline(0, color=NEUTRAL, lw=0.4, linestyle=(0, (1, 2)))
+    # The gap is A minus C, a derived quantity rather than a protocol, so it
+    # is drawn in ink; green would read as Protocol B everywhere else.
+    ax_b.errorbar(x, gap_y, yerr=gap_err, fmt="D", color=INK,
+                  capsize=CAPSIZE, lw=ERROR_LW, markersize=MARKER_SIZE,
+                  markeredgecolor="white", markeredgewidth=0.6)
+    reference_line(ax_b, 0)
     ax_b.set_xticks(x)
     ax_b.set_xticklabels(["JPEG", "OASIS-1", "ADNI1"])
     ax_b.set_ylabel(r"Inflation gap ($\Delta$AUROC)")
@@ -148,18 +153,27 @@ def main() -> int:
     ax_b.set_title("(b) Inflation gap, 95% CI", loc="left")
     thin_y_grid(ax_b)
     # Annotate gap values just above each marker, not to its right (avoids
-    # clipping the right edge of the axes for the ADNI bar).
+    # clipping the right edge of the axes for the ADNI bar). The end markers
+    # are aligned inwards: centred on the first one, half the label fell
+    # outside the axes and crossed the y-axis spine into the tick labels.
     for i, p in enumerate(gap_y):
+        if i == 0:
+            ha, dx = "left", -2
+        elif i == len(gap_y) - 1:
+            ha, dx = "right", 2
+        else:
+            ha, dx = "center", 0
         ax_b.annotate(f"+{p:.3f}",
                       xy=(x[i], gap_hi[i]),
-                      xytext=(0, 4), textcoords="offset points",
-                      ha="center", va="bottom",
-                      fontsize=7.5, color=INTER)
+                      xytext=(dx, 4), textcoords="offset points",
+                      ha=ha, va="bottom",
+                      fontsize=7.5, color=INK)
 
-    # Shared legend below both panels
-    handles_a, labels_a = ax_a.get_legend_handles_labels()
+    # Shared legend below both panels. Built from the shared protocol handles
+    # rather than from the errorbar containers, whose swatches are a vertical
+    # bar and so differ from the legend in every other figure.
     fig.subplots_adjust(left=0.08, right=0.97, top=0.92, bottom=0.22, wspace=0.32)
-    fig.legend(handles_a, labels_a, loc="lower center",
+    fig.legend(handles=protocol_handles(["A", "C"]), loc="lower center",
                bbox_to_anchor=(0.5, 0.02), ncol=2, frameon=False, fontsize=8)
     OUT_STEM.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{OUT_STEM}.pdf")

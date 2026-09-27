@@ -1,0 +1,15 @@
+# GPU node environment for the single-code-state re-run (scripts/gpu_setup.sh).
+# Matches requirements.txt for everything the training and analysis code
+# imports, plus MONAI for the volumetric arm. The exact versions that resolve
+# on the node are frozen into runs/gpu_environment.txt by the setup script, so
+# the environment the results came from is recorded rather than assumed.
+torch==2.9.1
+torchvision==0.24.1
+numpy==1.26.4
+scikit-learn==1.5.1
+scipy>=1.11,<1.17
+Pillow==10.4.0
+nibabel==5.3.3
+openpyxl==3.1.5
+matplotlib==3.9.2
+monai==1.5.0

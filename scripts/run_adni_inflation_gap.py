@@ -40,6 +40,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from train_adni_baseline import (  # noqa: E402 — sys.path tweak above
@@ -144,6 +148,10 @@ def run_one_seed(
             continue
         output_dir = output_root / f"inflation_gap_seed{seed}" / label
         existing_metrics = output_dir / "metrics.json"
+        # metrics.json is the last file train_and_eval writes (after the
+        # predictions, the val predictions and the checkpoint), so its presence
+        # means the whole protocol finished. Reordering those writes would make
+        # this resume skip a protocol whose predictions were never written.
         if resume and existing_metrics.exists():
             metrics_payload = json.loads(existing_metrics.read_text(encoding="utf-8"))
             metrics_payload["overlap"] = overlap_stats(splits)
@@ -173,7 +181,7 @@ def run_one_seed(
     # absolute or relative --split-dir without tripping over relative_to's
     # subpath requirement.
     try:
-        split_rel = str(split_path.resolve().relative_to(PROJECT_ROOT))
+        split_rel = display_path(split_path)
     except ValueError:
         split_rel = str(split_path)
     out_path.write_text(
@@ -252,10 +260,12 @@ def main() -> int:
     parser.add_argument(
         "--arch",
         default="resnet18",
-        choices=["resnet18", "densenet121", "efficientnet_b0"],
+        choices=["resnet18", "densenet121", "efficientnet_b0", "vit_b_16"],
         help="Backbone architecture. Default resnet18 matches the primary "
-        "manuscript results; use densenet121 or efficientnet_b0 for the "
-        "architecture-breadth sensitivity arm.",
+        "manuscript results; densenet121 and efficientnet_b0 give the "
+        "convolutional breadth arm, and vit_b_16 a transformer arm that "
+        "tests whether the inflation gap survives outside the convolutional "
+        "family.",
     )
     args = parser.parse_args()
 
@@ -283,7 +293,7 @@ def main() -> int:
 
     aggregate_table(per_seed, args.table)
     try:
-        table_rel = str(args.table.resolve().relative_to(PROJECT_ROOT))
+        table_rel = display_path(args.table)
     except ValueError:
         table_rel = str(args.table)
     print(f"Wrote {table_rel}")

@@ -1,0 +1,36 @@
+{
+  "tiers": {
+    "tier1_public_benchmark": {
+      "split_seed42": 6400,
+      "leakage_components": 6400,
+      "near_duplicate_candidates": 1582
+    },
+    "tier2_oasis1": {
+      "split_seed42": 1175,
+      "leakage_components": 2180
+    }
+  },
+  "tier3_note": "ADNI1 artefacts are not emitted here. Under the LONI/ADNI data-use agreement only hashed component manifests may be redistributed; produce them with scripts/build_hashed_manifest_tier3.py, which requires a secret release salt.",
+  "excluded_columns_by_tier": {
+    "tier1": [
+      "image_path",
+      "path",
+      "source_archive",
+      "source_disc"
+    ],
+    "tier2": [
+      "age",
+      "cdr",
+      "clinical_label",
+      "educ",
+      "image_path",
+      "mmse",
+      "path",
+      "relative_path",
+      "ses",
+      "sex",
+      "source_archive",
+      "source_disc"
+    ]
+  }
+}

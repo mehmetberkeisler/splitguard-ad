@@ -11,6 +11,9 @@ seed × protocol under
 Within-subject probe split: 80% of each subject's images go to the
 probe-train fold, 20% to probe-test. Same subjects appear in both
 folds, so the test does not require generalising to unseen subjects.
+With ``--hold-out session`` the probe-test fold is instead one whole
+session of each participant with at least two, so a repeat acquisition
+from the same visit is never in both folds.
 The classifier is a multinomial LinearSVC (fast, well-suited to
 hundreds of subject classes).
 
@@ -34,11 +37,14 @@ import csv
 import glob
 import json
 import random
+import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import resolve_data_path  # noqa: E402
 
 
 def choose_device():
@@ -83,7 +89,7 @@ def extract_features(model, feature_attr: str, rows, dev, batch: int = 32):
 
     class ImgDS(Dataset):
         def __getitem__(self, i):
-            return tf(Image.open(rows[i]["image_path"]).convert("RGB"))
+            return tf(Image.open(resolve_data_path(rows[i], keys=("image_path",))).convert("RGB"))
         def __len__(self): return len(rows)
 
     hook_out = []
@@ -109,7 +115,7 @@ def extract_features(model, feature_attr: str, rows, dev, batch: int = 32):
     return X
 
 
-def probe_subject_id(X, rows, label: str, seed: int = 42):
+def probe_subject_id(X, rows, label: str, seed: int = 42, hold_out: str = "image"):
     import numpy as np
     from sklearn.metrics import accuracy_score
     from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -122,14 +128,22 @@ def probe_subject_id(X, rows, label: str, seed: int = 42):
     rng = random.Random(seed)
     tr_idx: list[int] = []
     te_idx: list[int] = []
-    # Only include subjects with >= 2 scans so the probe-train/test split is non-trivial.
-    eligible = [s for s, idxs in by_subj.items() if len(idxs) >= 2]
-    for subj in eligible:
-        idxs = by_subj[subj][:]
-        rng.shuffle(idxs)
-        n_tr = max(1, int(0.8 * len(idxs)))
-        tr_idx.extend(idxs[:n_tr])
-        te_idx.extend(idxs[n_tr:])
+    if hold_out == "session":
+        eligible = [s for s, idxs in by_subj.items() if len({rows[i]["session_id"] for i in idxs}) >= 2]
+        for subj in eligible:
+            idxs = by_subj[subj]
+            held = rng.choice(sorted({rows[i]["session_id"] for i in idxs}))
+            tr_idx.extend(i for i in idxs if rows[i]["session_id"] != held)
+            te_idx.extend(i for i in idxs if rows[i]["session_id"] == held)
+    else:
+        # Only include subjects with >= 2 scans so the probe-train/test split is non-trivial.
+        eligible = [s for s, idxs in by_subj.items() if len(idxs) >= 2]
+        for subj in eligible:
+            idxs = by_subj[subj][:]
+            rng.shuffle(idxs)
+            n_tr = max(1, int(0.8 * len(idxs)))
+            tr_idx.extend(idxs[:n_tr])
+            te_idx.extend(idxs[n_tr:])
 
     le = LabelEncoder()
     all_subj = [r["subject_id"] for r in rows]
@@ -153,6 +167,7 @@ def probe_subject_id(X, rows, label: str, seed: int = 42):
           f"n_train_imgs={len(tr_idx)}  n_test_imgs={len(te_idx)}")
     return {
         "checkpoint_label": label,
+        "hold_out": hold_out,
         "probe_acc": round(acc, 4),
         "chance": round(chance, 6),
         "lift_over_chance": lift,
@@ -183,6 +198,8 @@ def main() -> int:
     parser.add_argument("--arch", default="resnet18",
                         choices=["resnet18", "densenet121"])
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--hold-out", choices=["image", "session"], default="image",
+                        help="Probe-test fold: 20%% of each participant's images, or one whole session.")
     args = parser.parse_args()
 
     dev = choose_device()
@@ -215,7 +232,7 @@ def main() -> int:
         model, feature_attr = make_model_frozen(ckpt_path, dev, arch=args.arch)
         X = extract_features(model, feature_attr, rows, dev)
         print(f"  Features shape: {X.shape}")
-        r = probe_subject_id(X, rows, label=label, seed=args.seed)
+        r = probe_subject_id(X, rows, label=label, seed=args.seed, hold_out=args.hold_out)
         r["checkpoint_path"] = str(ckpt_path.resolve())
         results.append(r)
 

@@ -20,6 +20,10 @@ except ImportError:  # pragma: no cover - handled in runtime output
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 DEFAULT_SOURCE_DIR = (
     PROJECT_ROOT
     / "Alzheimer_MRI_4_classes_dataset"
@@ -131,7 +135,7 @@ def build_records(source_dir: Path) -> list[ImageRecord]:
 
     for image_path in iter_images(source_dir):
         raw_class_label = image_path.parent.name
-        rel_path = image_path.relative_to(PROJECT_ROOT)
+        rel_path = display_path(image_path)
         parse = parse_filename(image_path, raw_class_label)
         width, height = image_size(image_path)
         sha256 = file_sha256(image_path)
@@ -308,7 +312,7 @@ def write_audit(summary: dict, manifest_path: Path, audit_path: Path) -> None:
 ## Summary
 
 - Source dataset: `{summary["source_dataset"]}`
-- Manifest: `{manifest_path.relative_to(PROJECT_ROOT)}`
+- Manifest: `{display_path(manifest_path)}`
 - Total images: **{summary["total_images"]}**
 - Total inferred subjects: **{summary["total_subjects_inferred"]}**
 - High-confidence subject images: **{summary["high_confidence_subject_images"]}**

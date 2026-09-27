@@ -44,6 +44,10 @@ from pathlib import Path
 from typing import Iterable
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 DEFAULT_SOURCE = PROJECT_ROOT / "data" / "raw" / "adni" / "images"
 DEFAULT_SLICES = PROJECT_ROOT / "data" / "preprocessed" / "adni" / "slices"
 DEFAULT_MANIFEST = PROJECT_ROOT / "data" / "preprocessed" / "adni" / "slice_manifest.csv"
@@ -229,7 +233,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         if args.limit and idx >= args.limit:
             break
         # Stable image_id check via path parse (cheap).
-        rel_text = str(volume_path.relative_to(PROJECT_ROOT)) if volume_path.is_relative_to(PROJECT_ROOT) else str(volume_path)
+        rel_text = display_path(volume_path)
         ids = parse_ids(rel_text)
         image_id = derive_image_id(ids, volume_path)
         slice_png = args.slices_root / f"{image_id}.png"
@@ -264,8 +268,8 @@ def main(argv: Iterable[str] | None = None) -> int:
     args.log.write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
     print(f"\nProcessed: {len(new_rows)}  Skipped (already present): {n_skipped_existing}  Errors: {n_errors}")
-    print(f"Manifest:  {args.manifest.relative_to(PROJECT_ROOT)}")
-    print(f"Log:       {args.log.relative_to(PROJECT_ROOT)}")
+    print(f"Manifest:  {display_path(args.manifest)}")
+    print(f"Log:       {display_path(args.log)}")
     return 0 if n_errors == 0 else 2
 
 

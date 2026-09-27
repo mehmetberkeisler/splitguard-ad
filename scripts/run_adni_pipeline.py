@@ -41,6 +41,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 SCRIPTS = PROJECT_ROOT / "scripts"
 
 EXTRACT_LOG = PROJECT_ROOT / "reports" / "audits" / "adni" / "adni_extraction_log.json"
@@ -97,16 +101,16 @@ def check_ontology() -> None:
     if not ONTOLOGY.exists():
         raise GateFailure(
             "G2.5",
-            f"label ontology not finalized at {ONTOLOGY.relative_to(PROJECT_ROOT)}",
+            f"label ontology not finalized at {display_path(ONTOLOGY)}",
             "Write docs/ADNI_LABEL_ONTOLOGY.md using the draft in docs/SPLITGUARD_AD_FORWARD_PLAN.md §7.4 and the actual study CSV column names.",
         )
 
 
 def check_manifest() -> None:
     if not MANIFEST.exists():
-        raise GateFailure("G3a", f"manifest not found at {MANIFEST.relative_to(PROJECT_ROOT)}")
+        raise GateFailure("G3a", f"manifest not found at {display_path(MANIFEST)}")
     if not MANIFEST_SUMMARY.exists():
-        raise GateFailure("G3a", f"manifest summary not found at {MANIFEST_SUMMARY.relative_to(PROJECT_ROOT)}")
+        raise GateFailure("G3a", f"manifest summary not found at {display_path(MANIFEST_SUMMARY)}")
     summary = json.loads(MANIFEST_SUMMARY.read_text(encoding="utf-8"))
     if summary.get("n_images", 0) == 0:
         raise GateFailure("G3a", "manifest is empty")
@@ -121,7 +125,7 @@ def check_manifest() -> None:
 
 def check_components() -> None:
     if not COMPONENTS.exists():
-        raise GateFailure("G3b", f"components manifest not found at {COMPONENTS.relative_to(PROJECT_ROOT)}")
+        raise GateFailure("G3b", f"components manifest not found at {display_path(COMPONENTS)}")
 
 
 def check_split_audits(seeds: list[int]) -> None:
@@ -129,13 +133,13 @@ def check_split_audits(seeds: list[int]) -> None:
     for seed in seeds:
         audit_path = audit_dir / f"adni_splitguard_seed{seed}_audit.json"
         if not audit_path.exists():
-            raise GateFailure("G3d", f"audit not found at {audit_path.relative_to(PROJECT_ROOT)}")
+            raise GateFailure("G3d", f"audit not found at {display_path(audit_path)}")
         payload = json.loads(audit_path.read_text(encoding="utf-8"))
         if not payload.get("passed", False):
             raise GateFailure(
                 "G3d",
                 f"audit failed for seed {seed}",
-                f"Inspect {audit_path.relative_to(PROJECT_ROOT)} for the offending overlap.",
+                f"Inspect {display_path(audit_path)} for the offending overlap.",
             )
 
 

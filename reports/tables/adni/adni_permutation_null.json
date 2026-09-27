@@ -1,0 +1,48 @@
+{
+  "created_at": "2026-09-27T15:39:40+00:00",
+  "permutation": "per_subject_within_partition",
+  "n_seeds": 5,
+  "by_protocol": {
+    "random": {
+      "per_seed_auroc": [
+        0.4445,
+        0.5869,
+        0.5475,
+        0.5101,
+        0.4377
+      ],
+      "mean": 0.5053,
+      "sd": 0.0647,
+      "min": 0.4377,
+      "max": 0.5869
+    },
+    "subject_only": {
+      "per_seed_auroc": [
+        0.44,
+        0.5217,
+        0.5734,
+        0.5224,
+        0.5403
+      ],
+      "mean": 0.5196,
+      "sd": 0.0492,
+      "min": 0.44,
+      "max": 0.5734
+    },
+    "component_safe": {
+      "per_seed_auroc": [
+        0.4981,
+        0.4387,
+        0.4537,
+        0.5828,
+        0.612
+      ],
+      "mean": 0.5171,
+      "sd": 0.0772,
+      "min": 0.4387,
+      "max": 0.612
+    }
+  },
+  "permuted_inflation_gap": -0.0118,
+  "interpretation": "component_safe under permuted labels is the empirical noise floor for a test partition of this size: any protocol-to-protocol difference smaller than its spread is not distinguishable from noise at this n. permuted_inflation_gap is the gap produced by patient-identity leakage alone, with no disease signal available to learn; a positive value is direct evidence that leakage manufactures inflation by itself."
+}

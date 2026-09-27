@@ -1,0 +1,317 @@
+{
+  "target_spec": 0.9,
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "protocols": [
+    "random",
+    "subject_only",
+    "component_safe"
+  ],
+  "runs_root": "runs/adni_with_converters",
+  "by_protocol": {
+    "random": {
+      "per_seed": [
+        {
+          "seed": 0,
+          "n_val": 211,
+          "n_test": 213,
+          "auroc": 0.9527,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.8899,
+          "realised_spec": 0.9135,
+          "threshold_fixed_spec": 0.491297,
+          "youden_j": 0.8034,
+          "youden_sens": 0.8899,
+          "youden_spec": 0.9135,
+          "youden_threshold": 0.491297
+        },
+        {
+          "seed": 1,
+          "n_val": 211,
+          "n_test": 213,
+          "auroc": 0.9381,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.8737,
+          "realised_spec": 0.9237,
+          "threshold_fixed_spec": 0.683296,
+          "youden_j": 0.7933,
+          "youden_sens": 0.8526,
+          "youden_spec": 0.9407,
+          "youden_threshold": 0.78533
+        },
+        {
+          "seed": 2,
+          "n_val": 211,
+          "n_test": 213,
+          "auroc": 0.9574,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.7849,
+          "realised_spec": 0.9583,
+          "threshold_fixed_spec": 0.533465,
+          "youden_j": 0.6763,
+          "youden_sens": 0.7097,
+          "youden_spec": 0.9667,
+          "youden_threshold": 0.841932
+        },
+        {
+          "seed": 3,
+          "n_val": 211,
+          "n_test": 213,
+          "auroc": 0.9783,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.883,
+          "realised_spec": 0.9664,
+          "threshold_fixed_spec": 0.700403,
+          "youden_j": 0.8494,
+          "youden_sens": 0.883,
+          "youden_spec": 0.9664,
+          "youden_threshold": 0.700403
+        },
+        {
+          "seed": 4,
+          "n_val": 211,
+          "n_test": 213,
+          "auroc": 0.9576,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.8981,
+          "realised_spec": 0.9333,
+          "threshold_fixed_spec": 0.385078,
+          "youden_j": 0.8045,
+          "youden_sens": 0.8426,
+          "youden_spec": 0.9619,
+          "youden_threshold": 0.617409
+        }
+      ],
+      "mean_auroc": 0.9568,
+      "mean_sens_at_fixed_spec": 0.8659,
+      "sd_sens_at_fixed_spec": 0.0462,
+      "mean_youden_j": 0.7854,
+      "mean_youden_sens": 0.8356,
+      "mean_youden_spec": 0.9498,
+      "counts_per_1000_at_prev_population": {
+        "prevalence": 0.138,
+        "true_positives": 119.5,
+        "false_negatives": 18.5,
+        "true_negatives": 775.8,
+        "false_positives": 86.2
+      },
+      "counts_per_1000_at_prev_clinic": {
+        "prevalence": 0.589,
+        "true_positives": 510.0,
+        "false_negatives": 79.0,
+        "true_negatives": 369.9,
+        "false_positives": 41.1
+      }
+    },
+    "subject_only": {
+      "per_seed": [
+        {
+          "seed": 0,
+          "n_val": 186,
+          "n_test": 218,
+          "auroc": 0.8588,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.6176,
+          "realised_spec": 0.88,
+          "threshold_fixed_spec": 0.848766,
+          "youden_j": 0.5192,
+          "youden_sens": 0.7059,
+          "youden_spec": 0.8133,
+          "youden_threshold": 0.62662
+        },
+        {
+          "seed": 1,
+          "n_val": 212,
+          "n_test": 215,
+          "auroc": 0.7497,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.5769,
+          "realised_spec": 0.7207,
+          "threshold_fixed_spec": 0.830796,
+          "youden_j": 0.4041,
+          "youden_sens": 0.8365,
+          "youden_spec": 0.5676,
+          "youden_threshold": 0.160479
+        },
+        {
+          "seed": 2,
+          "n_val": 216,
+          "n_test": 221,
+          "auroc": 0.8836,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.65,
+          "realised_spec": 0.901,
+          "threshold_fixed_spec": 0.877341,
+          "youden_j": 0.6202,
+          "youden_sens": 0.8083,
+          "youden_spec": 0.8119,
+          "youden_threshold": 0.421409
+        },
+        {
+          "seed": 3,
+          "n_val": 214,
+          "n_test": 216,
+          "auroc": 0.745,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.529,
+          "realised_spec": 0.8333,
+          "threshold_fixed_spec": 0.965041,
+          "youden_j": 0.34,
+          "youden_sens": 0.7246,
+          "youden_spec": 0.6154,
+          "youden_threshold": 0.724997
+        },
+        {
+          "seed": 4,
+          "n_val": 208,
+          "n_test": 230,
+          "auroc": 0.7058,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.3814,
+          "realised_spec": 0.8125,
+          "threshold_fixed_spec": 0.855692,
+          "youden_j": 0.4056,
+          "youden_sens": 0.7627,
+          "youden_spec": 0.6429,
+          "youden_threshold": 0.348669
+        }
+      ],
+      "mean_auroc": 0.7886,
+      "mean_sens_at_fixed_spec": 0.551,
+      "sd_sens_at_fixed_spec": 0.1051,
+      "mean_youden_j": 0.4578,
+      "mean_youden_sens": 0.7676,
+      "mean_youden_spec": 0.6902,
+      "counts_per_1000_at_prev_population": {
+        "prevalence": 0.138,
+        "true_positives": 76.0,
+        "false_negatives": 62.0,
+        "true_negatives": 775.8,
+        "false_positives": 86.2
+      },
+      "counts_per_1000_at_prev_clinic": {
+        "prevalence": 0.589,
+        "true_positives": 324.5,
+        "false_negatives": 264.5,
+        "true_negatives": 369.9,
+        "false_positives": 41.1
+      }
+    },
+    "component_safe": {
+      "per_seed": [
+        {
+          "seed": 0,
+          "n_val": 166,
+          "n_test": 207,
+          "auroc": 0.7805,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.6211,
+          "realised_spec": 0.8482,
+          "threshold_fixed_spec": 0.778875,
+          "youden_j": 0.4693,
+          "youden_sens": 0.6211,
+          "youden_spec": 0.8482,
+          "youden_threshold": 0.778875
+        },
+        {
+          "seed": 1,
+          "n_val": 165,
+          "n_test": 197,
+          "auroc": 0.7992,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.5521,
+          "realised_spec": 0.9208,
+          "threshold_fixed_spec": 0.886932,
+          "youden_j": 0.4697,
+          "youden_sens": 0.6875,
+          "youden_spec": 0.7822,
+          "youden_threshold": 0.618931
+        },
+        {
+          "seed": 2,
+          "n_val": 165,
+          "n_test": 204,
+          "auroc": 0.8184,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.36,
+          "realised_spec": 0.9904,
+          "threshold_fixed_spec": 0.981713,
+          "youden_j": 0.4738,
+          "youden_sens": 0.57,
+          "youden_spec": 0.9038,
+          "youden_threshold": 0.914557
+        },
+        {
+          "seed": 3,
+          "n_val": 166,
+          "n_test": 202,
+          "auroc": 0.8448,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.5408,
+          "realised_spec": 0.9519,
+          "threshold_fixed_spec": 0.793253,
+          "youden_j": 0.6319,
+          "youden_sens": 0.7857,
+          "youden_spec": 0.8462,
+          "youden_threshold": 0.233671
+        },
+        {
+          "seed": 4,
+          "n_val": 165,
+          "n_test": 206,
+          "auroc": 0.8324,
+          "threshold_selection": "validation",
+          "sens_at_fixed_spec": 0.6,
+          "realised_spec": 0.973,
+          "threshold_fixed_spec": 0.918669,
+          "youden_j": 0.6212,
+          "youden_sens": 0.7474,
+          "youden_spec": 0.8739,
+          "youden_threshold": 0.573611
+        }
+      ],
+      "mean_auroc": 0.8151,
+      "mean_sens_at_fixed_spec": 0.5348,
+      "sd_sens_at_fixed_spec": 0.1032,
+      "mean_youden_j": 0.5332,
+      "mean_youden_sens": 0.6823,
+      "mean_youden_spec": 0.8509,
+      "counts_per_1000_at_prev_population": {
+        "prevalence": 0.138,
+        "true_positives": 73.8,
+        "false_negatives": 64.2,
+        "true_negatives": 775.8,
+        "false_positives": 86.2
+      },
+      "counts_per_1000_at_prev_clinic": {
+        "prevalence": 0.589,
+        "true_positives": 315.0,
+        "false_negatives": 274.0,
+        "true_negatives": 369.9,
+        "false_positives": 41.1
+      }
+    }
+  },
+  "cost_of_leakage": {
+    "prev_population": {
+      "prevalence": 0.138,
+      "prevalence_citation": "Rajan et al. 2021",
+      "leaky_apparent_missed_per_1000": 18.5,
+      "honest_actual_missed_per_1000": 64.2,
+      "additional_missed_if_trusting_leaky": 45.7
+    },
+    "prev_clinic": {
+      "prevalence": 0.589,
+      "prevalence_citation": "Calgary PROMPT registry, Thomas et al. 2024",
+      "leaky_apparent_missed_per_1000": 79.0,
+      "honest_actual_missed_per_1000": 274.0,
+      "additional_missed_if_trusting_leaky": 195.0
+    }
+  },
+  "notes": "Sens@Spec=target is the highest sensitivity achievable at specificity >= target_spec on each protocol's held-out test set, averaged across seeds. Counts per 1000 at each prevalence anchor assume the fixed-specificity operating point; additional_missed_if_trusting_leaky is the per-1000-patient shortfall a clinician would experience by trusting the leaky benchmark's apparent sensitivity over the honest one."
+}

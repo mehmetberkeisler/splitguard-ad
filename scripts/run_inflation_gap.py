@@ -35,6 +35,9 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import models, transforms
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import resolve_data_path  # noqa: E402
 SPLIT_MANIFEST = PROJECT_ROOT / "data" / "splits" / "current_jpeg_splitguard_seed42.csv"
 IMAGE_DIR      = PROJECT_ROOT / "Alzheimer_MRI_4_classes_dataset"
 RESULTS_DIR    = PROJECT_ROOT / "reports" / "tables"
@@ -106,7 +109,7 @@ class RowDataset(Dataset):
 
     def __getitem__(self, idx):
         row = self.rows[idx]
-        img = Image.open(row["path"]).convert("RGB")
+        img = Image.open(resolve_data_path(row)).convert("RGB")
         if self.transform: img = self.transform(img)
         label = torch.tensor(LABEL_TO_TARGET[row["binary_label"]], dtype=torch.float32)
         return img, label
@@ -193,21 +196,47 @@ def make_model(pretrained: bool = True, arch: str = "resnet18"):
     return model
 
 
-def make_loader(rows, transform, batch_size, shuffle, device):
+def make_loader(rows, transform, batch_size, shuffle, device, num_workers=0):
     ds = RowDataset(rows, transform)
+    # num_workers=0 keeps the original single-process behaviour; on a GPU the
+    # JPEG decode then bounds throughput, so the re-run passes --num-workers.
     return DataLoader(ds, batch_size=batch_size, shuffle=shuffle,
-                      num_workers=0, pin_memory=(device.type == "cuda"))
+                      num_workers=num_workers, pin_memory=(device.type == "cuda"),
+                      persistent_workers=num_workers > 0)
+
+
+def write_predictions(rows, y_true, y_prob, path: Path) -> None:
+    """Per-image test predictions, in the layout the bootstrap scripts read.
+
+    ``subject_id`` is the resampling unit, so it carries the recovered
+    participant when the split provides one; the filename-derived identifier
+    is kept alongside it.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=["image_id", "subject_id", "filename_subject_id",
+                                           "diagnosis_group", "y_true", "y_prob"])
+        w.writeheader()
+        for r, t, pr in zip(rows, y_true, y_prob):
+            w.writerow({
+                "image_id": r.get("image_id", ""),
+                "subject_id": r.get("true_participant") or r.get("subject_id", ""),
+                "filename_subject_id": r.get("filename_subject_id") or r.get("subject_id", ""),
+                "diagnosis_group": r.get("binary_label", ""),
+                "y_true": int(t), "y_prob": f"{float(pr):.6f}",
+            })
 
 
 def train_and_eval(splits: dict, device: torch.device, epochs: int,
                    batch_size: int, lr: float, seed: int,
-                   label: str, arch: str = "resnet18") -> dict:
+                   label: str, arch: str = "resnet18",
+                   num_workers: int = 0, predictions_path: Path | None = None) -> dict:
     set_seed(seed)
     train_tf, eval_tf = make_transforms()
 
-    train_loader = make_loader(splits["train"], train_tf, batch_size, True, device)
-    val_loader   = make_loader(splits["val"],   eval_tf, batch_size, False, device)
-    test_loader  = make_loader(splits["test"],  eval_tf, batch_size, False, device)
+    train_loader = make_loader(splits["train"], train_tf, batch_size, True, device, num_workers)
+    val_loader   = make_loader(splits["val"],   eval_tf, batch_size, False, device, num_workers)
+    test_loader  = make_loader(splits["test"],  eval_tf, batch_size, False, device, num_workers)
 
     model = make_model(pretrained=True, arch=arch).to(device)
 
@@ -292,6 +321,8 @@ def train_and_eval(splits: dict, device: torch.device, epochs: int,
 
     test_metrics = compute_metrics(yt, yp)
     elapsed = round(time.time() - t0, 1)
+    if predictions_path is not None:
+        write_predictions(splits["test"], yt, yp, predictions_path)
 
     print(f"\n  ✅ {label} DONE in {elapsed}s")
     print(f"     Test AUROC:    {test_metrics['auroc']:.4f}")
@@ -321,69 +352,95 @@ def main():
              "manuscript results; use densenet121 for the cross-cohort "
              "architecture-breadth sensitivity arm.",
     )
+    parser.add_argument("--split", type=Path, default=SPLIT_MANIFEST,
+                        help="Frozen split CSV for the safe protocol; the leaky "
+                             "random split is drawn from the same rows.")
+    parser.add_argument("--safe-label", default="B_SAFE_splitguard_component",
+                        help="Name of the safe protocol in outputs.")
+    parser.add_argument("--skip-leaky", action="store_true",
+                        help="Train only the safe protocol (the leaky arm for "
+                             "this seed is trained once, from another split).")
+    parser.add_argument("--leaky-label", default="A_LEAKY_random_image_split")
+    parser.add_argument("--output", type=Path, default=None,
+                        help="Result JSON path (default keeps the historical name).")
+    parser.add_argument("--runs-root", type=Path, default=None,
+                        help="If set, write per-image test predictions to "
+                             "<runs-root>/inflation_gap_seed{S}/{label}/test_predictions.csv.")
+    parser.add_argument("--num-workers", type=int, default=0)
     args = parser.parse_args()
 
     device = choose_device(args.device)
     set_seed(args.seed)
 
+    def predictions_for(label):
+        if args.runs_root is None:
+            return None
+        return args.runs_root / f"inflation_gap_seed{args.seed}" / label / "test_predictions.csv"
+
     # ── Load the SplitGuard manifest (has path, binary_label, subject_id, split)
-    print(f"\nLoading split manifest: {SPLIT_MANIFEST}")
-    safe_splits = load_splitguard_split(SPLIT_MANIFEST)
+    print(f"\nLoading split manifest: {args.split}")
+    safe_splits = load_splitguard_split(args.split)
 
     all_rows = safe_splits["train"] + safe_splits["val"] + safe_splits["test"]
     print(f"Total images: {len(all_rows)}")
 
-    # ── Build leaky split from same images
-    leaky_splits = build_leaky_split(all_rows, seed=args.seed)
-    overlap_info = check_leaky_subject_overlap(leaky_splits)
-    print(f"\nLeaky split subject overlap (train→test): {overlap_info}")
-
-    # ── Run both protocols
-    result_a = train_and_eval(
-        leaky_splits, device, args.epochs, args.batch_size, args.lr, args.seed,
-        label="A_LEAKY_random_image_split", arch=args.arch,
-    )
-    result_b = train_and_eval(
-        safe_splits, device, args.epochs, args.batch_size, args.lr, args.seed,
-        label="B_SAFE_splitguard_component", arch=args.arch,
-    )
-
-    # ── Inflation gap table
-    a = result_a["test_metrics"]
-    b = result_b["test_metrics"]
-
-    print(f"\n{'='*60}")
-    print("  INFLATION GAP TABLE (Protocol A - Protocol B)")
-    print(f"{'='*60}")
-    metrics = ["auroc", "balanced_accuracy", "f1_demented", "sensitivity", "specificity"]
-    for m in metrics:
-        gap = a[m] - b[m]
-        sign = "+" if gap > 0 else ""
-        print(f"  {m:<22}  A={a[m]:.4f}  B={b[m]:.4f}  gap={sign}{gap:.4f}")
-
-    inflation_gap = {
-        m: {"leaky": a[m], "safe": b[m], "inflation": round(a[m] - b[m], 4)}
-        for m in metrics
-    }
-
-    # ── Save results
     result = {
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "arch":   args.arch,
         "epochs": args.epochs,
         "seed":   args.seed,
         "device": str(device),
-        "leaky_subject_overlap": overlap_info,
-        "protocol_A_leaky": result_a,
-        "protocol_B_safe": result_b,
-        "inflation_gap": inflation_gap,
+        "split":  str(args.split),
     }
+
+    result_a = None
+    if not args.skip_leaky:
+        # ── Build leaky split from same images
+        leaky_splits = build_leaky_split(all_rows, seed=args.seed)
+        overlap_info = check_leaky_subject_overlap(leaky_splits)
+        print(f"\nLeaky split subject overlap (train→test): {overlap_info}")
+        result_a = train_and_eval(
+            leaky_splits, device, args.epochs, args.batch_size, args.lr, args.seed,
+            label=args.leaky_label, arch=args.arch, num_workers=args.num_workers,
+            predictions_path=predictions_for(args.leaky_label),
+        )
+        result["leaky_subject_overlap"] = overlap_info
+        result["protocol_A_leaky"] = result_a
+
+    result_b = train_and_eval(
+        safe_splits, device, args.epochs, args.batch_size, args.lr, args.seed,
+        label=args.safe_label, arch=args.arch, num_workers=args.num_workers,
+        predictions_path=predictions_for(args.safe_label),
+    )
+    result["protocol_B_safe"] = result_b
+
+    if result_a is not None:
+        # ── Inflation gap table
+        a = result_a["test_metrics"]
+        b = result_b["test_metrics"]
+
+        print(f"\n{'='*60}")
+        print("  INFLATION GAP TABLE (Protocol A - Protocol B)")
+        print(f"{'='*60}")
+        metrics = ["auroc", "balanced_accuracy", "f1_demented", "sensitivity", "specificity"]
+        for m in metrics:
+            gap = a[m] - b[m]
+            sign = "+" if gap > 0 else ""
+            print(f"  {m:<22}  A={a[m]:.4f}  B={b[m]:.4f}  gap={sign}{gap:.4f}")
+        result["inflation_gap"] = {
+            m: {"leaky": a[m], "safe": b[m], "inflation": round(a[m] - b[m], 4)}
+            for m in metrics
+        }
+
     # Namespace output filename by arch so DenseNet runs don't clobber the
     # primary ResNet-18 results.
-    if args.arch == "resnet18":
+    if args.output is not None:
+        out_path = args.output
+    elif args.arch == "resnet18":
         out_path = RESULTS_DIR / "inflation_gap_experiment.json"
     else:
         out_path = RESULTS_DIR / f"inflation_gap_experiment__{args.arch}__seed{args.seed}.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, indent=2))
     print(f"\n✅ Full results saved to {out_path}")
 

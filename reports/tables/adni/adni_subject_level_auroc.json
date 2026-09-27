@@ -1,0 +1,196 @@
+{
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "protocols": [
+    "random",
+    "subject_only",
+    "component_safe"
+  ],
+  "n_boot": 10000,
+  "ci_pct": 95.0,
+  "by_protocol": {
+    "random": {
+      "n_seeds": 5,
+      "n_subjects_per_seed_mean": 160.8,
+      "n_images_per_seed_mean": 213.0,
+      "image_level": {
+        "per_seed": [
+          0.9527,
+          0.9381,
+          0.9574,
+          0.9783,
+          0.9576
+        ],
+        "mean": 0.9568,
+        "sd": 0.0144,
+        "ci_lo": 0.9459,
+        "ci_hi": 0.969
+      },
+      "subject_level": {
+        "per_seed": [
+          0.9681,
+          0.9674,
+          0.9588,
+          0.971,
+          0.9654
+        ],
+        "mean": 0.9661,
+        "sd": 0.0045,
+        "ci_lo": 0.9623,
+        "ci_hi": 0.9693
+      }
+    },
+    "subject_only": {
+      "n_seeds": 5,
+      "n_subjects_per_seed_mean": 48.0,
+      "n_images_per_seed_mean": 220.0,
+      "image_level": {
+        "per_seed": [
+          0.8588,
+          0.7497,
+          0.8836,
+          0.7449,
+          0.7058
+        ],
+        "mean": 0.7886,
+        "sd": 0.0778,
+        "ci_lo": 0.7302,
+        "ci_hi": 0.8509
+      },
+      "subject_level": {
+        "per_seed": [
+          0.8675,
+          0.7797,
+          0.9056,
+          0.7793,
+          0.7589
+        ],
+        "mean": 0.8182,
+        "sd": 0.0644,
+        "ci_lo": 0.7712,
+        "ci_hi": 0.8727
+      }
+    },
+    "component_safe": {
+      "n_seeds": 5,
+      "n_subjects_per_seed_mean": 38.0,
+      "n_images_per_seed_mean": 203.2,
+      "image_level": {
+        "per_seed": [
+          0.7805,
+          0.7992,
+          0.8184,
+          0.8447,
+          0.8324
+        ],
+        "mean": 0.815,
+        "sd": 0.0257,
+        "ci_lo": 0.7946,
+        "ci_hi": 0.8345
+      },
+      "subject_level": {
+        "per_seed": [
+          0.7639,
+          0.8194,
+          0.8389,
+          0.8667,
+          0.8583
+        ],
+        "mean": 0.8294,
+        "sd": 0.0409,
+        "ci_lo": 0.7939,
+        "ci_hi": 0.8578
+      }
+    }
+  },
+  "inflation_gap": {
+    "image_level": {
+      "total_gap_A_minus_C": {
+        "delta_per_seed": [
+          0.1723,
+          0.1389,
+          0.1391,
+          0.1336,
+          0.1252
+        ],
+        "delta_mean": 0.1418,
+        "delta_ci_lo": 0.1306,
+        "delta_ci_hi": 0.1579,
+        "direction_preserved": "10000/10000"
+      },
+      "subject_identity_A_minus_B": {
+        "delta_per_seed": [
+          0.0939,
+          0.1884,
+          0.0739,
+          0.2333,
+          0.2518
+        ],
+        "delta_mean": 0.1683,
+        "delta_ci_lo": 0.1048,
+        "delta_ci_hi": 0.2317,
+        "direction_preserved": "10000/10000"
+      },
+      "component_marginal_B_minus_C": {
+        "delta_per_seed": [
+          0.0784,
+          -0.0495,
+          0.0652,
+          -0.0997,
+          -0.1266
+        ],
+        "delta_mean": -0.0265,
+        "delta_ci_lo": -0.1005,
+        "delta_ci_hi": 0.0475,
+        "direction_preserved": "7487/10000"
+      }
+    },
+    "subject_level": {
+      "total_gap_A_minus_C": {
+        "delta_per_seed": [
+          0.2042,
+          0.148,
+          0.1199,
+          0.1043,
+          0.1071
+        ],
+        "delta_mean": 0.1367,
+        "delta_ci_lo": 0.1085,
+        "delta_ci_hi": 0.173,
+        "direction_preserved": "10000/10000"
+      },
+      "subject_identity_A_minus_B": {
+        "delta_per_seed": [
+          0.1006,
+          0.1877,
+          0.0533,
+          0.1917,
+          0.2065
+        ],
+        "delta_mean": 0.1479,
+        "delta_ci_lo": 0.0904,
+        "delta_ci_hi": 0.1968,
+        "direction_preserved": "10000/10000"
+      },
+      "component_marginal_B_minus_C": {
+        "delta_per_seed": [
+          0.1036,
+          -0.0397,
+          0.0667,
+          -0.0874,
+          -0.0994
+        ],
+        "delta_mean": -0.0112,
+        "delta_ci_lo": -0.0827,
+        "delta_ci_hi": 0.0602,
+        "direction_preserved": "6347/10000"
+      }
+    }
+  },
+  "notes": "Image-level AUROC is computed across every per-scan prediction (test set ~207 scans across ~38 subjects per seed, mean 5.45 scans/subject). Subject-level AUROC averages y_prob per subject_id then computes AUROC across ~38 subjects (one prediction each). The inflation gap is reported at both levels for transparency; the subject-level gap is the more conservative quantity."
+}

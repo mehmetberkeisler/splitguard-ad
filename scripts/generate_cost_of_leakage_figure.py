@@ -17,7 +17,7 @@ Reads:
   reports/tables/adni/adni_cost_of_leakage.json
 
 Writes:
-  paper/fig9_cost_of_leakage.{pdf,png}
+  paper/fig09_cost_of_leakage.{pdf,png}
 """
 
 from __future__ import annotations
@@ -30,8 +30,9 @@ from pathlib import Path
 # Project-shared style ------------------------------------------------------
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _publication_style import (
-    apply_publication_style, thin_y_grid,
-    LEAKY, SPLIT, NEUTRAL, TWO_COL_W,
+    apply_publication_style, thin_y_grid, reference_line, protocol_handles,
+    INK, MUTED, NEUTRAL, PROTOCOL_COLOR, PROTOCOL_MARKER, MARKER_SIZE,
+    REF_LW, REF_STYLE, SERIES_LW, TWO_COL_W,
 )
 apply_publication_style()
 
@@ -42,7 +43,7 @@ import numpy as np
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUNS = PROJECT_ROOT / "runs" / "adni_with_converters"
 COST_JSON = PROJECT_ROOT / "reports" / "tables" / "adni" / "adni_cost_of_leakage.json"
-OUT_STEM = PROJECT_ROOT / "paper" / "fig9_cost_of_leakage"
+OUT_STEM = PROJECT_ROOT / "paper" / "fig09_cost_of_leakage"
 
 SEEDS = [0, 1, 2, 3, 4]
 TARGET_SPEC = 0.90
@@ -117,41 +118,35 @@ def main() -> int:
     )
 
     # ── Panel A: ROC curves ────────────────────────────────────────────────
-    for pts in rocs["random"]:
-        xs, ys = zip(*pts)
-        axa.plot(xs, ys, color=LEAKY, alpha=0.14, lw=0.6, zorder=2)
-    for pts in rocs["component_safe"]:
-        xs, ys = zip(*pts)
-        axa.plot(xs, ys, color=SPLIT, alpha=0.14, lw=0.6, zorder=2)
-    gx, gy = mean_curves["random"]
-    axa.plot(gx, gy, color=LEAKY, lw=1.4, zorder=3,
-             label="Protocol A, Random (leaky)")
-    gx, gy = mean_curves["component_safe"]
-    axa.plot(gx, gy, color=SPLIT, lw=1.4, zorder=3,
-             label="Protocol C, SplitGuard-AD")
+    for proto, key in (("random", "A"), ("component_safe", "C")):
+        for pts in rocs[proto]:
+            xs, ys = zip(*pts)
+            axa.plot(xs, ys, color=PROTOCOL_COLOR[key], alpha=0.14, lw=0.6,
+                     zorder=2)
+        gx, gy = mean_curves[proto]
+        axa.plot(gx, gy, color=PROTOCOL_COLOR[key], lw=SERIES_LW, zorder=3)
 
     # Operating-point markers at spec=0.90
     op_fpr = 1 - TARGET_SPEC
     sens_l = cost["by_protocol"]["random"]["mean_sens_at_fixed_spec"]
     sens_h = cost["by_protocol"]["component_safe"]["mean_sens_at_fixed_spec"]
-    axa.axvline(op_fpr, color=NEUTRAL, lw=0.4, linestyle=(0, (1, 2)), zorder=1)
-    axa.scatter([op_fpr], [sens_l], s=32, color=LEAKY,
-                edgecolor="white", linewidth=0.9, zorder=4)
-    axa.scatter([op_fpr], [sens_h], s=32, color=SPLIT,
-                edgecolor="white", linewidth=0.9, zorder=4)
+    reference_line(axa, op_fpr, orientation="v")
+    for key, sens in (("A", sens_l), ("C", sens_h)):
+        axa.plot([op_fpr], [sens], linestyle="none",
+                 marker=PROTOCOL_MARKER[key], markersize=MARKER_SIZE + 1,
+                 color=PROTOCOL_COLOR[key], markeredgecolor="white",
+                 markeredgewidth=0.8, zorder=4)
 
     # Diagonal chance line
-    axa.plot([0, 1], [0, 1], color=NEUTRAL, lw=0.4, linestyle=(0, (1, 2)),
+    axa.plot([0, 1], [0, 1], color=NEUTRAL, lw=REF_LW, linestyle=REF_STYLE,
              zorder=1)
 
-    # Operating-point sensitivities — lower-right white space, colour-coded
-    # (title already states spec = 0.90, so no need to repeat it here).
-    axa.text(0.50, 0.13, f"sens (leaky)   = {sens_l:.3f}",
-             color=LEAKY, fontsize=8, ha="left", va="bottom",
-             family="monospace")
-    axa.text(0.50, 0.05, f"sens (honest)  = {sens_h:.3f}",
-             color=SPLIT, fontsize=8, ha="left", va="bottom",
-             family="monospace")
+    # Operating-point sensitivities in the lower-right white space. Serif ink,
+    # like every other annotation; the markers on the curves carry identity.
+    axa.text(0.97, 0.13, f"Protocol A sensitivity {sens_l:.3f}",
+             color=INK, fontsize=8, ha="right", va="bottom")
+    axa.text(0.97, 0.05, f"Protocol C sensitivity {sens_h:.3f}",
+             color=INK, fontsize=8, ha="right", va="bottom")
 
     axa.set_xlabel("False positive rate (1 $-$ specificity)")
     axa.set_ylabel("True positive rate (sensitivity)")
@@ -174,19 +169,19 @@ def main() -> int:
     ]
     x = np.arange(len(labels))
     w = 0.36
-    axb.bar(x - w/2, leaky_miss, w, color=LEAKY, edgecolor="none",
-            label="Leaky benchmark (apparent miss-rate)", zorder=3)
-    axb.bar(x + w/2, honest_miss, w, color=SPLIT, edgecolor="none",
-            label="Honest evaluation (actual miss-rate)", zorder=3)
+    axb.bar(x - w/2, leaky_miss, w, color=PROTOCOL_COLOR["A"],
+            edgecolor="none", zorder=3)
+    axb.bar(x + w/2, honest_miss, w, color=PROTOCOL_COLOR["C"],
+            edgecolor="none", zorder=3)
 
     ymax = max(honest_miss) * 1.40
     pad = ymax * 0.012
     for i, v in enumerate(leaky_miss):
         axb.text(x[i] - w/2, v + pad, f"{v:.1f}", ha="center", va="bottom",
-                 fontsize=7.5, color=LEAKY)
+                 fontsize=7.5, color=INK)
     for i, v in enumerate(honest_miss):
         axb.text(x[i] + w/2, v + pad, f"{v:.1f}", ha="center", va="bottom",
-                 fontsize=7.5, color=SPLIT)
+                 fontsize=7.5, color=INK)
     # Gap annotation anchored above the taller (honest) bar.
     for i, (lm, hm) in enumerate(zip(leaky_miss, honest_miss)):
         axb.annotate(
@@ -194,7 +189,7 @@ def main() -> int:
             xy=(x[i] + w/2, hm),
             xytext=(0, 18), textcoords="offset points",
             ha="center", va="bottom",
-            fontsize=7.5, color=NEUTRAL,
+            fontsize=7.5, color=MUTED,
         )
     axb.set_xticks(x)
     axb.set_xticklabels(labels)
@@ -203,12 +198,11 @@ def main() -> int:
     axb.set_title("(b) Per-1,000 missed-diagnosis shortfall", loc="left")
     thin_y_grid(axb)
 
-    # Shared legend below both panels — combine ROC + bar entries.
-    handles_a, labels_a = axa.get_legend_handles_labels()
-    handles_b, labels_b = axb.get_legend_handles_labels()
-    fig.subplots_adjust(left=0.07, right=0.97, top=0.91, bottom=0.26, wspace=0.35)
-    fig.legend(handles_a + handles_b, labels_a + labels_b,
-               loc="lower center", bbox_to_anchor=(0.5, 0.02),
+    # One legend for both panels: the curves and the bars are the same two
+    # protocols, so four entries would restate two.
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.91, bottom=0.23, wspace=0.35)
+    fig.legend(handles=protocol_handles(["A", "C"]),
+               loc="lower center", bbox_to_anchor=(0.5, 0.01),
                ncol=2, frameon=False, fontsize=8,
                columnspacing=2.2, handlelength=1.8)
     OUT_STEM.parent.mkdir(parents=True, exist_ok=True)

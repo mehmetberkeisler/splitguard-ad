@@ -35,6 +35,10 @@ from collections import defaultdict
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 RUNS_ROOT = PROJECT_ROOT / "runs" / "adni_with_converters"
 OUT_PATH = PROJECT_ROOT / "reports" / "tables" / "adni" / "adni_subject_level_auroc.json"
 
@@ -251,7 +255,7 @@ def main() -> int:
               f"[{g['delta_ci_lo']:+.4f}, {g['delta_ci_hi']:+.4f}]  "
               f"direction {g['direction_preserved']}")
     print()
-    print(f"  Wrote {args.output.relative_to(PROJECT_ROOT)}")
+    print(f"  Wrote {display_path(args.output)}")
     return 0
 
 

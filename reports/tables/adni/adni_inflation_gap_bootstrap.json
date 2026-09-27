@@ -1,0 +1,98 @@
+{
+  "created_at": "2026-09-27T16:59:54+00:00",
+  "input_table": "reports/gpu/adni/adni_inflation_gap.csv",
+  "n_seeds": 5,
+  "n_boot": 10000,
+  "ci_pct": 95.0,
+  "seed_for_resample": 0,
+  "auroc": {
+    "random": {
+      "point_mean": 0.9472,
+      "point_seed_values": [
+        0.9101,
+        0.9478,
+        0.9497,
+        0.9528,
+        0.9756
+      ],
+      "boot_mean": 0.9472,
+      "ci_lo": 0.9262,
+      "ci_hi": 0.9649
+    },
+    "subject_only": {
+      "point_mean": 0.8372,
+      "point_seed_values": [
+        0.8301,
+        0.8645,
+        0.7847,
+        0.8345,
+        0.8724
+      ],
+      "boot_mean": 0.8374,
+      "ci_lo": 0.8097,
+      "ci_hi": 0.8617
+    },
+    "component_safe": {
+      "point_mean": 0.8289,
+      "point_seed_values": [
+        0.8133,
+        0.8546,
+        0.8511,
+        0.8134,
+        0.8119
+      ],
+      "boot_mean": 0.829,
+      "ci_lo": 0.8128,
+      "ci_hi": 0.8456
+    }
+  },
+  "balanced_accuracy": {
+    "random": {
+      "point_mean": 0.8861,
+      "boot_mean": 0.8861,
+      "ci_lo": 0.8582,
+      "ci_hi": 0.913
+    },
+    "subject_only": {
+      "point_mean": 0.7054,
+      "boot_mean": 0.7054,
+      "ci_lo": 0.6466,
+      "ci_hi": 0.7566
+    },
+    "component_safe": {
+      "point_mean": 0.7323,
+      "boot_mean": 0.7323,
+      "ci_lo": 0.7141,
+      "ci_hi": 0.7545
+    }
+  },
+  "inflation_gap": {
+    "total_random_minus_component_safe": {
+      "point_estimate": 0.1183,
+      "boot_mean": 0.1183,
+      "ci_lo": 0.0957,
+      "ci_hi": 0.1455
+    },
+    "subject_leakage_random_minus_subject_only": {
+      "point_estimate": 0.11,
+      "boot_mean": 0.1098,
+      "ci_lo": 0.086,
+      "ci_hi": 0.1393
+    },
+    "component_leakage_subject_only_minus_component_safe": {
+      "point_estimate": 0.0084,
+      "boot_mean": 0.0085,
+      "ci_lo": -0.0331,
+      "ci_hi": 0.0416
+    }
+  },
+  "seeds_with_positive_gap": 5,
+  "direction_preserved_count": 10000,
+  "direction_preserved_total": 10000,
+  "direction_preserved_share": 1.0,
+  "subject_leakage_positive_count": 10000,
+  "subject_leakage_positive_total": 10000,
+  "subject_leakage_positive_share": 1.0,
+  "component_marginal_positive_count": 6854,
+  "component_marginal_positive_total": 10000
+}

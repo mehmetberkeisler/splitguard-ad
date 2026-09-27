@@ -29,6 +29,9 @@ from torchvision import models, transforms
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import resolve_data_path  # noqa: E402
 DEFAULT_SPLIT = PROJECT_ROOT / "data" / "splits" / "oasis1_splitguard_seed42.csv"
 RESULTS_DIR = PROJECT_ROOT / "reports" / "tables"
 CHECKPOINT_DIR = PROJECT_ROOT / "runs" / "checkpoints" / "oasis1"
@@ -48,7 +51,7 @@ class RowDataset(Dataset):
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
         row = self.rows[index]
-        image = Image.open(row["path"]).convert("RGB")
+        image = Image.open(resolve_data_path(row)).convert("RGB")
         if self.transform is not None:
             image = self.transform(image)
         target = torch.tensor(LABEL_TO_TARGET[row["binary_label"]], dtype=torch.float32)
@@ -239,13 +242,12 @@ def make_loader(
     transform,
     batch_size: int,
     shuffle: bool,
-    device: torch.device,
-) -> DataLoader:
+    device: torch.device, num_workers: int = 0) -> DataLoader:
     return DataLoader(
         RowDataset(rows, transform=transform),
         batch_size=batch_size,
         shuffle=shuffle,
-        num_workers=0,
+        num_workers=num_workers,
         pin_memory=device.type == "cuda",
     )
 
@@ -299,12 +301,14 @@ def train_and_eval(
     pretrained: bool,
     checkpoint_path: Path,
     arch: str = "resnet18",
+    num_workers: int = 0,
+    predictions_path: Path | None = None,
 ) -> dict:
     set_seed(seed)
     train_tf, eval_tf = make_transforms(image_size)
-    train_loader = make_loader(splits["train"], train_tf, batch_size, True, device)
-    val_loader = make_loader(splits["val"], eval_tf, batch_size, False, device)
-    test_loader = make_loader(splits["test"], eval_tf, batch_size, False, device)
+    train_loader = make_loader(splits["train"], train_tf, batch_size, True, device, num_workers)
+    val_loader = make_loader(splits["val"], eval_tf, batch_size, False, device, num_workers)
+    test_loader = make_loader(splits["test"], eval_tf, batch_size, False, device, num_workers)
 
     model = make_model(pretrained=pretrained, arch=arch).to(device)
     train_targets = np.array([LABEL_TO_TARGET[row["binary_label"]] for row in splits["train"]])
@@ -364,6 +368,18 @@ def train_and_eval(
     torch.save({"state": best_state, "label": label, "seed": seed}, checkpoint_path)
     test_metrics, test_true, test_prob = evaluate(model, test_loader, device)
     elapsed = round(time.time() - started_at, 1)
+    if predictions_path is not None:
+        # Per-image test predictions in the layout the bootstrap scripts read;
+        # the loader does not shuffle the test rows, so order matches.
+        predictions_path.parent.mkdir(parents=True, exist_ok=True)
+        with predictions_path.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=["image_id", "subject_id", "diagnosis_group", "y_true", "y_prob"])
+            writer.writeheader()
+            for row, t, pr in zip(splits["test"], test_true, test_prob):
+                writer.writerow({"image_id": row.get("image_id", ""),
+                                 "subject_id": row["subject_id"].rsplit("_MR", 1)[0],
+                                 "diagnosis_group": row["binary_label"],
+                                 "y_true": int(t), "y_prob": f"{float(pr):.6f}"})
     return {
         "label": label,
         "test_metrics": test_metrics,
@@ -392,6 +408,10 @@ def main() -> int:
     parser.add_argument("--max-val-samples", type=int)
     parser.add_argument("--max-test-samples", type=int)
     parser.add_argument("--output", type=Path, default=RESULTS_DIR / "oasis1_inflation_gap_experiment.json")
+    parser.add_argument("--runs-root", type=Path, default=None,
+                        help="If set, write per-image test predictions to "
+                             "<runs-root>/inflation_gap_seed{S}/{random,component_safe}/test_predictions.csv.")
+    parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument(
         "--arch", default="resnet18",
         choices=["resnet18", "densenet121"],
@@ -443,6 +463,8 @@ def main() -> int:
         pretrained=not args.no_pretrained,
         checkpoint_path=CHECKPOINT_DIR / f"oasis1_leaky_{run_suffix}{arch_suffix}.pt",
         arch=args.arch,
+        num_workers=args.num_workers,
+        predictions_path=(args.runs_root / f"inflation_gap_seed{args.seed}" / "random" / "test_predictions.csv") if args.runs_root else None,
     )
     result_b = train_and_eval(
         safe_splits,
@@ -456,6 +478,8 @@ def main() -> int:
         pretrained=not args.no_pretrained,
         checkpoint_path=CHECKPOINT_DIR / f"oasis1_safe_{run_suffix}{arch_suffix}.pt",
         arch=args.arch,
+        num_workers=args.num_workers,
+        predictions_path=(args.runs_root / f"inflation_gap_seed{args.seed}" / "component_safe" / "test_predictions.csv") if args.runs_root else None,
     )
 
     metrics = ["auroc", "balanced_accuracy", "f1_demented", "sensitivity", "specificity"]

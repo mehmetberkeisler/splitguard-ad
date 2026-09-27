@@ -15,6 +15,10 @@ from PIL import Image
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path, resolve_data_path  # noqa: E402
+
 DEFAULT_MANIFEST = PROJECT_ROOT / "data" / "manifests" / "current_jpeg_manifest.csv"
 DEFAULT_COMPONENTS = PROJECT_ROOT / "data" / "manifests" / "current_jpeg_leakage_components.csv"
 DEFAULT_NEAR_DUPES = PROJECT_ROOT / "data" / "manifests" / "current_jpeg_near_duplicate_candidates.csv"
@@ -94,7 +98,7 @@ def read_manifest(path: Path) -> list[Record]:
     return [
         Record(
             image_id=row["image_id"],
-            path=row["path"],
+            path=resolve_data_path(row),
             relative_path=row["relative_path"],
             raw_class_label=row["raw_class_label"],
             binary_label=row["binary_label"],
@@ -126,7 +130,25 @@ def hamming(left: int, right: int) -> int:
     return (left ^ right).bit_count()
 
 
-def build_blocking_components(records: list[Record]) -> tuple[UnionFind, dict]:
+def build_blocking_components(
+    records: list[Record],
+    near_duplicate_pairs: list[tuple[str, str]] | None = None,
+) -> tuple[UnionFind, dict]:
+    """Union images that must not be separated, and report which rule joined them.
+
+    Two edge families are always blocking: ``same_subject`` and
+    ``exact_sha256_duplicate``.
+
+    Near-duplicate (perceptual-hash) pairs are blocking only when
+    ``near_duplicate_pairs`` is supplied, i.e. under
+    ``--near-duplicate-policy blocking``. The default remains ``review``, which
+    detects and reports the pairs without merging their components, and that is
+    the policy under which the released manifests and every published number
+    were produced. The distinction is load-bearing and we make it switchable
+    rather than implicit: promoting these pairs to blocking edges changes the
+    connected components, hence the frozen splits, hence every downstream
+    result, so it cannot be turned on silently.
+    """
     uf = UnionFind([record.image_id for record in records])
 
     subject_groups: dict[str, list[Record]] = defaultdict(list)
@@ -156,10 +178,17 @@ def build_blocking_components(records: list[Record]) -> tuple[UnionFind, dict]:
             uf.union(first, record.image_id, "exact_sha256_duplicate")
             sha_edges += 1
 
+    near_dup_edges = 0
+    for left_id, right_id in (near_duplicate_pairs or []):
+        uf.union(left_id, right_id, "near_duplicate")
+        near_dup_edges += 1
+
     return uf, {
         "same_subject_edges": subject_edges,
         "exact_sha256_edges": sha_edges,
         "exact_sha256_duplicate_groups": duplicate_sha_groups,
+        "near_duplicate_blocking_edges": near_dup_edges,
+        "near_duplicate_policy": "blocking" if near_duplicate_pairs else "review",
     }
 
 
@@ -201,7 +230,15 @@ def detect_near_duplicates(
     records: list[Record],
     threshold: int,
     max_rows: int,
+    policy: str = "review",
 ) -> tuple[list[dict], dict]:
+    # Recorded verbatim in both the per-pair rows and the summary, so an
+    # artefact always states whether these pairs merged components or were
+    # only surfaced for inspection.
+    policy_label = (
+        "blocking_split_edge" if policy == "blocking"
+        else "review_only_not_split_blocking"
+    )
     hashes = []
     failed = []
     for record in records:
@@ -247,7 +284,7 @@ def detect_near_duplicates(
                         "same_raw_class": left_record.raw_class_label == right_record.raw_class_label,
                         "same_binary_label": left_record.binary_label == right_record.binary_label,
                         "dhash_hamming_distance": distance,
-                        "policy": "review_only_not_split_blocking",
+                        "policy": policy_label,
                     }
                 )
 
@@ -260,7 +297,7 @@ def detect_near_duplicates(
         "near_duplicate_same_subject_candidates": same_subject_candidates,
         "near_duplicate_cross_subject_candidates": cross_subject_candidates,
         "near_duplicate_distance_counts": dict(sorted(distance_counts.items())),
-        "near_duplicate_policy": "review_only_not_split_blocking",
+        "near_duplicate_policy": policy_label,
     }
 
 
@@ -415,6 +452,20 @@ def markdown_table(headers: list[str], rows: list[list[object]]) -> str:
     return "\n".join([header_line, separator, *row_lines])
 
 
+def _display_path(path: Path) -> str:
+    """Repo-relative path when possible, absolute otherwise.
+
+    ``Path.relative_to`` raises for any output directory outside the repo, so
+    using it unguarded made the script crash when a caller passed a custom
+    ``--components``/``--audit`` path — which is exactly what someone
+    reproducing the pipeline into a scratch directory would do.
+    """
+    try:
+        return display_path(path)
+    except ValueError:
+        return str(path)
+
+
 def write_audit(
     summary: dict,
     components_path: Path,
@@ -460,8 +511,8 @@ def write_audit(
 
 ## Summary
 
-- Component file: `{components_path.relative_to(PROJECT_ROOT)}`
-- Near-duplicate candidate file: `{near_dupes_path.relative_to(PROJECT_ROOT)}`
+- Component file: `{_display_path(components_path)}`
+- Near-duplicate candidate file: `{_display_path(near_dupes_path)}`
 - Total images: **{summary["total_images"]}**
 - Total split-blocking components: **{summary["total_components"]}**
 - Singleton components: **{summary["singleton_components"]}**
@@ -541,16 +592,43 @@ def main() -> int:
     parser.add_argument("--summary-json", type=Path, default=DEFAULT_SUMMARY_JSON)
     parser.add_argument("--near-threshold", type=int, default=4)
     parser.add_argument("--max-near-dupe-rows", type=int, default=5000)
+    parser.add_argument(
+        "--near-duplicate-policy", choices=["review", "blocking"], default="review",
+        help=(
+            "review (default): detect near-duplicate pairs and report them, "
+            "without merging their components — this is the policy under which "
+            "the released manifests and all published results were produced. "
+            "blocking: additionally union each detected pair, which changes the "
+            "connected components and therefore the frozen splits, so any "
+            "downstream result must be recomputed."
+        ),
+    )
     args = parser.parse_args()
 
     records = read_manifest(args.manifest)
-    uf, edge_summary = build_blocking_components(records)
-    image_to_component_id, component_id_to_records, component_id_to_reason = component_maps(records, uf)
+
+    # Detection runs first so its output can optionally feed the graph.
     near_duplicate_candidates, near_duplicate_summary = detect_near_duplicates(
         records=records,
         threshold=args.near_threshold,
         max_rows=args.max_near_dupe_rows,
+        policy=args.near_duplicate_policy,
     )
+
+    blocking_pairs = None
+    if args.near_duplicate_policy == "blocking":
+        blocking_pairs = [
+            (row["image_id_a"], row["image_id_b"])
+            for row in near_duplicate_candidates
+            if "image_id_a" in row and "image_id_b" in row
+        ]
+        print(
+            f"near-duplicate policy=blocking: unioning {len(blocking_pairs)} pairs "
+            "— components and splits will differ from the released manifests."
+        )
+
+    uf, edge_summary = build_blocking_components(records, blocking_pairs)
+    image_to_component_id, component_id_to_records, component_id_to_reason = component_maps(records, uf)
 
     write_components(
         records=records,

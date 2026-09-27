@@ -62,6 +62,10 @@ from pathlib import Path
 from typing import Any, Iterable
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 DEFAULT_STUDY_FILES = PROJECT_ROOT / "data" / "raw" / "adni" / "study_files"
 DEFAULT_IMAGES = PROJECT_ROOT / "data" / "raw" / "adni" / "images"
 DEFAULT_SLICE_MANIFEST = PROJECT_ROOT / "data" / "preprocessed" / "adni" / "slice_manifest.csv"
@@ -434,7 +438,7 @@ def build_manifest_row(
     age, sex = demog_age_sex(demog_row, acq_date_obj) if demog_row else ("", "")
 
     session_id = infer_session_id(ptid, viscode, acq_date)
-    relative_path = str(path.relative_to(PROJECT_ROOT))
+    relative_path = display_path(path)
     image_id = f"adni_{stable_token(relative_path)}"
 
     return {
@@ -669,15 +673,15 @@ def main() -> int:
         writer.writerows(rows)
 
     summary = summarize(rows)
-    summary["diagnosis_table"] = str(dx_path.relative_to(PROJECT_ROOT)) if dx_path else None
-    summary["demographics_table"] = str(demog_path.relative_to(PROJECT_ROOT)) if demog_path else None
-    summary["mri_metadata_table"] = str(mri_meta_path.relative_to(PROJECT_ROOT)) if mri_meta_path else None
+    summary["diagnosis_table"] = display_path(dx_path) if dx_path else None
+    summary["demographics_table"] = display_path(demog_path) if demog_path else None
+    summary["mri_metadata_table"] = display_path(mri_meta_path) if mri_meta_path else None
 
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     args.summary.write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
-    print(f"Wrote {args.manifest.relative_to(PROJECT_ROOT)} ({len(rows)} rows)")
-    print(f"Wrote {args.summary.relative_to(PROJECT_ROOT)}")
+    print(f"Wrote {display_path(args.manifest)} ({len(rows)} rows)")
+    print(f"Wrote {display_path(args.summary)}")
     if summary["n_images"] == 0:
         print(
             "WARNING: 0 ADNI images discovered. Confirm that "

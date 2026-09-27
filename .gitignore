@@ -26,6 +26,10 @@ data/
 
 # Model checkpoints and run outputs
 runs/
+runs_gpu/
+runs_smoke/
+runs_frozen/
+.venv-gpu/
 *.pt
 *.pth
 *.ckpt
@@ -119,11 +123,67 @@ Enrollment.zip.txt
 # redistributed publicly. They are kept on disk so authors can keep working
 # without re-creating them, but git will not track them.
 
-paper/
 submissions/
-reports/
 download.zip
 download.zip.txt
+
+# Manuscript sources and the aggregate tables they are verified against ARE
+# part of the release -- the Data availability statement names them, and
+# scripts/verify_paper_numbers.py needs both to run in a fresh clone. What
+# stays local is the internal planning record (Turkish decision register,
+# framework anatomy), superseded working drafts, and the raster duplicates of
+# figures that ship as vector PDFs.
+paper/*
+!paper/tables/
+paper/tables/*
+!paper/splitguard_ad.tex
+!paper/splitguard_ad.pdf
+!paper/SplitGuard-AD_Supplementary_Material.tex
+!paper/SplitGuard-AD_Supplementary_Material.pdf
+!paper/SplitGuard-AD_GraphicalAbstract.pdf
+!paper/references.bib
+!paper/fig01_leakage_taxonomy.pdf
+!paper/fig04a_seed_stability.pdf
+!paper/fig04b_metric_comparison.pdf
+!paper/fig05_learning_curves.pdf
+!paper/fig06_cross_cohort_inflation.pdf
+!paper/fig07_arm_forest.pdf
+!paper/fig08_degradation_curve.pdf
+!paper/fig09_cost_of_leakage.pdf
+!paper/fig10_operating_point.pdf
+!paper/fig11_dose_response.pdf
+!paper/fig12_provenance_degradation.pdf
+!paper/figS1_subgroup_auroc.pdf
+!paper/tables/adni_demographics.tex
+!paper/tables/adni_inflation_gap.tex
+!paper/tables/gpu_numbers.tex
+!paper/tables/tier1_truth.tex
+!paper/tables/oasis_replication.tex
+!paper/tables/adni_robustness.tex
+!paper/tables/adni_subject_level.tex
+!paper/tables/operating_point.tex
+
+# Aggregate ADNI result tables are released; the download inventory is not --
+# its relative_path column carries DUA-protected ADNI study-file and
+# participant paths.
+reports/*
+!reports/rerun_comparison.md
+!reports/tables/
+reports/tables/*
+!reports/tables/adni/
+reports/tables/adni/adni_inventory.csv
+
+# Cross-cohort aggregate tables that verify_paper_numbers.py reads from the
+# tables root. Without these the verifier silently skips the Tier-1 and
+# OASIS-1 replication claims and the two probe results, and still reports a
+# clean pass -- so a reader would see 103 checks succeed and never learn that
+# 22 were never attempted.
+!reports/tables/jpeg_inflation_gap_bootstrap.json
+!reports/tables/oasis1_inflation_gap_bootstrap.json
+# Tier-1 provenance recovered against OASIS-1: aggregate counts and
+# calibration only, no image-to-participant mapping.
+!reports/tables/tier1_ground_truth_audit.json
+!reports/tables/tier1_split_rules_vs_truth.json
 
 # Keep two canonical methodology docs in the public release; exclude
 # everything else under docs/ (internal planning, reviewer-feedback,
@@ -131,6 +191,7 @@ download.zip.txt
 docs/*
 !docs/ADNI_LABEL_ONTOLOGY.md
 !docs/DATA_ACCESS.md
+!docs/GPU_RUNBOOK.md
 docs/reviews/
 
 # AIHealth conference-submission tooling is not part of the framework.

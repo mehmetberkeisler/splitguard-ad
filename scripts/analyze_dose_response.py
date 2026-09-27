@@ -24,8 +24,17 @@ from collections import defaultdict
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 RUNS_ROOT    = PROJECT_ROOT / "runs" / "adni_dose_response"
 OUT_PATH     = PROJECT_ROOT / "reports" / "tables" / "adni" / "adni_dose_response.json"
+
+# Every dose-response cell is trained for this many epochs
+# (stage adni_dose_response of scripts/gpu_program.py). Runs that stopped short are aborted
+# smoke tests and must never enter the fit — see collect_per_seed_aurocs.
+EXPECTED_EPOCHS = 15
 
 
 def auroc(y_true: list[int], y_score: list[float]) -> float:
@@ -73,25 +82,72 @@ def parse_overlap_dir(name: str) -> tuple[int, float] | None:
         return None
 
 
-def collect_per_seed_aurocs(arch_root: Path) -> dict[float, dict[int, float]]:
-    """Return overlap_level -> seed -> AUROC, deduping near-equal overlaps."""
-    per_seed: dict[float, dict[int, float]] = defaultdict(dict)
-    for entry in arch_root.iterdir():
-        if not entry.is_dir(): continue
+def run_epochs(run_dir: Path, seed: int) -> int | None:
+    """Completed epoch count for a run, or None if it cannot be determined."""
+    metrics = run_dir / f"baseline_seed{seed}" / "metrics.json"
+    if not metrics.exists():
+        return None
+    try:
+        return int(json.loads(metrics.read_text()).get("epochs"))
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return None
+
+
+def collect_per_seed_aurocs(
+    arch_root: Path, expected_epochs: int = EXPECTED_EPOCHS
+) -> dict[float, dict[int, float]]:
+    """Return overlap_level -> seed -> AUROC.
+
+    Two directories can map to the same (seed, overlap) cell — e.g.
+    ``seed0_overlap0.5`` and ``seed0_overlap0.50``. They describe the same
+    *split*, but not necessarily the same *run*: an aborted smoke test leaves
+    a directory that looks complete apart from its epoch count. Selecting the
+    "first encountered" therefore depends on filesystem iteration order and
+    silently admitted a 1-epoch run into the published ResNet-18 fit
+    (AUROC 0.813 instead of 0.827 at p=0.50), dragging the slope down.
+
+    We now (a) reject any run that did not reach ``expected_epochs``, and
+    (b) resolve remaining duplicates deterministically by preferring the
+    longer run, then the lexicographically larger directory name — never by
+    iteration order.
+    """
+    candidates: dict[float, dict[int, tuple[int, str, Path]]] = defaultdict(dict)
+    for entry in sorted(arch_root.iterdir(), key=lambda p: p.name):
+        if not entry.is_dir():
+            continue
         parsed = parse_overlap_dir(entry.name)
-        if parsed is None: continue
+        if parsed is None:
+            continue
         seed, overlap = parsed
-        # Round to 2 decimals so 0.5 and 0.50 collapse to the same key.
         overlap_key = round(overlap, 2)
         preds = entry / f"baseline_seed{seed}" / "test_predictions.csv"
-        if not preds.exists(): continue
-        # Skip if this (seed, overlap) already has a value (use the first one
-        # encountered, since 0.5 and 0.50 produce byte-identical splits).
-        if seed in per_seed[overlap_key]: continue
-        rows = list(csv.DictReader(preds.open()))
-        y_true = [int(r["y_true"])  for r in rows]
-        y_prob = [float(r["y_prob"]) for r in rows]
-        per_seed[overlap_key][seed] = auroc(y_true, y_prob)
+        if not preds.exists():
+            continue
+
+        epochs = run_epochs(entry, seed)
+        if epochs is None:
+            print(f"  ! skipping {entry.name}: no readable metrics.json")
+            continue
+        if epochs < expected_epochs:
+            print(
+                f"  ! skipping {entry.name}: incomplete run "
+                f"({epochs} epochs, expected {expected_epochs})"
+            )
+            continue
+
+        key = (epochs, entry.name)
+        prior = candidates[overlap_key].get(seed)
+        if prior is None or key > (prior[0], prior[1]):
+            candidates[overlap_key][seed] = (epochs, entry.name, entry)
+
+    per_seed: dict[float, dict[int, float]] = defaultdict(dict)
+    for overlap_key, by_seed in candidates.items():
+        for seed, (_epochs, _name, entry) in by_seed.items():
+            preds = entry / f"baseline_seed{seed}" / "test_predictions.csv"
+            rows = list(csv.DictReader(preds.open()))
+            y_true = [int(r["y_true"]) for r in rows]
+            y_prob = [float(r["y_prob"]) for r in rows]
+            per_seed[overlap_key][seed] = auroc(y_true, y_prob)
     return per_seed
 
 
@@ -169,11 +225,25 @@ def main() -> int:
                 if s in args.seeds and v == v:
                     xs.append(overlap); ys.append(v)
         slope, intercept, r2 = fit_linear(xs, ys)
+        # Residual standard deviation about the fit, over the per-seed
+        # observations rather than the per-overlap means. The distinction is
+        # not cosmetic: the manuscript uses this quantity as a prediction band
+        # for a *single* training run at a given overlap, and the spread of
+        # single runs is what has to parameterise that. Taking it from the
+        # five overlap means instead would understate it roughly threefold,
+        # because averaging five seeds removes most of the seed variance the
+        # band is supposed to describe.
+        resid = [y - (intercept + slope * x) for x, y in zip(xs, ys)]
+        resid_sd = (
+            (sum(r * r for r in resid) / (len(resid) - 2)) ** 0.5
+            if len(resid) > 2 else float("nan")
+        )
         fits[arch] = {
             "n_points":     len(xs),
             "slope":        round(slope, 4),
             "intercept":    round(intercept, 4),
             "r2":           round(r2, 4),
+            "residual_sd":  round(resid_sd, 4),
             "interpretation": (
                 f"AUROC ≈ {intercept:.3f} + {slope:.3f} × overlap_fraction "
                 f"(R²={r2:.3f}). A 10pp increase in test-subject overlap "
@@ -204,7 +274,7 @@ def main() -> int:
         print(f"    Linear fit: AUROC = {f['intercept']:.4f} "
               f"+ {f['slope']:.4f} × overlap, R²={f['r2']:.3f} (n={f['n_points']})")
         print()
-    print(f"  Wrote {args.output.relative_to(PROJECT_ROOT)}")
+    print(f"  Wrote {display_path(args.output)}")
     return 0
 
 

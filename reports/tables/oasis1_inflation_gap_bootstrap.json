@@ -1,0 +1,45 @@
+{
+ "source": "random versus component_safe per-image predictions, scripts/gpu_postprocess.py",
+ "seed_labels": [
+  42,
+  0,
+  1,
+  2,
+  3
+ ],
+ "n_seeds": 5,
+ "n_boot": 10000,
+ "ci_pct": 95,
+ "auroc": {
+  "leaky": {
+   "point_mean": 0.8283,
+   "ci_lo": 0.8022,
+   "ci_hi": 0.8459,
+   "seed_values": [
+    0.8297,
+    0.8439,
+    0.8367,
+    0.7792,
+    0.8521
+   ]
+  },
+  "splitguard": {
+   "point_mean": 0.7928,
+   "ci_lo": 0.7772,
+   "ci_hi": 0.8064,
+   "seed_values": [
+    0.804,
+    0.7933,
+    0.8152,
+    0.7888,
+    0.7629
+   ]
+  }
+ },
+ "inflation_gap_leaky_minus_splitguard": {
+  "point": 0.0355,
+  "ci_lo": 0.0091,
+  "ci_hi": 0.0638,
+  "direction_preserved_share": 0.9972
+ }
+}

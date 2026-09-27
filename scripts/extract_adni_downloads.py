@@ -39,6 +39,10 @@ from pathlib import Path
 from typing import Iterable
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import display_path  # noqa: E402
+
 DEFAULT_DOWNLOADS = PROJECT_ROOT / "data" / "raw" / "adni" / "downloads"
 DEFAULT_STUDY_FILES = PROJECT_ROOT / "data" / "raw" / "adni" / "study_files"
 DEFAULT_IMAGES = PROJECT_ROOT / "data" / "raw" / "adni" / "images"
@@ -143,7 +147,7 @@ def process_one(
     force: bool,
 ) -> dict[str, object]:
     record: dict[str, object] = {
-        "zip": str(zip_path.relative_to(PROJECT_ROOT)),
+        "zip": display_path(zip_path),
         "zip_sha256": "",
         "zip_size_bytes": zip_path.stat().st_size,
         "classification": "",
@@ -162,7 +166,7 @@ def process_one(
         kind = classify_zip(members)
         record["classification"] = kind
         destination = routing_destination(kind, images_root, study_files_root, zip_path)
-        record["destination"] = str(destination.relative_to(PROJECT_ROOT))
+        record["destination"] = display_path(destination)
         n_extracted, n_skipped, complete = safe_extract(zip_path, destination, force=force)
         record["n_extracted"] = n_extracted
         record["n_skipped_existing"] = n_skipped
@@ -199,7 +203,7 @@ def main() -> int:
 
     records = []
     for zip_path in zips:
-        print(f"Processing {zip_path.relative_to(PROJECT_ROOT)} ...")
+        print(f"Processing {display_path(zip_path)} ...")
         record = process_one(
             zip_path,
             args.images_root,
@@ -212,17 +216,17 @@ def main() -> int:
     status_counter = Counter(record["status"] for record in records)
     summary = {
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "downloads_root": str(args.downloads.relative_to(PROJECT_ROOT)),
+        "downloads_root": display_path(args.downloads),
         "n_zips": len(records),
         "status_counts": dict(status_counter),
         "records": records,
     }
     args.log.write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    print(f"Wrote {args.log.relative_to(PROJECT_ROOT)}")
+    print(f"Wrote {display_path(args.log)}")
     if not zips:
         print(
             "No zip files were found under "
-            f"{args.downloads.relative_to(PROJECT_ROOT)}. Drop the LONI IDA zips there and rerun."
+            f"{display_path(args.downloads)}. Drop the LONI IDA zips there and rerun."
         )
         return 1
     if status_counter.get("error", 0) > 0:

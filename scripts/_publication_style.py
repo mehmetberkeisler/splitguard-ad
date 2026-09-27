@@ -5,7 +5,7 @@ visual identity:
 
   * Serif body font matching the LaTeX paper (Computer Modern / STIX)
   * Wong colorblind-safe palette (Nature Methods 2011)
-  * Minimal grid (alpha 0.15 on Y only)
+  * Solid hairline grid on the value axis only
   * No top/right spines
   * Tight margins, single-column friendly figure widths
   * 600 dpi PDF export by default
@@ -36,7 +36,33 @@ LEAKY      = WONG["vermilion"]
 SPLIT      = WONG["blue"]
 INTER      = WONG["bluish_green"]   # subject-only intermediate
 NEUTRAL    = WONG["grey"]
-DENSENET   = WONG["orange"]         # second architecture in dose-response
+
+# Text never wears a series colour: the mark beside a label carries identity,
+# and a light hue (orange measures 2.2:1 against white) is illegible as text.
+INK   = "#1A1A1A"   # values, labels, axis text
+MUTED = "#595959"   # secondary annotations (7:1 on white)
+
+# Colour encodes protocol identity and nothing else, in every figure. Series
+# that are not protocols (backbones, derived gaps, shares) are drawn in INK or
+# NEUTRAL and told apart by line style and marker. Checked with the dataviz
+# palette validator: adjacent CVD separation dE 11.0, normal-vision dE 18.7.
+PROTOCOL_COLOR = {"A": LEAKY, "B": INTER, "C": SPLIT}
+PROTOCOL_LABEL = {
+    "A": "Protocol A (random)",
+    "B": "Protocol B (subject-only)",
+    "C": "Protocol C (component-safe)",
+}
+PROTOCOL_MARKER    = {"A": "o", "B": "s", "C": "^"}
+PROTOCOL_LINESTYLE = {"A": "-", "B": (0, (4, 2)), "C": "-"}
+
+# Mark specs shared by every figure.
+SERIES_LW   = 1.4
+ERROR_LW    = 1.0
+CAPSIZE     = 2.0
+MARKER_SIZE = 4.5
+BAND_ALPHA  = 0.12
+REF_LW      = 0.6
+REF_STYLE   = (0, (3, 2))   # reference levels only; gridlines stay solid
 
 
 def apply_publication_style():
@@ -70,12 +96,21 @@ def apply_publication_style():
         "axes.spines.right":    False,
         "axes.linewidth":       0.6,
 
-        # Grid: minimal horizontal only
+        # Grid: solid hairline one step off the surface. Dotted or dashed
+        # gridlines read as thresholds; reference levels use REF_STYLE.
         "axes.grid":            False,   # turn on explicitly per-axes
-        "grid.color":           WONG["grey"],
-        "grid.alpha":           0.18,
+        "grid.color":           "#DADADA",
+        "grid.alpha":           1.0,
         "grid.linewidth":       0.5,
-        "grid.linestyle":       (0, (1, 2)),   # dotted
+        "grid.linestyle":       "-",
+
+        # Text and chrome in ink rather than pure black
+        "text.color":           INK,
+        "axes.labelcolor":      INK,
+        "axes.titlecolor":      INK,
+        "axes.edgecolor":       INK,
+        "xtick.color":          INK,
+        "ytick.color":          INK,
 
         # Ticks: outward, short, thin
         "xtick.direction":      "out",
@@ -110,7 +145,27 @@ SINGLE_COL_W = 3.5
 TWO_COL_W    = 7.0
 
 
-def thin_y_grid(ax):
-    """Apply the project's standard 'minimal horizontal grid' look."""
-    ax.grid(axis="y", linewidth=0.5, alpha=0.18, linestyle=(0, (1, 2)))
+def thin_y_grid(ax, axis="y"):
+    """Solid hairline grid on the value axis, drawn beneath the data."""
+    ax.grid(axis=axis)
     ax.set_axisbelow(True)
+
+
+def reference_line(ax, value, orientation="h", color=NEUTRAL):
+    """A reference level (zero, chance, a protocol's result): dashed hairline."""
+    draw = ax.axhline if orientation == "h" else ax.axvline
+    draw(value, color=color, linewidth=REF_LW, linestyle=REF_STYLE, zorder=1)
+
+
+def protocol_handles(keys, kind="line"):
+    """Legend handles for protocols, identical in every figure."""
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
+    if kind == "patch":
+        return [Patch(facecolor=PROTOCOL_COLOR[k], edgecolor="none",
+                      label=PROTOCOL_LABEL[k]) for k in keys]
+    return [Line2D([], [], color=PROTOCOL_COLOR[k], linewidth=SERIES_LW,
+                   linestyle=PROTOCOL_LINESTYLE[k], marker=PROTOCOL_MARKER[k],
+                   markersize=MARKER_SIZE, markeredgecolor="white",
+                   markeredgewidth=0.6, label=PROTOCOL_LABEL[k])
+            for k in keys]
