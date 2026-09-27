@@ -72,6 +72,34 @@ DEFAULT_ORDER = ["tier1_truth", "adni_primary", "adni_converters", "adni_no_mt1"
                  "adni_3d", "adni_dose_response"]
 
 
+# What each kind of stage imports at training time. A bare CUDA image has
+# torch but rarely the rest, and discovering that per command costs one failed
+# launch per command: 50 of them, in the run this check was written for.
+STAGE_MODULES = {
+    "adni_3d": ("torch", "monai", "nibabel", "numpy"),
+    None: ("torch", "torchvision", "sklearn", "nibabel", "PIL", "numpy"),
+}
+
+
+def missing_modules(kinds) -> dict[str, list[str]]:
+    """Modules the selected stages need that this interpreter cannot import."""
+    wanted: set[str] = set()
+    for kind in kinds:
+        wanted.update(STAGE_MODULES.get(kind, STAGE_MODULES[None]))
+    probe = "import importlib,sys;print(' '.join(m for m in sys.argv[1:] if not importlib.util.find_spec(m)))"
+    out = subprocess.run([PY, "-c", probe, *sorted(wanted)], capture_output=True, text=True)
+    return {"missing": out.stdout.split(), "error": out.stderr.strip()[:200]}
+
+
+def cuda_is_healthy() -> str | None:
+    """Return an error string when torch cannot use the GPU it is about to rent."""
+    probe = ("import torch, torchvision, torchvision.ops as ops;"
+             "assert torch.cuda.is_available(), 'torch.cuda.is_available() is False';"
+             "ops.nms(torch.zeros(1, 4), torch.zeros(1), 0.5)")
+    out = subprocess.run([PY, "-c", probe], capture_output=True, text=True)
+    return None if out.returncode == 0 else out.stderr.strip().splitlines()[-1][:200]
+
+
 def raise_descriptor_limit() -> None:
     """Give the run enough file descriptors for repeated DataLoader workers.
 
@@ -431,6 +459,21 @@ def main() -> int:
               f"{total / args.usd_per_hour * 60 / max(1, args.workers):.0f} min at "
               f"--workers {args.workers}); cap {cap_seconds / 60:.0f} min")
         return 0
+
+    deps = missing_modules({c["kind"] for _, _, c in pending})
+    if deps["missing"]:
+        print(f"missing Python modules for the selected stages: {' '.join(deps['missing'])}")
+        print("install them without touching the image's CUDA build of torch, for example:")
+        print(f"  pip install --break-system-packages --no-deps {' '.join(deps['missing'])}")
+        return 2
+    if args.device.startswith("cuda"):
+        broken = cuda_is_healthy()
+        if broken:
+            print(f"torch cannot use the GPU: {broken}")
+            print("a pip install that pulled its own torch usually causes this; reinstall the "
+                  "image's build, for example:\n  pip install --break-system-packages "
+                  "torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128")
+            return 2
 
     missing = missing_inputs([(name, c) for name, _, c in pending], args.preprocessed_root)
     if missing:

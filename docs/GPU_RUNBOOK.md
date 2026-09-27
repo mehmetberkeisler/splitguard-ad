@@ -60,10 +60,17 @@ transfers.
 
 ## 3. On the pod
 
+One trap is worth stating before the commands: most rented images ship a
+working CUDA `torch`, and installing anything that declares a torch dependency
+(`monai` does) silently replaces it with a CPU wheel, after which every command
+fails at launch. `scripts/gpu_setup.sh` keeps the image's build and installs
+the rest with `--no-deps`, and `gpu_program.py` refuses to start if a required
+module is missing or if `torch` can no longer see the GPU.
+
 ```bash
 git clone https://github.com/mehmetberkeisler/splitguard-ad.git
 cd splitguard-ad
-bash scripts/gpu_setup.sh              # venv, pinned wheels, CUDA check, environment record
+bash scripts/gpu_setup.sh              # keeps the image's CUDA torch, adds the rest, records the environment
 source .venv-gpu/bin/activate
 
 tar -xf /workspace/gpu_bundle_2d.tar   # extracts into data/ and the image folders
