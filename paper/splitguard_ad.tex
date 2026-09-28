@@ -9,6 +9,7 @@
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{array}   % >{...} column modifiers, for ragged narrow columns
 \usepackage{multirow}
 \usepackage{xcolor}
 \usepackage{tikz}
@@ -601,7 +602,7 @@ subject identity is absent, corrupted, or inferred wrongly.
 deleting subject identifiers at controlled rates.}
 \label{tab:edge_provenance}
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}lp{3.3cm}rp{3.6cm}@{}}
+\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{3.4cm}r>{\raggedright\arraybackslash}p{3.5cm}@{}}
 \toprule
 Dataset & Edge rule & Pairs joined & Load-bearing here? \\
 \midrule
@@ -796,7 +797,7 @@ manifest, \emph{not} site-generalisability, scanner-shift robustness,
 calibration, fairness, or clinical deployment readiness.}
 \label{tab:go_nogo}
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{p{3.9cm}p{2.1cm}p{5.8cm}}
+\begin{tabular}{>{\raggedright\arraybackslash}p{3.9cm}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}p{5.8cm}}
 \toprule
 \textbf{Check} & \textbf{Status in v1} & \textbf{Behaviour} \\
 \midrule

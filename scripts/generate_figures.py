@@ -75,6 +75,31 @@ def load_results(results_dir: Path, arch: str) -> dict[str, dict[int, dict]]:
     return out
 
 
+def reconcile_with_summary(results: dict, summary_path: Path) -> int:
+    """Replace each run's AUROC with the one the manuscript reports.
+
+    Two AUROCs exist for every Tier-1 run: the trainer's own, recorded in
+    reports/gpu/tier1/*.json, and the one gpu_postprocess.py recomputes from
+    the persisted per-image predictions, which is what the tables and macros
+    quote. They differ by up to 0.002, because predictions are written to six
+    decimals and the rounding creates ties. Drawing the trainer's number put
+    0.841 in Figure 4 against 0.8387 in Table 1 for the same cell. The figures
+    follow the manuscript, so the recomputed value wins here too.
+    """
+    if not summary_path.is_file():
+        return 0
+    per_seed = (json.loads(summary_path.read_text())
+                .get("arms", {}).get("tier1", {}).get("auroc_per_seed", {}))
+    changed = 0
+    for rule, key in RULES:
+        for seed_str, auroc in per_seed.get(rule, {}).items():
+            run = results.get(key, {}).get(int(seed_str))
+            if run and run.get("test_metrics", {}).get("auroc") != auroc:
+                run["test_metrics"]["auroc"] = auroc
+                changed += 1
+    return changed
+
+
 def _save(fig, stem: str) -> None:
     for fmt in ("pdf", "png"):
         fig.savefig(FIG_DIR / f"{stem}.{fmt}")
@@ -220,6 +245,9 @@ def main() -> int:
 
     print("Regenerating Tier-1 paper figures (publication-quality style)...")
     results = load_results(args.results_dir, args.arch)
+    n = reconcile_with_summary(results, ROOT / "reports" / "gpu" / "summary.json")
+    if n:
+        print(f"  reconciled {n} AUROC values with the manuscript's own artefact")
     learning_curves(results)
     seed_stability(results)
     degradation_curve(results)
