@@ -96,10 +96,13 @@ The cost figure is a floor rather than a forecast. It prices the
 participant-identity channel through the dose-response calibration, which was
 fitted by varying test-subject overlap with the training set held fixed, so
 slice-level and near-duplicate leakage are not in it. Against the two cohorts
-where the total gap was measured it behaves accordingly: +0.106 predicted
-against +0.129 measured on ADNI1, +0.097 against +0.157 on the Tier-1
-benchmark. Use it to decide whether leakage is worth worrying about on your
-data, not to predict your own number.
+where the total gap was measured it behaves accordingly: +0.125 predicted
+against +0.142 measured on the converter-inclusive ADNI1 arm the calibration
+was fitted on, and against +0.233 on the Tier-1 benchmark, where adjacent
+slices of one volume add a channel the slope does not price. On the
+converter-excluding ADNI1 arm the measured gap is +0.118, so there the floor is
+tight rather than conservative. Use it to decide whether leakage is worth
+worrying about on your data, not to predict your own number.
 
 ### Bringing your own cohort
 
@@ -226,14 +229,14 @@ python3 scripts/build_hashed_manifest_tier3.py \
 
 #### Reproducing every training result on one GPU
 
-Every AUROC in the manuscript comes from one run of
-`scripts/gpu_program.py`, in one code state, on one GPU: the Tier-1
-recovered-participant protocols, every ADNI arm, OASIS-1 under both
-backbones, the permutation null, the size-balanced control, both identity
-probes and the provenance AUROC arm. Two stages the programme can run were
-not part of that run and the paper says so: the volumetric arm (its volume
-bundle was too large to upload in the rented window) and the dose-response
-matrix (retained from the earlier CUDA sweep). The programme skips anything
+Every AUROC in the manuscript comes from `scripts/gpu_program.py` in one
+code state: the Tier-1 recovered-participant protocols, every ADNI arm,
+OASIS-1 under both backbones, the permutation null, the size-balanced
+control, both identity probes, the provenance AUROC arm and the
+dose-response matrix. All of them but the dose-response matrix ran on one
+H100; the matrix was rerun in the same code state on a second node, and the
+paper says so. One stage the programme can run is still not reported: the
+volumetric arm, whose cost is measured in `docs/GPU_RUNBOOK.md` section 5. The programme skips anything
 already done, stops before a command that would exceed the cap in dollars or
 minutes, runs commands concurrently with `--workers`, and packs predictions
 and metrics (never weights) for download. `docs/GPU_RUNBOOK.md` is the full procedure, including the ADNI

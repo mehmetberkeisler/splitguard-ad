@@ -1,5 +1,6 @@
 import csv
 import importlib.util
+import random
 import re
 import sys
 import unittest
@@ -144,6 +145,32 @@ class ProjectContractTests(unittest.TestCase):
             if len(splits) > 1
         }
         self.assertEqual(leaking, {})
+
+    def test_every_trainer_orients_auroc_the_same_way_as_the_postprocessor(self):
+        # The volumetric trainer once ranked scores descending, so its AUROC was
+        # 1 - AUROC: validation looked anti-predictive and the best-val
+        # checkpoint was the least-trained epoch. An orientation flip is silent
+        # in a metric whose plausible range covers its own complement, so it has
+        # to be pinned down by test rather than by reading the number.
+        trainer = load_module(ROOT / "scripts" / "train_adni_3d.py")
+        reference = load_module(ROOT / "scripts" / "gpu_postprocess.py")
+
+        labels = [0, 0, 0, 1, 1, 1]
+        self.assertEqual(trainer.auroc(labels, [0.1, 0.2, 0.3, 0.7, 0.8, 0.9]), 1.0)
+        self.assertEqual(trainer.auroc(labels, [0.9, 0.8, 0.7, 0.3, 0.2, 0.1]), 0.0)
+        self.assertEqual(trainer.auroc(labels, [0.5] * 6), 0.5)
+        self.assertNotEqual(trainer.auroc([1, 1, 1], [0.1, 0.2, 0.3]),
+                            trainer.auroc([1, 1, 1], [0.1, 0.2, 0.3]))   # nan
+
+        rng = random.Random(0)
+        for _ in range(200):
+            n = rng.randint(4, 40)
+            y = [rng.randint(0, 1) for _ in range(n)]
+            if len(set(y)) < 2:
+                continue
+            scores = [round(rng.random(), 2) for _ in range(n)]      # deliberate ties
+            self.assertAlmostEqual(trainer.auroc(y, scores),
+                                   reference.auroc(list(zip(y, scores))), places=12)
 
 
 if __name__ == "__main__":

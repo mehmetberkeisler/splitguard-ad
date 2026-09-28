@@ -114,47 +114,53 @@ and terminate the pod, which releases its disk. Both steps are required by the
 Data Use Agreement: deleting the archive is not enough if the pod's volume
 survives.
 
-## 5. The two stages this release does not report
+## 5. The one stage this release does not report
 
-The published run covers every stage except two, and both are one command on
-the next node.
+The dose-response matrix is no longer an exception: it was rerun in the
+published code state (50 trainings, 18 minutes billed at `--workers 10` on an
+RTX PRO 4500, $0.21). What that rerun cost the manuscript is a second hardware
+backend, which the Declarations now state. Carry the ledger across nodes by
+hand when you do this: `runs_gpu/gpu_ledger.json` counts only the node it was
+written on, and `\GpuHours{}` is read straight out of it, so a rerun on a
+fresh node silently replaces the total with its own slice unless you add the
+two `billed_seconds` together and concatenate the two `gpu_program_log.jsonl`
+files.
 
-**The volumetric arm** (15 trainings, about 15 minutes at `--workers 12`,
-under $1). It is the only stage that needs the 6.3 GB volume bundle, which at
-a typical home upstream takes far longer to transfer than to train, so start
-the upload first and run everything else while it lands:
+**The volumetric arm** (15 trainings) is the outstanding one, and it is far
+more expensive than an earlier estimate in this file claimed. Measured on an
+RTX PRO 4500 (32 GB) at `--batch-size 4`, one 3D ResNet-18 step on a $128^3$
+volume costs:
 
-```bash
-# once, on your machine (needs the drive holding ADNI1_preprocessed_128)
-python3 scripts/make_protocol_split_columns.py --volumes-root /path/to/ADNI1_preprocessed_128
-python3 scripts/pack_gpu_bundle.py --volumes-root /path/to/ADNI1_preprocessed_128
-scp -P <port> gpu_bundle_3d.tar root@<host>:/workspace/     # ~6.3 GB, start it early
+| configuration | ms/step | peak GPU memory | stage total |
+|---|---|---|---|
+| deterministic fp32 (what the trainer sets) | 633 | 9.2 GB allocated, 14.7 GB reserved | ~10 h |
+| non-deterministic fp32 (`cudnn.benchmark`) | 270 | 9.2 GB | ~4 h |
+| non-deterministic bf16 autocast | 167 | 5.0 GB | ~2.5 h |
 
-# on the node, after the bundle lands
-tar -xf /workspace/gpu_bundle_3d.tar        # extracts into data/adni3d_128/
-python scripts/gpu_program.py --only adni_3d --workers 12 --time-budget-min 30
-```
-
-`--preprocessed-root` defaults to `data/adni3d_128`, so nothing else changes.
-Each volumetric command takes four scheduling slots, because a $128^3$ batch
-costs several times a slice batch. When the results come back,
-`scripts/rebuild_after_gpu.sh` fills `\VolGapTotal` and `\VolGapCI`, and the
-Limitations paragraph that currently calls the arm future work has to be
-rewritten to report it.
-
-**The dose-response matrix** (50 trainings, about 20 minutes at
-`--workers 12`). The released numbers come from the earlier CUDA sweep, which
-is why the Acknowledgements name it as the one exception to the single code
-state. Rerunning it on the same node as everything else removes that
-exception:
+So budget ten GPU-hours, not the fifteen minutes this section used to promise,
+and expect one job at a time: two concurrent commands reserve 29 GB of a 32 GB
+card and the second one dies in `batch_norm` with an out-of-memory error.
+`SLOTS["adni_3d"] = 4` is therefore the floor, not a cushion — pass
+`--workers 4`.
 
 ```bash
-python scripts/gpu_program.py --only adni_dose_response --workers 12 --time-budget-min 30
+# once the volume bundle has landed and been extracted
+python scripts/gpu_program.py --smoke --only adni_3d --workers 4   # exercises all three protocols
+python scripts/gpu_program.py --only adni_3d --workers 4 --time-budget-min 700
 ```
 
-Do not run this one on a different backend than the rest: a third hardware
-backend would replace one stated exception with another. Run it beside the
-volumetric arm on one node, or leave it as it is.
+Read the first command's `runs_gpu/logs/adni_3d_00.log` before letting the
+stage run: on the `random` protocol validation AUROC has to climb toward the
+leaky 2D level, because 100% subject overlap is the easy case. A validation
+AUROC that falls as the training loss falls is the signature of a metric
+orientation bug, which is how the one this trainer used to have was found.
+
+When the results come back, `scripts/rebuild_after_gpu.sh` fills
+`\VolGapTotal` and `\VolGapCI`. Neither macro is used in the manuscript yet,
+so nothing renders as `??` while the arm is outstanding; reporting it means
+rewriting the Limitations paragraph that currently calls it the
+highest-priority follow-on, and adding the arm to the hardware sentence in the
+Declarations.
 
 ## 6. Back on your machine
 

@@ -154,7 +154,9 @@ class Checker:
                 idx = text.find(stale, start)
                 if idx == -1:
                     break
-                context = text[max(0, idx - window): idx + window]
+                # Collapse whitespace: a sanctioning phrase must not depend on
+                # where LaTeX happens to wrap the line it sits on.
+                context = " ".join(text[max(0, idx - window): idx + window].split())
                 if not any(marker in context for marker in allow_near):
                     self.failures.append(
                         (label, f"stale value {stale!r} still present "
@@ -190,6 +192,9 @@ def main() -> int:
     c.add_source("paper", PAPER)
     c.add_source("sm", SM)
     c.add_source("highlights", HIGHLIGHTS)
+    # The README quotes manuscript numbers too, and nothing used to check it:
+    # a Tier-1 gap this project retracted survived there for months.
+    c.add_source("readme", ROOT / "README.md")
     for table in sorted(PAPER_TABLES.glob("*.tex")):
         if table != MACROS:
             c.add_source(f"table:{table.stem}", table)
@@ -561,7 +566,12 @@ def main() -> int:
             # to explain the correction that replaced it.
             allow_near=("under test selection", "under validation selection",
                         "superseded", "previously", "earlier test-selected",
-                        "Under the earlier"),
+                        "Under the earlier",
+                        # Not historical reporting but a collision: the composed
+                        # optimism at 10% identifier loss is itself +0.043 once
+                        # the dose slope is 0.125, which is the retracted
+                        # converter-arm marginal to the digit.
+                        "AUROC of optimism", "AUROC of expected optimism"),
         )
 
     # ── Numbers whose GPU stage has not completed ───────────────────────

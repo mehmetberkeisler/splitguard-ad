@@ -1,9 +1,9 @@
 # Re-run comparison: published artefacts vs regenerated
 
 Old: `runs_frozen/` (116 runs) — trained before the DataLoader rewiring in 877ca72, mostly before the first commit of the training code.
-New: `runs/` (196 runs) — one code state, one device.
+New: `runs/` (195 runs) — one code state, one device.
 
-Matched runs: 116. New-only: 80. Missing from the re-run: 0.
+Matched runs: 115. New-only: 80. Missing from the re-run: 1.
 
 ## `adni` — 15 runs
 
@@ -49,63 +49,62 @@ Mean absolute change +0.0180; largest single change -0.0487.
 | `adni_densenet121/inflation_gap_seed4/random` | 0.9792 | 0.9732 | -0.0060 |
 | `adni_densenet121/inflation_gap_seed4/subject_only` | 0.9361 | 0.8874 | -0.0487 ⚠️ |
 
-## `adni_dose_response` — 51 runs
+## `adni_dose_response` — 50 runs
 
-Mean absolute change +0.0000; largest single change +0.0000.
+Mean absolute change +0.0276; largest single change +0.0809.
 
 | run | published | regenerated | delta |
 |---|---|---|---|
-| `adni_dose_response/densenet121/seed0_overlap0.0/baseline_seed0` | 0.8489 | 0.8489 | +0.0000 |
-| `adni_dose_response/densenet121/seed0_overlap0.25/baseline_seed0` | 0.8416 | 0.8416 | +0.0000 |
-| `adni_dose_response/densenet121/seed0_overlap0.50/baseline_seed0` | 0.8459 | 0.8459 | +0.0000 |
-| `adni_dose_response/densenet121/seed0_overlap0.75/baseline_seed0` | 0.8937 | 0.8937 | +0.0000 |
-| `adni_dose_response/densenet121/seed0_overlap1.0/baseline_seed0` | 0.9410 | 0.9410 | +0.0000 |
-| `adni_dose_response/densenet121/seed1_overlap0.0/baseline_seed1` | 0.8476 | 0.8476 | +0.0000 |
-| `adni_dose_response/densenet121/seed1_overlap0.25/baseline_seed1` | 0.8579 | 0.8579 | +0.0000 |
-| `adni_dose_response/densenet121/seed1_overlap0.50/baseline_seed1` | 0.8875 | 0.8875 | +0.0000 |
-| `adni_dose_response/densenet121/seed1_overlap0.75/baseline_seed1` | 0.9451 | 0.9451 | +0.0000 |
-| `adni_dose_response/densenet121/seed1_overlap1.0/baseline_seed1` | 0.9323 | 0.9323 | +0.0000 |
-| `adni_dose_response/densenet121/seed2_overlap0.0/baseline_seed2` | 0.9136 | 0.9136 | +0.0000 |
-| `adni_dose_response/densenet121/seed2_overlap0.25/baseline_seed2` | 0.9074 | 0.9074 | +0.0000 |
-| `adni_dose_response/densenet121/seed2_overlap0.50/baseline_seed2` | 0.9057 | 0.9057 | +0.0000 |
-| `adni_dose_response/densenet121/seed2_overlap0.75/baseline_seed2` | 0.9473 | 0.9473 | +0.0000 |
-| `adni_dose_response/densenet121/seed2_overlap1.0/baseline_seed2` | 0.9457 | 0.9457 | +0.0000 |
-| `adni_dose_response/densenet121/seed3_overlap0.0/baseline_seed3` | 0.9060 | 0.9060 | +0.0000 |
-| `adni_dose_response/densenet121/seed3_overlap0.25/baseline_seed3` | 0.8827 | 0.8827 | +0.0000 |
-| `adni_dose_response/densenet121/seed3_overlap0.50/baseline_seed3` | 0.9506 | 0.9506 | +0.0000 |
-| `adni_dose_response/densenet121/seed3_overlap0.75/baseline_seed3` | 0.9443 | 0.9443 | +0.0000 |
-| `adni_dose_response/densenet121/seed3_overlap1.0/baseline_seed3` | 0.9624 | 0.9624 | +0.0000 |
-| `adni_dose_response/densenet121/seed4_overlap0.0/baseline_seed4` | 0.8605 | 0.8605 | +0.0000 |
-| `adni_dose_response/densenet121/seed4_overlap0.25/baseline_seed4` | 0.9063 | 0.9063 | +0.0000 |
-| `adni_dose_response/densenet121/seed4_overlap0.50/baseline_seed4` | 0.8886 | 0.8886 | +0.0000 |
-| `adni_dose_response/densenet121/seed4_overlap0.75/baseline_seed4` | 0.9546 | 0.9546 | +0.0000 |
-| `adni_dose_response/densenet121/seed4_overlap1.0/baseline_seed4` | 0.8602 | 0.8602 | +0.0000 |
-| `adni_dose_response/resnet18/seed0_overlap0.0/baseline_seed0` | 0.8118 | 0.8118 | +0.0000 |
-| `adni_dose_response/resnet18/seed0_overlap0.25/baseline_seed0` | 0.8211 | 0.8211 | +0.0000 |
-| `adni_dose_response/resnet18/seed0_overlap0.5/baseline_seed0` | 0.8130 | 0.8130 | +0.0000 |
-| `adni_dose_response/resnet18/seed0_overlap0.50/baseline_seed0` | 0.8271 | 0.8271 | +0.0000 |
-| `adni_dose_response/resnet18/seed0_overlap0.75/baseline_seed0` | 0.8723 | 0.8723 | +0.0000 |
-| `adni_dose_response/resnet18/seed0_overlap1.0/baseline_seed0` | 0.9562 | 0.9562 | +0.0000 |
-| `adni_dose_response/resnet18/seed1_overlap0.0/baseline_seed1` | 0.8548 | 0.8548 | +0.0000 |
-| `adni_dose_response/resnet18/seed1_overlap0.25/baseline_seed1` | 0.8728 | 0.8728 | +0.0000 |
-| `adni_dose_response/resnet18/seed1_overlap0.50/baseline_seed1` | 0.9078 | 0.9078 | +0.0000 |
-| `adni_dose_response/resnet18/seed1_overlap0.75/baseline_seed1` | 0.9291 | 0.9291 | +0.0000 |
-| `adni_dose_response/resnet18/seed1_overlap1.0/baseline_seed1` | 0.9384 | 0.9384 | +0.0000 |
-| `adni_dose_response/resnet18/seed2_overlap0.0/baseline_seed2` | 0.8527 | 0.8527 | +0.0000 |
-| `adni_dose_response/resnet18/seed2_overlap0.25/baseline_seed2` | 0.8270 | 0.8270 | +0.0000 |
-| `adni_dose_response/resnet18/seed2_overlap0.50/baseline_seed2` | 0.9131 | 0.9131 | +0.0000 |
-| `adni_dose_response/resnet18/seed2_overlap0.75/baseline_seed2` | 0.8860 | 0.8860 | +0.0000 |
-| `adni_dose_response/resnet18/seed2_overlap1.0/baseline_seed2` | 0.9283 | 0.9283 | +0.0000 |
-| `adni_dose_response/resnet18/seed3_overlap0.0/baseline_seed3` | 0.8520 | 0.8520 | +0.0000 |
-| `adni_dose_response/resnet18/seed3_overlap0.25/baseline_seed3` | 0.8702 | 0.8702 | +0.0000 |
-| `adni_dose_response/resnet18/seed3_overlap0.50/baseline_seed3` | 0.9126 | 0.9126 | +0.0000 |
-| `adni_dose_response/resnet18/seed3_overlap0.75/baseline_seed3` | 0.9306 | 0.9306 | +0.0000 |
-| `adni_dose_response/resnet18/seed3_overlap1.0/baseline_seed3` | 0.9418 | 0.9418 | +0.0000 |
-| `adni_dose_response/resnet18/seed4_overlap0.0/baseline_seed4` | 0.8157 | 0.8157 | +0.0000 |
-| `adni_dose_response/resnet18/seed4_overlap0.25/baseline_seed4` | 0.8639 | 0.8639 | +0.0000 |
-| `adni_dose_response/resnet18/seed4_overlap0.50/baseline_seed4` | 0.9055 | 0.9055 | +0.0000 |
-| `adni_dose_response/resnet18/seed4_overlap0.75/baseline_seed4` | 0.9176 | 0.9176 | +0.0000 |
-| `adni_dose_response/resnet18/seed4_overlap1.0/baseline_seed4` | 0.9475 | 0.9475 | +0.0000 |
+| `adni_dose_response/densenet121/seed0_overlap0.0/baseline_seed0` | 0.8489 | 0.8248 | -0.0241 ⚠️ |
+| `adni_dose_response/densenet121/seed0_overlap0.25/baseline_seed0` | 0.8416 | 0.8324 | -0.0092 |
+| `adni_dose_response/densenet121/seed0_overlap0.50/baseline_seed0` | 0.8459 | 0.9024 | +0.0565 ⚠️ |
+| `adni_dose_response/densenet121/seed0_overlap0.75/baseline_seed0` | 0.8937 | 0.9451 | +0.0514 ⚠️ |
+| `adni_dose_response/densenet121/seed0_overlap1.0/baseline_seed0` | 0.9410 | 0.9310 | -0.0100 |
+| `adni_dose_response/densenet121/seed1_overlap0.0/baseline_seed1` | 0.8476 | 0.8397 | -0.0079 |
+| `adni_dose_response/densenet121/seed1_overlap0.25/baseline_seed1` | 0.8579 | 0.9059 | +0.0480 ⚠️ |
+| `adni_dose_response/densenet121/seed1_overlap0.50/baseline_seed1` | 0.8875 | 0.8998 | +0.0123 ⚠️ |
+| `adni_dose_response/densenet121/seed1_overlap0.75/baseline_seed1` | 0.9451 | 0.9234 | -0.0217 ⚠️ |
+| `adni_dose_response/densenet121/seed1_overlap1.0/baseline_seed1` | 0.9323 | 0.9779 | +0.0456 ⚠️ |
+| `adni_dose_response/densenet121/seed2_overlap0.0/baseline_seed2` | 0.9136 | 0.8985 | -0.0151 ⚠️ |
+| `adni_dose_response/densenet121/seed2_overlap0.25/baseline_seed2` | 0.9074 | 0.8907 | -0.0167 ⚠️ |
+| `adni_dose_response/densenet121/seed2_overlap0.50/baseline_seed2` | 0.9057 | 0.9191 | +0.0134 ⚠️ |
+| `adni_dose_response/densenet121/seed2_overlap0.75/baseline_seed2` | 0.9473 | 0.9269 | -0.0204 ⚠️ |
+| `adni_dose_response/densenet121/seed2_overlap1.0/baseline_seed2` | 0.9457 | 0.9179 | -0.0278 ⚠️ |
+| `adni_dose_response/densenet121/seed3_overlap0.0/baseline_seed3` | 0.9060 | 0.8278 | -0.0782 ⚠️ |
+| `adni_dose_response/densenet121/seed3_overlap0.25/baseline_seed3` | 0.8827 | 0.9102 | +0.0275 ⚠️ |
+| `adni_dose_response/densenet121/seed3_overlap0.50/baseline_seed3` | 0.9506 | 0.9114 | -0.0392 ⚠️ |
+| `adni_dose_response/densenet121/seed3_overlap0.75/baseline_seed3` | 0.9443 | 0.9376 | -0.0067 |
+| `adni_dose_response/densenet121/seed3_overlap1.0/baseline_seed3` | 0.9624 | 0.9257 | -0.0367 ⚠️ |
+| `adni_dose_response/densenet121/seed4_overlap0.0/baseline_seed4` | 0.8605 | 0.8732 | +0.0127 ⚠️ |
+| `adni_dose_response/densenet121/seed4_overlap0.25/baseline_seed4` | 0.9063 | 0.8889 | -0.0174 ⚠️ |
+| `adni_dose_response/densenet121/seed4_overlap0.50/baseline_seed4` | 0.8886 | 0.9353 | +0.0467 ⚠️ |
+| `adni_dose_response/densenet121/seed4_overlap0.75/baseline_seed4` | 0.9546 | 0.9686 | +0.0140 ⚠️ |
+| `adni_dose_response/densenet121/seed4_overlap1.0/baseline_seed4` | 0.8602 | 0.9411 | +0.0809 ⚠️ |
+| `adni_dose_response/resnet18/seed0_overlap0.0/baseline_seed0` | 0.8118 | 0.7821 | -0.0297 ⚠️ |
+| `adni_dose_response/resnet18/seed0_overlap0.25/baseline_seed0` | 0.8211 | 0.8352 | +0.0141 ⚠️ |
+| `adni_dose_response/resnet18/seed0_overlap0.50/baseline_seed0` | 0.8271 | 0.8938 | +0.0667 ⚠️ |
+| `adni_dose_response/resnet18/seed0_overlap0.75/baseline_seed0` | 0.8723 | 0.9403 | +0.0680 ⚠️ |
+| `adni_dose_response/resnet18/seed0_overlap1.0/baseline_seed0` | 0.9562 | 0.9473 | -0.0089 |
+| `adni_dose_response/resnet18/seed1_overlap0.0/baseline_seed1` | 0.8548 | 0.8124 | -0.0424 ⚠️ |
+| `adni_dose_response/resnet18/seed1_overlap0.25/baseline_seed1` | 0.8728 | 0.8592 | -0.0136 ⚠️ |
+| `adni_dose_response/resnet18/seed1_overlap0.50/baseline_seed1` | 0.9078 | 0.8928 | -0.0150 ⚠️ |
+| `adni_dose_response/resnet18/seed1_overlap0.75/baseline_seed1` | 0.9291 | 0.9089 | -0.0202 ⚠️ |
+| `adni_dose_response/resnet18/seed1_overlap1.0/baseline_seed1` | 0.9384 | 0.9130 | -0.0254 ⚠️ |
+| `adni_dose_response/resnet18/seed2_overlap0.0/baseline_seed2` | 0.8527 | 0.8333 | -0.0194 ⚠️ |
+| `adni_dose_response/resnet18/seed2_overlap0.25/baseline_seed2` | 0.8270 | 0.8810 | +0.0540 ⚠️ |
+| `adni_dose_response/resnet18/seed2_overlap0.50/baseline_seed2` | 0.9131 | 0.9013 | -0.0118 ⚠️ |
+| `adni_dose_response/resnet18/seed2_overlap0.75/baseline_seed2` | 0.8860 | 0.9392 | +0.0532 ⚠️ |
+| `adni_dose_response/resnet18/seed2_overlap1.0/baseline_seed2` | 0.9283 | 0.9492 | +0.0209 ⚠️ |
+| `adni_dose_response/resnet18/seed3_overlap0.0/baseline_seed3` | 0.8520 | 0.8292 | -0.0228 ⚠️ |
+| `adni_dose_response/resnet18/seed3_overlap0.25/baseline_seed3` | 0.8702 | 0.8445 | -0.0257 ⚠️ |
+| `adni_dose_response/resnet18/seed3_overlap0.50/baseline_seed3` | 0.9126 | 0.8726 | -0.0400 ⚠️ |
+| `adni_dose_response/resnet18/seed3_overlap0.75/baseline_seed3` | 0.9306 | 0.8946 | -0.0360 ⚠️ |
+| `adni_dose_response/resnet18/seed3_overlap1.0/baseline_seed3` | 0.9418 | 0.9319 | -0.0099 |
+| `adni_dose_response/resnet18/seed4_overlap0.0/baseline_seed4` | 0.8157 | 0.8124 | -0.0033 |
+| `adni_dose_response/resnet18/seed4_overlap0.25/baseline_seed4` | 0.8639 | 0.8803 | +0.0164 ⚠️ |
+| `adni_dose_response/resnet18/seed4_overlap0.50/baseline_seed4` | 0.9055 | 0.9127 | +0.0072 |
+| `adni_dose_response/resnet18/seed4_overlap0.75/baseline_seed4` | 0.9176 | 0.9170 | -0.0006 |
+| `adni_dose_response/resnet18/seed4_overlap1.0/baseline_seed4` | 0.9475 | 0.9602 | +0.0127 ⚠️ |
 
 ## `adni_inflation_smoke` — 3 runs
 
@@ -260,45 +259,92 @@ Mean absolute change +0.0286; largest single change +0.0836.
 - `adni_size_balanced/inflation_gap_seed4/random` — 0.9756
 - `adni_size_balanced/inflation_gap_seed4/subject_only` — 0.8724
 
+## ⚠️ Published runs with no regenerated counterpart
+
+These arms did not re-run. Either the stage was skipped or it failed; the manuscript cannot cite them as reproducible until they do.
+
+- `adni_dose_response/resnet18/seed0_overlap0.5/baseline_seed0` — published 0.8130
+
 ## Verdict
 
-36 run(s) moved by at least 0.010 AUROC. Each one has to be traced into the manuscript before submission: the per-seed tables, the bootstrap intervals derived from them, and any sentence that interprets the affected arm.
+77 run(s) moved by at least 0.010 AUROC. Each one has to be traced into the manuscript before submission: the per-seed tables, the bootstrap intervals derived from them, and any sentence that interprets the affected arm.
 
 | run | published | regenerated | delta |
 |---|---|---|---|
 | `adni/inflation_gap_seed2/component_safe` | 0.7675 | 0.8511 | +0.0836 |
 | `adni_with_converters/inflation_gap_seed1/subject_only` | 0.6661 | 0.7497 | +0.0836 |
+| `adni_dose_response/densenet121/seed4_overlap1.0/baseline_seed4` | 0.8602 | 0.9411 | +0.0809 |
+| `adni_dose_response/densenet121/seed3_overlap0.0/baseline_seed3` | 0.9060 | 0.8278 | -0.0782 |
+| `adni_dose_response/resnet18/seed0_overlap0.75/baseline_seed0` | 0.8723 | 0.9403 | +0.0680 |
+| `adni_dose_response/resnet18/seed0_overlap0.50/baseline_seed0` | 0.8271 | 0.8938 | +0.0667 |
 | `adni_with_converters/inflation_gap_seed4/subject_only` | 0.7719 | 0.7058 | -0.0661 |
 | `adni/inflation_gap_seed1/subject_only` | 0.8030 | 0.8645 | +0.0615 |
 | `adni_with_converters/inflation_gap_seed4/component_safe` | 0.7756 | 0.8324 | +0.0568 |
 | `adni/inflation_gap_seed4/component_safe` | 0.8684 | 0.8119 | -0.0565 |
+| `adni_dose_response/densenet121/seed0_overlap0.50/baseline_seed0` | 0.8459 | 0.9024 | +0.0565 |
+| `adni_dose_response/resnet18/seed2_overlap0.25/baseline_seed2` | 0.8270 | 0.8810 | +0.0540 |
+| `adni_dose_response/resnet18/seed2_overlap0.75/baseline_seed2` | 0.8860 | 0.9392 | +0.0532 |
 | `adni_no_mt1/inflation_gap_seed2/component_safe` | 0.8435 | 0.7919 | -0.0516 |
+| `adni_dose_response/densenet121/seed0_overlap0.75/baseline_seed0` | 0.8937 | 0.9451 | +0.0514 |
 | `adni_densenet121/inflation_gap_seed4/subject_only` | 0.9361 | 0.8874 | -0.0487 |
+| `adni_dose_response/densenet121/seed1_overlap0.25/baseline_seed1` | 0.8579 | 0.9059 | +0.0480 |
 | `adni_with_converters/inflation_gap_seed2/component_safe` | 0.8664 | 0.8184 | -0.0480 |
+| `adni_dose_response/densenet121/seed4_overlap0.50/baseline_seed4` | 0.8886 | 0.9353 | +0.0467 |
+| `adni_dose_response/densenet121/seed1_overlap1.0/baseline_seed1` | 0.9323 | 0.9779 | +0.0456 |
+| `adni_dose_response/resnet18/seed1_overlap0.0/baseline_seed1` | 0.8548 | 0.8124 | -0.0424 |
 | `adni_no_mt1/inflation_gap_seed0/subject_only` | 0.8000 | 0.8417 | +0.0417 |
+| `adni_dose_response/resnet18/seed3_overlap0.50/baseline_seed3` | 0.9126 | 0.8726 | -0.0400 |
 | `adni_with_converters/inflation_gap_seed3/subject_only` | 0.7057 | 0.7450 | +0.0393 |
+| `adni_dose_response/densenet121/seed3_overlap0.50/baseline_seed3` | 0.9506 | 0.9114 | -0.0392 |
+| `adni_dose_response/densenet121/seed3_overlap1.0/baseline_seed3` | 0.9624 | 0.9257 | -0.0367 |
 | `adni_with_converters/inflation_gap_seed0/component_safe` | 0.7440 | 0.7805 | +0.0365 |
+| `adni_dose_response/resnet18/seed3_overlap0.75/baseline_seed3` | 0.9306 | 0.8946 | -0.0360 |
 | `adni_densenet121/inflation_gap_seed1/component_safe` | 0.8731 | 0.8373 | -0.0358 |
 | `adni_densenet121/inflation_gap_seed4/component_safe` | 0.8284 | 0.7981 | -0.0303 |
 | `adni_no_mt1/inflation_gap_seed1/subject_only` | 0.8126 | 0.8424 | +0.0298 |
+| `adni_dose_response/resnet18/seed0_overlap0.0/baseline_seed0` | 0.8118 | 0.7821 | -0.0297 |
 | `adni_no_mt1/inflation_gap_seed1/component_safe` | 0.8229 | 0.8524 | +0.0295 |
 | `adni/inflation_gap_seed1/component_safe` | 0.8254 | 0.8546 | +0.0292 |
+| `adni_dose_response/densenet121/seed2_overlap1.0/baseline_seed2` | 0.9457 | 0.9179 | -0.0278 |
+| `adni_dose_response/densenet121/seed3_overlap0.25/baseline_seed3` | 0.8827 | 0.9102 | +0.0275 |
 | `adni/inflation_gap_seed3/subject_only` | 0.8609 | 0.8345 | -0.0264 |
+| `adni_dose_response/resnet18/seed3_overlap0.25/baseline_seed3` | 0.8702 | 0.8445 | -0.0257 |
+| `adni_dose_response/resnet18/seed1_overlap1.0/baseline_seed1` | 0.9384 | 0.9130 | -0.0254 |
 | `adni_densenet121/inflation_gap_seed3/subject_only` | 0.8135 | 0.8386 | +0.0251 |
 | `adni_with_converters/inflation_gap_seed1/component_safe` | 0.8235 | 0.7992 | -0.0243 |
+| `adni_dose_response/densenet121/seed0_overlap0.0/baseline_seed0` | 0.8489 | 0.8248 | -0.0241 |
 | `adni_no_mt1/inflation_gap_seed3/random` | 0.9836 | 0.9603 | -0.0233 |
+| `adni_dose_response/resnet18/seed3_overlap0.0/baseline_seed3` | 0.8520 | 0.8292 | -0.0228 |
 | `adni_with_converters/inflation_gap_seed0/subject_only` | 0.8363 | 0.8588 | +0.0225 |
+| `adni_dose_response/densenet121/seed1_overlap0.75/baseline_seed1` | 0.9451 | 0.9234 | -0.0217 |
+| `adni_dose_response/resnet18/seed2_overlap1.0/baseline_seed2` | 0.9283 | 0.9492 | +0.0209 |
+| `adni_dose_response/densenet121/seed2_overlap0.75/baseline_seed2` | 0.9473 | 0.9269 | -0.0204 |
 | `adni_densenet121/inflation_gap_seed1/subject_only` | 0.7849 | 0.8053 | +0.0204 |
+| `adni_dose_response/resnet18/seed1_overlap0.75/baseline_seed1` | 0.9291 | 0.9089 | -0.0202 |
 | `adni/inflation_gap_seed0/subject_only` | 0.8496 | 0.8301 | -0.0195 |
+| `adni_dose_response/resnet18/seed2_overlap0.0/baseline_seed2` | 0.8527 | 0.8333 | -0.0194 |
 | `adni_densenet121/inflation_gap_seed0/component_safe` | 0.8372 | 0.8186 | -0.0186 |
+| `adni_dose_response/densenet121/seed4_overlap0.25/baseline_seed4` | 0.9063 | 0.8889 | -0.0174 |
 | `adni/inflation_gap_seed2/subject_only` | 0.8017 | 0.7847 | -0.0170 |
 | `adni_with_converters/inflation_gap_seed3/component_safe` | 0.8614 | 0.8446 | -0.0168 |
+| `adni_dose_response/densenet121/seed2_overlap0.25/baseline_seed2` | 0.9074 | 0.8907 | -0.0167 |
+| `adni_dose_response/resnet18/seed4_overlap0.25/baseline_seed4` | 0.8639 | 0.8803 | +0.0164 |
+| `adni_dose_response/densenet121/seed2_overlap0.0/baseline_seed2` | 0.9136 | 0.8985 | -0.0151 |
+| `adni_dose_response/resnet18/seed1_overlap0.50/baseline_seed1` | 0.9078 | 0.8928 | -0.0150 |
 | `adni_densenet121/inflation_gap_seed2/component_safe` | 0.8075 | 0.8223 | +0.0148 |
 | `adni/inflation_gap_seed3/random` | 0.9670 | 0.9528 | -0.0142 |
+| `adni_dose_response/resnet18/seed0_overlap0.25/baseline_seed0` | 0.8211 | 0.8352 | +0.0141 |
+| `adni_dose_response/densenet121/seed4_overlap0.75/baseline_seed4` | 0.9546 | 0.9686 | +0.0140 |
+| `adni_dose_response/resnet18/seed1_overlap0.25/baseline_seed1` | 0.8728 | 0.8592 | -0.0136 |
+| `adni_dose_response/densenet121/seed2_overlap0.50/baseline_seed2` | 0.9057 | 0.9191 | +0.0134 |
 | `adni_no_mt1/inflation_gap_seed4/subject_only` | 0.8633 | 0.8766 | +0.0133 |
 | `adni_densenet121/inflation_gap_seed0/subject_only` | 0.8327 | 0.8194 | -0.0133 |
 | `adni_densenet121/inflation_gap_seed3/random` | 0.9688 | 0.9558 | -0.0130 |
 | `adni_with_converters/inflation_gap_seed3/random` | 0.9653 | 0.9783 | +0.0130 |
+| `adni_dose_response/resnet18/seed4_overlap1.0/baseline_seed4` | 0.9475 | 0.9602 | +0.0127 |
+| `adni_dose_response/densenet121/seed4_overlap0.0/baseline_seed4` | 0.8605 | 0.8732 | +0.0127 |
+| `adni_dose_response/densenet121/seed1_overlap0.50/baseline_seed1` | 0.8875 | 0.8998 | +0.0123 |
+| `adni_dose_response/resnet18/seed2_overlap0.50/baseline_seed2` | 0.9131 | 0.9013 | -0.0118 |
 | `adni_densenet121/inflation_gap_seed3/component_safe` | 0.8196 | 0.8079 | -0.0117 |
 | `adni_no_mt1/inflation_gap_seed2/random` | 0.9739 | 0.9622 | -0.0117 |
 | `adni/inflation_gap_seed4/random` | 0.9650 | 0.9756 | +0.0106 |

@@ -2,20 +2,20 @@
   "densenet121": {
     "mixed_effects": {
       "fit": "iterated feasible GLS, random intercept per seed (compound symmetry), cluster-robust sandwich SE with finite-cluster correction and t(G-1) critical value",
-      "slope": 0.065535,
-      "intercept": 0.870325,
-      "pooled_ols_slope": 0.065535,
-      "pooled_ols_intercept": 0.870325,
-      "pooled_ols_r2": 0.3548,
-      "sigma_u": 0.019762,
-      "sigma_eps": 0.026299,
-      "rho_sigma_u2_over_sigma2": 0.564665,
-      "cluster_robust_se": 0.016089,
+      "slope": 0.090589,
+      "intercept": 0.86092,
+      "pooled_ols_slope": 0.090589,
+      "pooled_ols_intercept": 0.86092,
+      "pooled_ols_r2": 0.6405,
+      "sigma_u": 0.006895,
+      "sigma_eps": 0.023665,
+      "rho_sigma_u2_over_sigma2": 0.084899,
+      "cluster_robust_se": 0.017651,
       "finite_cluster_correction": 1.3043,
       "t_crit_975": 2.776,
       "df": 4,
-      "ci_lo_95": 0.020871,
-      "ci_hi_95": 0.110198,
+      "ci_lo_95": 0.041589,
+      "ci_hi_95": 0.139588,
       "n_iter": 1,
       "converged": true,
       "n_obs": 25,
@@ -24,73 +24,73 @@
     "per_seed_slopes": {
       "per_seed": {
         "0": {
-          "slope": 0.0945,
-          "intercept": 0.8269,
-          "r2": 0.7603,
+          "slope": 0.13,
+          "intercept": 0.8221,
+          "r2": 0.8526,
           "monotonic": false,
           "n_points": 5
         },
         "1": {
-          "slope": 0.1026,
-          "intercept": 0.8427,
-          "r2": 0.8694,
+          "slope": 0.1175,
+          "intercept": 0.8506,
+          "r2": 0.8766,
           "monotonic": false,
           "n_points": 5
         },
         "2": {
-          "slope": 0.0417,
-          "intercept": 0.9031,
-          "r2": 0.6267,
+          "slope": 0.03,
+          "intercept": 0.8956,
+          "r2": 0.6022,
           "monotonic": false,
           "n_points": 5
         },
         "3": {
-          "slope": 0.0698,
-          "intercept": 0.8943,
-          "r2": 0.6776,
+          "slope": 0.0892,
+          "intercept": 0.8579,
+          "r2": 0.6647,
           "monotonic": false,
           "n_points": 5
         },
         "4": {
-          "slope": 0.0191,
-          "intercept": 0.8845,
-          "r2": 0.0373,
+          "slope": 0.0862,
+          "intercept": 0.8783,
+          "r2": 0.7505,
           "monotonic": false,
           "n_points": 5
         }
       },
-      "slope_min": 0.0191,
-      "slope_max": 0.1026,
-      "slope_median": 0.0698,
+      "slope_min": 0.03,
+      "slope_max": 0.13,
+      "slope_median": 0.0892,
       "monotonic_count": 0,
       "n_seeds": 5
     },
     "cluster_bootstrap": {
       "n_boot": 10000,
-      "slope_median": 0.0655,
-      "ci_lo_cluster_boot": 0.0383,
-      "ci_hi_cluster_boot": 0.0928
+      "slope_median": 0.0912,
+      "ci_lo_cluster_boot": 0.0587,
+      "ci_hi_cluster_boot": 0.1187
     },
-    "spearman_rho_pooled": 0.553,
+    "spearman_rho_pooled": 0.8511,
     "n_records": 25
   },
   "resnet18": {
     "mixed_effects": {
       "fit": "iterated feasible GLS, random intercept per seed (compound symmetry), cluster-robust sandwich SE with finite-cluster correction and t(G-1) critical value",
-      "slope": 0.106474,
-      "intercept": 0.832998,
-      "pooled_ols_slope": 0.106474,
-      "pooled_ols_intercept": 0.832998,
-      "pooled_ols_r2": 0.7165,
-      "sigma_u": 0.015687,
-      "sigma_eps": 0.019466,
-      "rho_sigma_u2_over_sigma2": 0.649404,
-      "cluster_robust_se": 0.010691,
+      "slope": 0.125121,
+      "intercept": 0.82321,
+      "pooled_ols_slope": 0.125121,
+      "pooled_ols_intercept": 0.82321,
+      "pooled_ols_r2": 0.8529,
+      "sigma_u": 0.009393,
+      "sigma_eps": 0.016671,
+      "rho_sigma_u2_over_sigma2": 0.317453,
+      "cluster_robust_se": 0.013875,
       "finite_cluster_correction": 1.3043,
       "t_crit_975": 2.776,
       "df": 4,
-      "ci_lo_95": 0.076796,
-      "ci_hi_95": 0.136153,
+      "ci_lo_95": 0.086604,
+      "ci_hi_95": 0.163638,
       "n_iter": 1,
       "converged": true,
       "n_obs": 25,
@@ -99,54 +99,54 @@
     "per_seed_slopes": {
       "per_seed": {
         "0": {
-          "slope": 0.136,
-          "intercept": 0.7897,
-          "r2": 0.8083,
+          "slope": 0.1742,
+          "intercept": 0.7927,
+          "r2": 0.9509,
           "monotonic": true,
           "n_points": 5
         },
         "1": {
-          "slope": 0.0894,
-          "intercept": 0.8559,
-          "r2": 0.9672,
+          "slope": 0.1003,
+          "intercept": 0.8271,
+          "r2": 0.8924,
           "monotonic": true,
           "n_points": 5
         },
         "2": {
-          "slope": 0.0841,
-          "intercept": 0.8394,
-          "r2": 0.6306,
-          "monotonic": false,
+          "slope": 0.116,
+          "intercept": 0.8428,
+          "r2": 0.9593,
+          "monotonic": true,
           "n_points": 5
         },
         "3": {
-          "slope": 0.096,
-          "intercept": 0.8534,
-          "r2": 0.9561,
+          "slope": 0.1022,
+          "intercept": 0.8234,
+          "r2": 0.9811,
           "monotonic": true,
           "n_points": 5
         },
         "4": {
-          "slope": 0.1269,
-          "intercept": 0.8266,
-          "r2": 0.9579,
+          "slope": 0.1329,
+          "intercept": 0.8301,
+          "r2": 0.9145,
           "monotonic": true,
           "n_points": 5
         }
       },
-      "slope_min": 0.0841,
-      "slope_max": 0.136,
-      "slope_median": 0.096,
-      "monotonic_count": 4,
+      "slope_min": 0.1003,
+      "slope_max": 0.1742,
+      "slope_median": 0.116,
+      "monotonic_count": 5,
       "n_seeds": 5
     },
     "cluster_bootstrap": {
       "n_boot": 10000,
-      "slope_median": 0.1065,
-      "ci_lo_cluster_boot": 0.0886,
-      "ci_hi_cluster_boot": 0.1249
+      "slope_median": 0.1247,
+      "ci_lo_cluster_boot": 0.1042,
+      "ci_hi_cluster_boot": 0.1515
     },
-    "spearman_rho_pooled": 0.8747,
+    "spearman_rho_pooled": 0.9414,
     "n_records": 25
   }
 }

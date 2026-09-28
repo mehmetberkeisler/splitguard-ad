@@ -1235,9 +1235,11 @@ Cohort-specific settings are learning rate $3\!\times\!10^{-4}$
 batch size $32$ on Tier~1 and OASIS-1 and $16$ on ADNI; seeds
 $\{42,0,1,2,3\}$ on Tier~1 and OASIS-1 and $\{0,1,2,3,4\}$ on ADNI.
 The volumetric arm uses a 3D ResNet-18 on $128^3$ volumes, batch size
-$4$, $15$ epochs. Every run was executed in one code state on one
-NVIDIA H100 with deterministic cuDNN kernels and seeded data loaders;
-the full configuration is in Supplementary Table~S1.
+$4$, $15$ epochs. Every run was executed in one code state with
+deterministic cuDNN kernels and seeded data loaders, on one NVIDIA H100
+except the dose-response matrix, which was rerun on an NVIDIA RTX PRO
+4500 (\S Declarations); the full configuration is in Supplementary
+Table~S1.
 
 \subsection{Observed provenance damage on a redistributed benchmark}
 \label{sec:exp1}
@@ -2020,16 +2022,17 @@ training runs.
 Figure~\ref{fig:dose_response}(a) shows the resulting per-seed AUROCs
 and the seed-averaged dose-response curves with $95\%$ paired-bootstrap
 CIs. The seed-averaged curves increase with test-subject overlap for
-both architectures, though per-seed monotonicity holds in only
-$4/5$ ResNet-18 and $0/5$ DenseNet-121 seeds (Supplementary~S4);
+both architectures; per-seed monotonicity holds in $5/5$ ResNet-18 seeds
+but in $0/5$ DenseNet-121 seeds (Supplementary~S4);
 the fitted ResNet-18 endpoints
 (\DoseAtZero{} at $p=0$, \DoseAtOne{} at $p=1$) sit within $0.02$ of
 the converter-inclusive arm's honest and leaky levels
 (\AdniConvSafeAUROC{} and \AdniConvRandomAUROC{},
 \S\ref{sec:exp6_adni}), which is the arm the injected splits are built
 from. We read that agreement as a sanity check and not as a
-calibration, because the matrix and those levels come from separate
-runs of the same trainer (\S Declarations). The straight-line OLS fit
+calibration: the matrix and those levels come from the same code state
+on different GPUs (\S Declarations), and nothing in the injection was
+tuned to reproduce them. The straight-line OLS fit
 (Figure~\ref{fig:dose_response}(b)) recovers
 \begin{equation}
 \widehat{\mathrm{AUROC}}_{\text{ResNet-18}}
@@ -2037,12 +2040,13 @@ runs of the same trainer (\S Declarations). The straight-line OLS fit
 \label{eq:dose_response}
 \end{equation}
 and a similar but noisier curve for DenseNet-121
-($\widehat{\mathrm{AUROC}} = 0.870 + 0.066 \cdot p,\ R^2=0.35$).
+($\widehat{\mathrm{AUROC}} = \DoseDenseAtZero{} + \DoseDenseSlope{}
+\cdot p,\ R^2=0.64$).
 The slope of $+\DoseSlope{}$ AUROC per unit overlap on
 ResNet-18 implies a cohort- and architecture-specific calibration
 point: on this ADNI universe and this 2D-slice representation, every
 $10$ percentage points of test-subject overlap inflates the reported
-AUROC by approximately $+0.011$. The point-estimate predictions from
+AUROC by approximately $+0.013$. The point-estimate predictions from
 Equation~\ref{eq:dose_response} are usefully read as the
 deterministic part of a noisy calibration; the per-seed scatter
 around the regression line in
@@ -2055,12 +2059,12 @@ written
 \label{eq:dose_response_noisy}
 \end{equation}
 with $(\widehat{\alpha},\widehat{\beta}) = (\DoseIntercept{}, \DoseSlope{})$ and
-$\widehat{\sigma} = 0.0247$ on ResNet-18 ($0.0326$ on DenseNet-121),
+$\widehat{\sigma} = 0.0191$ on ResNet-18 ($0.0250$ on DenseNet-121),
 the residual standard deviation of the twenty-five per-seed
 observations about the OLS fit. The unit matters: because the band is
 meant to describe a \emph{single} training run, it has to be estimated
 from single runs. Taking it instead from the five per-overlap means
-would give $0.008$ and understate the spread roughly threefold, since
+would give $0.008$ and understate the spread roughly $2.5$-fold, since
 averaging five seeds removes most of the seed-level variance the band
 exists to represent. So estimated, $\widehat{\sigma}$ gives an
 order-of-magnitude prediction band for one run at a given $p$ and lets
@@ -2073,12 +2077,12 @@ We report the OLS slope as a descriptive calibration constant rather
 than as an inferential coefficient (the twenty-five $(\text{seed},
 \text{overlap})$ observations are not independent under OLS). A
 random-intercept model fitted by iterated feasible GLS under compound
-symmetry gives the same slope, $\widehat{\beta} = 0.1065$, because the
+symmetry gives the same slope, $\widehat{\beta} = 0.1251$, because the
 design is balanced; what changes is the interval. With a
 cluster-robust sandwich standard error carrying the finite-cluster
 correction and a $t(4)$ critical value, the $95\%$ CI is
-$[0.0768, 0.1362]$ on ResNet-18; DenseNet-121 gives
-$\widehat{\beta} = 0.0655$ with $95\%$ CI $[0.0209, 0.1102]$. Both
+$[0.0866, 0.1636]$ on ResNet-18; DenseNet-121 gives
+$\widehat{\beta} = 0.0906$ with $95\%$ CI $[0.0416, 0.1396]$. Both
 exclude zero. Full specification, the fitted variance ratio, the
 seed-cluster bootstrap, and Spearman monotonicity statistics are in
 Supplementary Material~S4. Density-choice
@@ -2114,16 +2118,16 @@ roughly continuous signal in 2D MRI representations. Both
 architectures' $p=1$ endpoints converge near the Protocol~A leaky
 AUROC, as expected: $100\%$ subject overlap is mechanically
 equivalent to the random-split condition. The DenseNet-121 curve has
-a higher baseline AUROC at $p=0$ ($0.875$ vs.\ $0.837$) and a flatter
-slope ($+0.066$ vs.\ $+\DoseSlope{}$). The two mixed-effects slope
-intervals overlap ($[0.0768, 0.1362]$ vs.\ $[0.0209, 0.1102]$;
+a higher baseline AUROC at $p=0$ ($0.853$ vs.\ $0.814$) and a flatter
+slope ($+\DoseDenseSlope{}$ vs.\ $+\DoseSlope{}$). The two mixed-effects slope
+intervals overlap ($[0.0866, 0.1636]$ vs.\ $[0.0416, 0.1396]$;
 Supplementary~S4) and we run no formal difference test, so the two
 architectures' dose-response slopes are not distinguishable at five
-seeds and we draw no inference about backbone capacity. We caution against
-over-interpreting the DenseNet $R^2 = 0.35$: with only five seeds per
-overlap and a smaller endpoint separation, the dose-response is in
-principle still monotonic for DenseNet but the per-seed variance
-swamps the trend at this sample size.
+seeds and we draw no inference about backbone capacity. The DenseNet $R^2$ of $0.64$ still
+trails the ResNet-18 fit, and no DenseNet seed is monotonic across all
+five overlaps: with five seeds per overlap and a smaller endpoint
+separation, the trend is carried by the seed average rather than
+visible within any single seed.
 
 \paragraph{Practical use, and why the slope is a floor}
 Equation~\ref{eq:dose_response} converts a measured test-subject
@@ -2141,10 +2145,15 @@ random splitting, contamination is essentially complete on both: on
 ADNI1 because participants contribute about five scans each, and on
 Tier~1 because a participant's $32$ slices are all but certain to land
 on both sides of the split. The equation therefore predicts a drop of
-at most $\DoseSlope{}$ on each, against a measured \AdniGapTotal{} on ADNI1
-and \TierOneGapTotal{} on Tier~1, and the larger shortfall on Tier~1
+at most $\DoseSlope{}$ on each, against a measured \AdniConvGap{} on the
+converter-inclusive ADNI1 arm the injected splits are built from and
+\TierOneGapTotal{} on Tier~1, and the larger shortfall on Tier~1
 is what one would expect where adjacent slices of one volume add a
-channel the slope does not price. Used as a point estimate the
+channel the slope does not price. On the converter-excluding primary
+arm the measured gap is \AdniGapTotal{}, which the predicted floor now
+matches to within $0.01$: the margin the floor leaves is a property of
+the cohort it is applied to, not a guarantee, and on a cohort whose
+identity channel is the whole of its leakage the floor is the estimate. Used as a point estimate the
 equation would tell a reader their honest AUROC is higher than it is,
 the wrong direction to err in for a quantity whose purpose is to
 correct over-reporting. Used as a floor it answers the question worth asking of
@@ -2280,8 +2289,8 @@ Protocol~C, against \ProvParticipantTenSubject{} of test
 \emph{participants} under Protocol~B. Read through
 Equation~\ref{eq:dose_response}, that is $+\ComposedTenSubject{}$ AUROC
 of expected optimism under Protocol~B against $+\ComposedTenSafe{}$
-under Protocol~C. The slope and the shares come from different runs of
-the same trainer (\S Declarations), which is one more reason to read
+under Protocol~C. The slope and the shares come from different arms of
+one code state (\S Declarations), which is one more reason to read
 the composition as an order of magnitude rather than a coefficient. Table~\ref{tab:provenance_degradation} reports the
 participant share $p$ alongside it, because that is what a split audit
 shows a reader.
@@ -2653,13 +2662,15 @@ pre-training GO/NO-GO audit following
 Algorithm~\ref{alg:splitguard}, and a benchmark report card.
 
 \section*{Acknowledgements}
-Every training run reported here, except the dose-response matrix, was
-executed in one code state on a single cloud-hosted NVIDIA H100
-instance (approximately \GpuHours{}~GPU-hours), with the software
-environment recorded in the released run logs. The dose-response
-matrix is the earlier $50$-run CUDA sweep, produced by the same
-trainer under the same settings and retained because rerunning it
-would not change the code state it was produced in. Data used in preparation of this article
+Every training run reported here was executed in one code state,
+with the software environment of each node recorded in the released run
+logs (approximately \GpuHours{}~GPU-hours in total). All arms but one
+ran on a single cloud-hosted NVIDIA H100 instance; the $50$-run
+dose-response matrix was rerun in that same code state on an NVIDIA RTX
+PRO 4500 instance, so its slope and the arms it is composed with differ
+in hardware but not in code. We report the slope as a descriptive
+calibration constant and not as a transferable coefficient, which is
+how it is read throughout. Data used in preparation of this article
 were obtained from the Alzheimer's Disease Neuroimaging Initiative
 (ADNI) database (\url{https://adni.loni.usc.edu}). As such, the
 investigators within the ADNI contributed to the design and

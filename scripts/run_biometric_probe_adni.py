@@ -44,7 +44,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _paths import resolve_data_path  # noqa: E402
+from _paths import display_path, resolve_data_path  # noqa: E402
 
 
 def choose_device():
@@ -233,7 +233,7 @@ def main() -> int:
         X = extract_features(model, feature_attr, rows, dev)
         print(f"  Features shape: {X.shape}")
         r = probe_subject_id(X, rows, label=label, seed=args.seed, hold_out=args.hold_out)
-        r["checkpoint_path"] = str(ckpt_path.resolve())
+        r["checkpoint_path"] = display_path(ckpt_path)
         results.append(r)
 
     # Group by protocol
@@ -253,7 +253,7 @@ def main() -> int:
 
     out = {
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "manifest": str(args.manifest.resolve()),
+        "manifest": display_path(args.manifest),
         "checkpoint_glob": args.checkpoint_glob,
         "arch": args.arch,
         "results_per_checkpoint": results,

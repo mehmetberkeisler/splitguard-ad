@@ -117,17 +117,28 @@ def build_3d_resnet18(pretrained: bool = False, pretrained_path: str | None = No
 
 # ── Metrics ──────────────────────────────────────────────────────────────
 def auroc(y_true, y_score) -> float:
+    """Rank-based AUROC, nan if one class is absent.
+
+    Ranks ascend with the score and ties share their mid-rank, as in
+    ``scripts/gpu_postprocess.py``. Ranking the scores descending instead
+    returns 1 - AUROC, which inverts every epoch's validation metric and makes
+    the best-val checkpoint the least-trained one.
+    """
     y_true = np.asarray(y_true, dtype=int)
     y_score = np.asarray(y_score, dtype=float)
-    pos = y_score[y_true == 1]; neg = y_score[y_true == 0]
-    if pos.size == 0 or neg.size == 0: return float("nan")
-    all_scores = np.concatenate([pos, neg])
-    all_labels = np.concatenate([np.ones_like(pos), np.zeros_like(neg)])
-    order = np.argsort(-all_scores, kind="stable")
-    ranked_labels = all_labels[order]
-    pos_rank_sum = float(np.sum(np.where(ranked_labels == 1)[0] + 1))
-    n_pos = pos.size; n_neg = neg.size
-    return (pos_rank_sum - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
+    n_pos = int((y_true == 1).sum()); n_neg = int((y_true == 0).sum())
+    if n_pos == 0 or n_neg == 0: return float("nan")
+    order = np.argsort(y_score, kind="stable")
+    ranks = np.empty(y_score.size, dtype=float)
+    ranks[order] = np.arange(1, y_score.size + 1, dtype=float)
+    scores_sorted = y_score[order]
+    tie_start = 0
+    for i in range(1, scores_sorted.size + 1):
+        if i == scores_sorted.size or scores_sorted[i] != scores_sorted[tie_start]:
+            if i - tie_start > 1:
+                ranks[order[tie_start:i]] = (tie_start + i + 1) / 2
+            tie_start = i
+    return float((ranks[y_true == 1].sum() - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg))
 
 
 # ── Data loading helper ──────────────────────────────────────────────────
