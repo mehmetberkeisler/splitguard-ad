@@ -532,6 +532,15 @@ def main() -> int:
     for label, stale, replacement, why in [
         ("dose-response r2 (pre A1 fix)", "$R^2=0.69$", "0.72",
          "recomputed after excluding the 1-epoch aborted run"),
+        # The 2026-09-28 rerun in the published code state. The Limitations
+        # quoted this pair four sections away from the Results and survived
+        # the first sweep, which is the case check_absent exists for.
+        ("dose-response r2 pair (pre-rerun)", "$R^2=0.35$ against $0.72$", "0.64 against 0.85",
+         "the dose matrix was rerun in the published code state"),
+        ("dose-response slope (pre-rerun)", "0.1065", "0.1251",
+         "the dose matrix was rerun in the published code state"),
+        ("dose-response densenet slope (pre-rerun)", "0.0655", "0.0906",
+         "the dose matrix was rerun in the published code state"),
         ("dose-response r2 (spaced form)", "R^2 = 0.69", "0.72",
          "recomputed after excluding the 1-epoch aborted run"),
         ("dose-response intercept (pre A1 fix)", "0.832 + 0.106", "0.833 + 0.106",

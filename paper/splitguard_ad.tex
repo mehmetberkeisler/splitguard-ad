@@ -164,8 +164,7 @@ rebuild pipeline are released under Apache-2.0.
 % Target venue is the Journal of Imaging Informatics in Medicine
 % (Springer/SIIM), which does not use the Elsevier Highlights convention.
 % The former SplitGuard-AD_Highlights.txt is retired to archive/.
-
-% ── Keywords ──────────────────────────────────────────────────────────────────
+% JIIM asks for 4-6 keywords; six are given below.
 \begin{keyword}
 patient-identity leakage \sep
 evaluation protocol \sep
@@ -787,7 +786,7 @@ in \S\ref{sec:exp3_degrad} traces the contribution of each layer.
 Prior to model training, \SGA{} produces a structured audit report
 verifying: (i)~zero component overlap across splits; (ii)~label
 distribution per split; (iii)~source/site/demographic association
-with label, reported as a per-axis Cramer's $V$ between the audited
+with label, reported as a per-axis Cram\'{e}r's $V$ between the audited
 covariate (site code extracted from ADNI \texttt{PTID}, scanner
 field strength, sex, age band) and the binary CN/AD label, computed
 per partition (a complementary axis to scanner-effect work such as
@@ -826,7 +825,7 @@ Component overlap across partitions & \textbf{Blocking} & Any component ID in $>
 Per-partition label balance & Reported & Class counts and ratios written to the report. \\
 Scanner field-strength balance & Reported & Marginal distribution per partition. \\
 Age and sex summaries & Reported & Per-partition demographic summary. \\
-Site--label association (Cramer's $V$) & Reported & Computed by a separate script (\S\ref{sec:exp6_adni}); not consulted by the gate. \\
+Site--label association (Cram\'{e}r's $V$) & Reported & Computed by a separate script (\S\ref{sec:exp6_adni}); not consulted by the gate. \\
 Component-size balance across partitions & Reported & Per-partition component-size distribution, with a warning when partitions are not drawn from comparable participants. Added after auditing this project's own frozen splits, on which it fires (\S\ref{sec:limitations}); not consulted by the gate. \\
 \midrule
 Unresolved subject or diagnosis identifiers & \textbf{Not enforced in v1} & No check exists. Two ADNI scans with unresolved visit-level diagnosis passed the gate for this reason (\S\ref{sec:data_adni}). \\
@@ -1018,9 +1017,9 @@ but excluded from the primary classification experiment.
 The resulting OASIS-1 manifest contains 135 NonDemented sessions,
 100 Demented sessions, and 201 sessions with missing CDR.
 Five central coronal slices are derived from each processed volume,
-yielding 2,180 total slices and 1,175 labeled slices
+yielding 2,180 total slices and 1,175 labelled slices
 (675 NonDemented, 500 Demented).
-The frozen OASIS-1 \SGA{} split contains 825/175/175 labeled slices in
+The frozen OASIS-1 \SGA{} split contains 825/175/175 labelled slices in
 train/validation/test, with 165/35/35 subjects respectively and zero
 subject or component overlap across splits.
 
@@ -1281,6 +1280,19 @@ and nothing inside the benchmark reveals it. This is the difference
 between leakage as a protocol error, which the literature already
 documents, and leakage as a provenance failure, which survives a
 correctly applied protocol.
+Figure~\ref{fig:tier1_overview} separates what is stable across seeds
+from what is not. Protocol~A sits above both grouped protocols in all
+five seeds (Figure~\ref{fig:seed_stability}) and on every metric at
+seed $=42$ (Figure~\ref{fig:metrics}), so the headline gap is not a
+seed artefact. The residual between B$'$ and C$'$ is the smaller
+quantity and it is not uniform: their AUROC ordering reverses in one
+seed of five (Table~\ref{tab:tier1_truth}), and at seed $=42$ C$'$ is
+the more specific of the two while B$'$ is the more sensitive, which is
+what a threshold applied to a less separable score produces. The
+\TierOneGapResidual{} residual is therefore a five-seed mean and not a
+per-run guarantee; what the mechanism predicts, and what the data
+supports, is that grouping on a broken key leaves inflation standing on
+average, not that it leaves more in every run.
 
 \begin{figure}[!htbp]
 \centering
@@ -1354,7 +1366,7 @@ examined in \S\ref{sec:exp2_probe}, the layer-by-layer decomposition in
 We repeat the leaky-versus-\SGA{} comparison on OASIS-1 using the same
 ResNet-18 family and the derived 2D slice representation described in
 \S\ref{sec:data_oasis}.
-Protocol A randomly splits the 1,175 labeled slices by image; Protocol C
+Protocol A randomly splits the 1,175 labelled slices by image; Protocol C
 uses the frozen subject-component-safe \SGA{} split.
 Across five random seeds, Protocol A places nearly every test subject in
 training (mean test-subject contamination
@@ -1534,7 +1546,7 @@ $\geq 76$; $220$ participants, median age 76).
 \paragraph{Site\,$\times$\,label confound check}
 The ADNI CN/AD universe spans 48 recruiting sites (site code extracted
 from the first triplet of the ADNI \texttt{PTID}); on the full
-universe, uncorrected Cramer's $V$ between site and CN/AD label is
+universe, uncorrected Cram\'{e}r's $V$ between site and CN/AD label is
 $0.36$ ($\chi^2 = 178$, $p < 0.001$), reflecting the well-known fact
 that ADNI sites differ systematically in their CN/AD subject mix.
 Within the five frozen component-safe \SGA{} splits, this association
@@ -1542,7 +1554,7 @@ is preserved rather than eliminated (script:
 \texttt{scripts/site\_scanner\_confound\_audit.py}; JSON:
 \texttt{reports/tables/adni/adni\_site\_scanner\_confound\_audit.json}).
 Table~\ref{tab:site_scanner_confound_audit} reports bias-corrected
-Cramer's $V$ (Bergsma--Wicher small-sample correction) for
+Cram\'{e}r's $V$ (Bergsma's small-sample correction~\cite{bergsma2013}) for
 site$\times$label and sex$\times$label across the five primary-arm
 component-safe splits. The site--label association is moderate in
 train ($V\approx 0.36$), substantial in validation
@@ -1566,7 +1578,7 @@ the component-safe construction is named as future work in
 \caption{Site and sex confound audit on the five ADNI primary-arm
 component-safe splits ($1{,}125$ manifest rows, $1{,}123$
 diagnosis-resolved; CN/AD rows only).
-Bias-corrected Cramer's $V$ (Bergsma--Wicher) between each covariate
+Bias-corrected Cram\'{e}r's $V$ (Bergsma~\cite{bergsma2013}) between each covariate
 and the binary CN/AD label per partition; mean and range across the
 five seeds. The site--label association is substantial in every
 partition and grows as the partition shrinks; it is \emph{exposed}
@@ -2353,7 +2365,7 @@ Connected Component Overlap & 0\% (\checkmark Pass) \\
 \midrule
 \multicolumn{2}{l}{\textbf{Reported, non-blocking}} \\
 Label join & $22\%$ of labels by $180$-day date proximity (\S\ref{sec:data_adni}) \\
-Site--label association & Cramer's $V = 0.54$ in test (Table~\ref{tab:site_scanner_confound_audit}) \\
+Site--label association & Cram\'{e}r's $V = 0.54$ in test (Table~\ref{tab:site_scanner_confound_audit}) \\
 Component-size balance & Warning: partitions differ in scans per participant (\S\ref{sec:exp3_degrad}) \\
 \midrule
 \multicolumn{2}{l}{\textbf{Debiased Performance Estimates (Held-out Test, $n \approx$ \CardNTest{} per seed)}} \\
@@ -2556,7 +2568,7 @@ pipelines are independent of training.
           estimate. The dose-response slope is specific to this
           cohort, this representation and the subject-substitution
           injection mechanism; the DenseNet-121 fit is noisier
-          ($R^2=0.35$ against $0.72$) and non-monotonic at $p=1$, so
+          ($R^2=0.64$ against $0.85$) and non-monotonic at $p=1$, so
           we present it as a same-direction check rather than an
           independent confirmation, and we do not claim the slope
           generalises.
@@ -2606,7 +2618,7 @@ rather than only their intersection, belongs in the audit and was not in it.
     \item \textbf{The audit gate certifies partition disjointness,
           nothing more.} A pass does not imply site- or
           scanner-independent generalisation: the site--label
-          association we report (Cramer's $V \approx 0.36$ in train
+          association we report (Cram\'{e}r's $V \approx 0.36$ in train
           rising to $\approx 0.54$ in test) persists inside
           component-safe splits, and is a residual shortcut channel
           the audit exposes but does not remove. Harmonisation
@@ -2630,8 +2642,10 @@ about data provenance and measured both links of that dependency.
 Random image-level evaluation overstates ADNI1 AUROC by \AdniGapTotal{}
 on the primary arm (paired-seed interval \AdniGapCI{} at $n=5$,
 descriptive), and the gap survives every pre-specified variation of
-cohort, backbone, converter rule, acquisition type and input
-dimensionality (Figure~\ref{fig:arm_forest}).
+cohort, backbone, converter rule and acquisition type
+(Figure~\ref{fig:arm_forest}). Input dimensionality is the one
+variation we do not report: the volumetric arm is released but
+unrun (\S\ref{sec:limitations}).
 
 Two controlled interventions locate the mechanism. Injecting
 contaminated test scans while holding the training set fixed gives
