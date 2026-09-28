@@ -28,6 +28,8 @@ Usage
 from __future__ import annotations
 
 import argparse
+import csv
+import json
 import re
 import subprocess
 import sys
@@ -158,6 +160,48 @@ def main() -> int:
     used_pending = sorted(n for n in pending if f"\\{n}" in text)
     r.check("no manuscript number renders as ??", not used_pending,
             f"still pending: {used_pending}")
+
+    # ── Release artefacts the Data availability statement promises ──────
+    # The statement named three tiers while release/ held two, and nothing
+    # noticed for months: the claim and the directory are checked against each
+    # other here so a promise cannot outlive the file it describes.
+    manifest_path = ROOT / "release" / "RELEASE_MANIFEST.json"
+    if not manifest_path.is_file():
+        r.check("release manifest exists", False, str(manifest_path))
+    else:
+        rel = json.loads(manifest_path.read_text(encoding="utf-8"))
+        shipped = rel.get("tiers", {})
+        for tier in ("tier1_public_benchmark", "tier2_oasis1", "tier3_adni1"):
+            r.check(f"release ships {tier}", tier in shipped,
+                    "the Data availability statement promises this tier")
+        # Every row count in the manifest must correspond to a file on disk.
+        absent = [f"{tier}/{name}.csv" for tier, files in shipped.items()
+                  for name in files
+                  if not (ROOT / "release" / tier / f"{name}.csv").is_file()]
+        r.check("every file the manifest counts exists", not absent, f"missing: {absent}")
+        # And the converse: a released file the manifest does not count is an
+        # artefact nobody can interpret. A rebuild on an incomplete checkout
+        # dropped 1,582 near-duplicate pairs from the manifest this way.
+        counted = {f"{tier}/{name}.csv" for tier, files in shipped.items() for name in files}
+        on_disk = {str(p.relative_to(ROOT / "release"))
+                   for p in (ROOT / "release").rglob("*.csv")}
+        uncounted = sorted(on_disk - counted)
+        r.check("every released file is counted by the manifest", not uncounted,
+                f"uncounted: {uncounted}")
+        # The ADNI tier is the one under a data-use agreement, so its columns
+        # are re-checked on the released files rather than trusted to the
+        # script that wrote them.
+        t3_allowed = {"subject_id_hash", "component_id", "component_size",
+                      "binary_label", "scanner_field_strength", "modality", "split"}
+        t3_files = sorted((ROOT / "release" / "tier3_adni1").glob("*.csv"))
+        offenders = []
+        for path in t3_files:
+            with path.open(encoding="utf-8") as fh:
+                header = set(next(csv.reader(fh), []))
+            if header - t3_allowed:
+                offenders.append(f"{path.name}: {sorted(header - t3_allowed)}")
+        r.check(f"ADNI release carries only de-identified columns ({len(t3_files)} files)",
+                bool(t3_files) and not offenders, "; ".join(offenders) or "no files found")
 
     # ── Build ───────────────────────────────────────────────────────────
     if args.build:

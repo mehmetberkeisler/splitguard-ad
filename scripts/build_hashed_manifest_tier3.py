@@ -49,6 +49,7 @@ import hashlib
 import json
 import os
 from collections import defaultdict
+from functools import lru_cache
 from pathlib import Path
 
 
@@ -91,11 +92,17 @@ DROPPED_FIELDS = {
 }
 
 
+@lru_cache(maxsize=None)
 def hash_subject_id(subject_id: str, salt: str) -> str:
     """PBKDF2-HMAC-SHA256 of the subject_id under a secret per-release salt.
 
     Key stretching is load-bearing, not decorative: ADNI PTIDs occupy a
     ~10^7 space, so a single-round digest would be enumerable in seconds.
+
+    The derivation is deterministic, so it is memoised: releasing five seeds of
+    the same cohort otherwise re-derives each of the 220 participants five
+    times at 600,000 iterations apiece, which costs minutes and changes
+    nothing. The cache lives for one process and never touches disk.
     """
     derived = hashlib.pbkdf2_hmac(
         "sha256",

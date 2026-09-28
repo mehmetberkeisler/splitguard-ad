@@ -2799,12 +2799,18 @@ than by convention: the release builder refuses to emit any column on
 its per-tier restricted list. \textbf{Tier 3 (ADNI1)}: under the LONI/ADNI data-use
 agreement, participant-level identifiers cannot be redistributed.
 For this tier the release includes \emph{hashed} component-safe
-manifests: each row carries a PBKDF2-HMAC-SHA256 derivation of the
+manifests, one per frozen split of the five-seed primary arm
+($220$ rows each, one row per single-subject component): each row
+carries a PBKDF2-HMAC-SHA256 derivation of the
 subject identifier ($600{,}000$ iterations under a secret per-release
 salt), an integer component-size summary, the binary
 CN/AD label, and the non-identifying acquisition fields
 (\texttt{scanner\_field\_strength}, modality flag), but no
-participant-level identifiers, dates, or image paths. Key stretching rather than a plain digest is required here: ADNI PTIDs
+participant-level identifiers, dates, or image paths. The
+converter-inclusive arm is not released in this form, because a
+converting participant contributes both CN and AD scans to one
+component and the aggregation refuses a component whose label is not
+uniform rather than choosing one for it. Key stretching rather than a plain digest is required here: ADNI PTIDs
 are drawn from a space of roughly $10^{7}$ candidates, so a
 single-round hash of one is invertible by enumeration in under a
 second, and the salt cannot be published for the same reason. A
@@ -2823,8 +2829,9 @@ hashed manifests, aggregate result tables, and rebuild scripts are
 released for that tier.
 
 \paragraph{Reproducibility boundary of the reported runs}
-Every AUROC in this manuscript comes from one execution of
-\texttt{scripts/gpu\_program.py} in a single code state, on one GPU,
+Every AUROC in this manuscript comes from
+\texttt{scripts/gpu\_program.py} in a single code state, on the two
+GPUs named in the Acknowledgements,
 with seeded samplers, per-worker augmentation seeding and deterministic
 cuDNN kernels; the environment (driver, CUDA, cuDNN and every package
 version) is recorded with the run. Each run persists its per-image test predictions.
