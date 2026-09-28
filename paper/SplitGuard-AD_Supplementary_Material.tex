@@ -67,7 +67,8 @@ Weight decay & $10^{-2}$ & $10^{-2}$ & $10^{-2}$ \\
 Batch size & 32 & 32 & 16 \\
 Loss & inverse-freq BCE & inverse-freq BCE & inverse-freq BCE \\
 Seed array & $\{0,1,2,3,42\}$ & $\{0,1,2,3,42\}$ & $\{0,1,2,3,4\}$ \\
-Backend (every arm) & CUDA H100 & CUDA H100 & CUDA H100 \\
+Backend & CUDA H100 & CUDA H100 & CUDA H100; RTX PRO 4500 \\
+         &          &          & for the dose-response matrix \\
 Mixed precision & AMP & off & off \\
 \bottomrule
 \end{tabular}

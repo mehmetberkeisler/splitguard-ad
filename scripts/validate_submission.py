@@ -145,10 +145,10 @@ def main() -> int:
             f"undefined: {sorted(refs - labels)}")
 
     # Every float has to be referred to somewhere, or the reader never meets it.
-    float_labels = {m.group(1) for m in re.finditer(r"\\label\{((?:fig|tab):[^}]*)\}", text)}
-    float_labels |= {m.group(1) for p in sorted(TABLE_DIR.glob("*.tex"))
-                     for m in re.finditer(r"\\label\{((?:fig|tab):[^}]*)\}",
-                                          strip_comments(p.read_text(encoding="utf-8")))}
+    # Both documents, since the supplement has floats of its own and a table
+    # there went unintroduced for exactly this reason.
+    float_labels = {m.group(1) for s in label_sources
+                    for m in re.finditer(r"\\label\{((?:fig|tab):[^}]*)\}", s)}
     orphans = sorted(float_labels - refs)
     r.check("every figure and table is referenced in the text", not orphans,
             f"never referenced: {orphans}")
