@@ -86,7 +86,8 @@ def build_inflation_table() -> str:
             f"  {label} & "
             f"{fmt_ci(w['point_mean'], w['ci_lo'], w['ci_hi'])} & "
             f"{ntest_w:.0f} & "
-            f"{contam_w_mean:.1f}\\% & "
+            f"{contam_w_mean:.1f}\\% \\\\",
+            f"  {label} & "
             f"{fmt_ci(n['point_mean'], n['ci_lo'], n['ci_hi'])} & "
             f"{ntest_n:.0f} & "
             f"{contam_n_mean:.1f}\\% \\\\"
@@ -107,38 +108,48 @@ def build_inflation_table() -> str:
         "\\caption{ADNI inflation gap, 5 seeds, 15 epochs, ResNet-18, coronal centre slice. "
         "Numbers are mean AUROC with paired-seed bootstrap 95\\% CI (B=10{,}000). "
         "``Test contam.'' = mean \\% of test subjects also appearing in the train partition. "
-        "The MT1-excluded column drops the 28 magnetization-transfer T1 scans for a sequence-homogeneity sensitivity check.}",
+        "The lower panel drops the 28 magnetization-transfer T1 scans for a sequence-homogeneity sensitivity check.}",
         "\\label{tab:adni_inflation_gap}",
-        # 7 columns do not fit the single-column print width unscaled.
-        "\\resizebox{\\linewidth}{!}{%",
-        "\\begin{tabular}{lrrrrrr}",
+        "\\footnotesize",
+        "\\begin{tabular}{@{}lrrr@{}}",
         "  \\toprule",
-        "   & \\multicolumn{3}{c}{\\textbf{All scans (incl. MT1)}} & \\multicolumn{3}{c}{\\textbf{MT1 excluded}} \\\\",
-        "  \\cmidrule(lr){2-4} \\cmidrule(lr){5-7}",
-        "  Protocol & AUROC [95\\% CI] & $n_{\\text{test}}$ & Test contam. & AUROC [95\\% CI] & $n_{\\text{test}}$ & Test contam. \\\\",
+        "  Protocol & AUROC [95\\% CI] & $n_{\\text{test}}$ & Test contam. \\\\",
         "  \\midrule",
-        row("Random (leaky)", "random"),
-        row("Subject-only",   "subject_only"),
-        row("Component-safe (\\textsc{SplitGuard})", "component_safe"),
-        "  \\midrule",
-        "  \\multicolumn{7}{l}{\\textit{Inflation-gap decomposition (paired bootstrap):}} \\\\",
+        "  \\multicolumn{4}{@{}l}{\\textit{All scans (MT1 included):}} \\\\",
+        row("Random (leaky)", "random")[0],
+        row("Subject-only",   "subject_only")[0],
+        row("Component-safe (\\textsc{SplitGuard})", "component_safe")[0],
         (
-            f"  Total (random $-$ component-safe) & "
-            f"{fmt_ci(g_w['point_estimate'], g_w['ci_lo'], g_w['ci_hi'])} & & & "
+            f"  Total gap (random $-$ component-safe) & "
+            f"{fmt_ci(g_w['point_estimate'], g_w['ci_lo'], g_w['ci_hi'])} & & \\\\"
+        ),
+        (
+            f"  Subject-leakage (random $-$ subject-only) & "
+            f"{fmt_ci(sl_w['point_estimate'], sl_w['ci_lo'], sl_w['ci_hi'])} & & \\\\"
+        ),
+        (
+            f"  Component-marginal (subject-only $-$ comp.-safe) & "
+            f"{fmt_ci(cm_w['point_estimate'], cm_w['ci_lo'], cm_w['ci_hi'])} & & \\\\"
+        ),
+        "  \\midrule",
+        "  \\multicolumn{4}{@{}l}{\\textit{MT1 acquisitions excluded:}} \\\\",
+        row("Random (leaky)", "random")[1],
+        row("Subject-only",   "subject_only")[1],
+        row("Component-safe (\\textsc{SplitGuard})", "component_safe")[1],
+        (
+            f"  Total gap (random $-$ component-safe) & "
             f"{fmt_ci(g_n['point_estimate'], g_n['ci_lo'], g_n['ci_hi'])} & & \\\\"
         ),
         (
             f"  Subject-leakage (random $-$ subject-only) & "
-            f"{fmt_ci(sl_w['point_estimate'], sl_w['ci_lo'], sl_w['ci_hi'])} & & & "
             f"{fmt_ci(sl_n['point_estimate'], sl_n['ci_lo'], sl_n['ci_hi'])} & & \\\\"
         ),
         (
             f"  Component-marginal (subject-only $-$ comp.-safe) & "
-            f"{fmt_ci(cm_w['point_estimate'], cm_w['ci_lo'], cm_w['ci_hi'])} & & & "
             f"{fmt_ci(cm_n['point_estimate'], cm_n['ci_lo'], cm_n['ci_hi'])} & & \\\\"
         ),
         "  \\bottomrule",
-        "\\end{tabular}}",
+        "\\end{tabular}",
         "\\end{table}",
     ])
     return body

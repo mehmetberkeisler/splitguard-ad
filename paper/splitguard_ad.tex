@@ -2,11 +2,10 @@
 % SplitGuard-AD manuscript. Numbers that come from the GPU programme are
 % generated into tables/gpu_numbers.tex by scripts/gpu_postprocess.py.
 % ───────────────────────────────────────────────────────────────────────────
-\documentclass[3p,times,11pt]{elsarticle}
+\documentclass[pdflatex,sn-vancouver-num]{sn-jnl}
 
 % Packages
 \usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
@@ -25,8 +24,6 @@
 \graphicspath{{./}}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
-\usepackage{url}
-\usepackage[hidelinks]{hyperref}
 
 % Float placement: in the original elsarticle 3p layout figures kept
 % getting punted to the end. The two-line fix is (a) load the `float`
@@ -64,8 +61,6 @@
 % punch out of the right margin in single-column mode.
 \sloppy
 
-% \journal{} intentionally omitted; the "Preprint submitted to ..." footer
-% is suppressed below via \ps@pprintTitle for a venue-neutral first page.
 
 % ── Macros ────────────────────────────────────────────────────────────────────
 \newcommand{\SGA}{\textsc{SplitGuard-AD}}
@@ -84,18 +79,16 @@
 % renders as ?? rather than as a stale value.
 \input{tables/gpu_numbers}
 
+% As in Springer's own sn-article sample: let a short page stay short rather
+% than overfill the block.
+\raggedbottom
+
 \begin{document}
 
-% Suppress the elsarticle first-page footer ("Preprint submitted to ...")
-% so the first page is venue-neutral.
-\makeatletter
-\def\ps@pprintTitle{\let\@oddhead\@empty\let\@evenhead\@empty\let\@oddfoot\@empty\let\@evenfoot\@empty}
-\makeatother
-
-\begin{frontmatter}
 
 % ── Title ─────────────────────────────────────────────────────────────────────
-\title{Data Provenance and Evaluation Validity in Alzheimer's Disease
+\title[Data Provenance and Evaluation Validity in AD MRI Deep Learning]{Data
+       Provenance and Evaluation Validity in Alzheimer's Disease
        MRI Deep Learning: Controlled Leakage and
        Provenance-Degradation Experiments (SplitGuard-AD)}
 
@@ -103,35 +96,26 @@
 % Affiliation order: Medipol School of Medicine (a), Medipol Engineering (b),
 % ETH Zurich (c) — Medipol grouped first because the corresponding author
 % holds a dual home-institution appointment (Medicine + Engineering).
-\author[inst1,inst2]{Mehmet Berke Isler\corref{cor1}}
-\ead{mehmetberkeisler@gmail.com}
-\cortext[cor1]{Corresponding author}
+\author*[1,2]{\fnm{Mehmet Berke} \sur{Isler}}\email{mehmetberkeisler@gmail.com}
 
-\author[inst3]{Irem Ilter}
-\ead{ilteri@student.ethz.ch}
+\author[3]{\fnm{Irem} \sur{Ilter}}\email{ilteri@student.ethz.ch}
 
-\author[inst2]{Mehmet Kemal Ozdemir}
-\ead{mkozdemir@medipol.edu.tr}
+\author[2]{\fnm{Mehmet Kemal} \sur{Ozdemir}}\email{mkozdemir@medipol.edu.tr}
 
-\affiliation[inst1]{organization={International School of Medicine,
-                                  Istanbul Medipol University},
-                    city={Istanbul},
-                    country={Türkiye}}
+\affil*[1]{\orgdiv{International School of Medicine},
+           \orgname{Istanbul Medipol University},
+           \orgaddress{\city{Istanbul}, \country{Türkiye}}}
 
-\affiliation[inst2]{organization={Department of Computer Engineering,
-                                  School of Engineering and Natural Sciences,
-                                  Istanbul Medipol University},
-                    city={Istanbul},
-                    country={Türkiye}}
+\affil[2]{\orgdiv{Department of Computer Engineering, School of Engineering
+          and Natural Sciences}, \orgname{Istanbul Medipol University},
+          \orgaddress{\city{Istanbul}, \country{Türkiye}}}
 
-\affiliation[inst3]{organization={Institute of Neuroinformatics,
-                                  ETH Zurich and University of Zurich},
-                    city={Zurich},
-                    country={Switzerland}}
+\affil[3]{\orgdiv{Institute of Neuroinformatics},
+          \orgname{ETH Zurich and University of Zurich},
+          \orgaddress{\city{Zurich}, \country{Switzerland}}}
 
 % ── Abstract ──────────────────────────────────────────────────────────────────
-\begin{abstract}
-Deep-learning models for Alzheimer's disease (AD) classification from
+\abstract{Deep-learning models for Alzheimer's disease (AD) classification from
 structural MRI routinely report near-perfect benchmark performance
 that does not survive patient-independent evaluation. We treat this as
 a data-provenance problem and measure both links of the dependency. On
@@ -158,23 +142,18 @@ visit key. At $0.90$ specificity the ADNI gap is \MissedPerThousand{}
 additional missed diagnoses per $1{,}000$ patients screened. Split
 manifests, component tables, provenance-recovery scripts and the
 rebuild pipeline are released under Apache-2.0.
-\end{abstract}
+}
 
 % ── Keywords ──────────────────────────────────────────────────────────────────
 % Target venue is the Journal of Imaging Informatics in Medicine
 % (Springer/SIIM), which does not use the Elsevier Highlights convention.
 % The former SplitGuard-AD_Highlights.txt is retired to archive/.
 % JIIM asks for 4-6 keywords; six are given below.
-\begin{keyword}
-patient-identity leakage \sep
-evaluation protocol \sep
-Alzheimer's disease \sep
-structural MRI \sep
-data provenance \sep
-reproducibility
-\end{keyword}
+\keywords{Patient-identity leakage, Evaluation protocol,
+          Alzheimer's disease, Structural MRI, Data provenance,
+          Reproducibility}
 
-\end{frontmatter}
+\maketitle
 
 
 % ══════════════════════════════════════════════════════════════════════════════
@@ -377,13 +356,14 @@ against that literature on the axes that separate them.
 
 \begin{table}[!ht]
 \centering
-\small
+\footnotesize
 \caption{What prior leakage studies establish, and what this paper
 adds. ``Dose'' is a measured relationship between the amount of
 contamination and the reported score, rather than a comparison of two
 endpoints. ``Provenance'' is whether the identifiers a protocol needs
 are treated as a variable rather than assumed.}
 \label{tab:related_work}
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{@{}lccccc@{}}
 \toprule
  & Inflation & Dose & Provenance & Observed & Split \\
@@ -606,7 +586,7 @@ per-cohort breakdown.
 
 \begin{table}[!ht]
 \centering
-\small
+\footnotesize
 \caption{Which edge rules actually fire, per dataset, counted from the
 released graph-audit artefacts. The final column is the one that matters
 for interpreting the component layer: an edge is \emph{load-bearing} only
@@ -620,7 +600,8 @@ subject identity is absent, corrupted, or inferred wrongly.
 \S\ref{sec:provenance_degradation} tests that claim directly by
 deleting subject identifiers at controlled rates.}
 \label{tab:edge_provenance}
-\begin{tabular}{@{}llrl@{}}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lp{3.3cm}rp{3.6cm}@{}}
 \toprule
 Dataset & Edge rule & Pairs joined & Load-bearing here? \\
 \midrule
@@ -628,7 +609,7 @@ ADNI1  & \texttt{same\_subject}     & 1{,}800 & Yes (sole component-forming rule
 ADNI1  & \texttt{same\_session}     & 223 & No (subsumed by subject) \\
 ADNI1  & \texttt{same\_series\_uid} (source volume) & 209 & No (subsumed by subject) \\
 ADNI1  & \texttt{same\_acq\_date}   & 222 & No (subsumed by subject) \\
-\multicolumn{4}{@{}l@{}}{\footnotesize\quad $267/382$ ADNI components are formed by \texttt{same\_subject} alone; in the other $115$ the redundant rules also fire.} \\
+\multicolumn{4}{@{}p{\linewidth}@{}}{\footnotesize $267/382$ ADNI components are formed by \texttt{same\_subject} alone; in the other $115$ the redundant rules also fire.} \\
 \midrule
 Kaggle & \texttt{same\_subject} (filename-inferred) & 6{,}076 & Fires, but the key is not participant identity \\
 Kaggle & \texttt{exact\_sha256\_duplicate} & 0 & No pairs found \\
@@ -801,7 +782,7 @@ according to the formal criteria in Table~\ref{tab:go_nogo}.
 
 \begin{table}[!ht]
 \centering
-\small
+\footnotesize
 \caption{GO/NO-GO decision criteria of the released \SGA{} audit
 (\texttt{scripts/audit\_adni\_splits.py}). We distinguish what the
 released gate \emph{enforces} from what it \emph{reports} and from what
@@ -814,7 +795,8 @@ the pipeline. The gate certifies partition disjointness of the split
 manifest, \emph{not} site-generalisability, scanner-shift robustness,
 calibration, fairness, or clinical deployment readiness.}
 \label{tab:go_nogo}
-\begin{tabular}{p{4.6cm}p{2.4cm}p{6.6cm}}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{p{3.9cm}p{2.1cm}p{5.8cm}}
 \toprule
 \textbf{Check} & \textbf{Status in v1} & \textbf{Behaviour} \\
 \midrule
@@ -936,7 +918,7 @@ supports.
 
 \begin{table}[!ht]
 \centering
-\small
+\footnotesize
 \caption{Every grouping rule the Tier-1 release supports, measured
 against the recovered participant identities over five seeds.
 Contamination is the share of test images whose participant also
@@ -1199,6 +1181,33 @@ produces train/validation/test partitions of 795/165/165 with zero
 subject or component overlap across partitions. Figure~\ref{fig:adni_dataflow} summarises the
 end-to-end pipeline from the 10 LONI IDA archive zips through the
 slice-cached manifest to the per-seed splits.
+
+\subsection{Use of large-language-model tools}
+\label{sec:llm_use}
+The journal asks that any use of a large language model (LLM) be
+documented in the Methods, so we state it here rather than only in the
+Declarations. LLM-based coding assistants were used throughout the
+implementation of the released software: the training, audit, split-generation
+and analysis scripts, the orchestration and verification tooling, and the
+figure and table generators were written and revised with such assistance,
+as were drafts of this manuscript's prose. They were also used to find
+defects, one of which is worth naming because it is the kind of error this
+paper is about: the volumetric trainer computed $1 - \mathrm{AUROC}$ from a
+descending rank sum, which would have selected the least-trained epoch of
+every volumetric run. That arm is not reported here (\S\ref{sec:limitations}),
+and the released code carries a regression test pinning the trainer's metric
+to the analysis pipeline's.
+
+What the tools did not do is decide anything. The study design, the
+protocol definitions, the choice of cohorts and arms, the pre-specification of
+the robustness arms, and the interpretation of every result are the authors'.
+No number in this manuscript was produced or altered by an LLM: every
+reported quantity is computed by the released scripts from the released
+manifests, and \texttt{scripts/verify\_paper\_numbers.py} re-checks each of
+them against the artefact it comes from, so a value that an LLM had
+introduced into the text would fail that check rather than survive it. No
+text, data or citation was accepted without author verification, and the
+authors take full responsibility for the content of this publication.
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Results}
@@ -2737,12 +2746,14 @@ tables are aggregate, and participant identifiers in the Tier-3
 manifests are replaced by a PBKDF2 derivation under a secret salt.
 
 \paragraph*{Use of generative AI}
-During the preparation of this work the authors used large-language-model
-tools for language polishing and formatting assistance. After using
-these tools, the authors reviewed and edited the content as needed and
-take full responsibility for the content of the publication. No
-component of the scientific analysis, experimental design, or numerical
-results was produced by generative AI.
+Large-language-model coding assistants were used to implement and revise
+the released software and to draft manuscript prose;
+\S\ref{sec:llm_use} documents this in the Methods, as the journal
+requires, and states what the tools did and did not do. The study design,
+the protocol definitions and the interpretation of every result are the
+authors'; no reported number was produced or altered by an LLM. The
+authors reviewed and edited all such output and take full responsibility
+for the content of this publication.
 
 \paragraph*{Author contributions}
 \textbf{Mehmet Berke Isler:} Conceptualization, Methodology,
@@ -2853,7 +2864,6 @@ and (S6) the sex-stratified ADNI analysis.
 
 % ══════════════════════════════════════════════════════════════════════════════
 \setlength{\bibsep}{1.5pt plus 0.5pt minus 0.5pt}
-\bibliographystyle{elsarticle-num}
 \bibliography{references}
 
 \end{document}

@@ -287,6 +287,30 @@ The numbers a figure draws come from `reports/`, not from the figure script, so
 `scripts/verify_paper_numbers.py` holds the manuscript to the same artefacts
 regardless of which matplotlib drew them.
 
+## Building the manuscript
+
+The manuscript targets the Journal of Imaging Informatics in Medicine and uses
+Springer Nature's `sn-jnl` class. Springer distributes that class under its own
+terms, so it is fetched rather than redistributed here:
+
+```bash
+curl -sL -o sn.zip "https://cms-resources.apps.public.k8s.springernature.io/springer-cms/rest/v1/content/18782940/data/v12"
+unzip -j sn.zip 'sn-article-template/sn-jnl.cls' 'sn-article-template/bst/*.bst' -d paper/
+```
+
+Then build and check both documents:
+
+```bash
+python3 scripts/verify_paper_numbers.py          # every number against its artefact
+python3 scripts/validate_submission.py --build   # structure, declarations, refs, margins
+```
+
+`validate_submission.py` encodes the journal's published requirements: abstract
+length, keyword count, section order, the declarations it asks for, LLM use
+documented in the Methods, a reference list that resolves both ways, no float
+that the text never mentions, no number still rendering as `??`, and no line
+running into the margin in either document.
+
 ## Scripts that support work outside this paper
 
 Four scripts in `scripts/` produce results the manuscript does not report, and

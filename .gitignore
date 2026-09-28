@@ -133,6 +133,9 @@ download.zip.txt
 # stays local is the internal planning record (Turkish decision register,
 # framework anatomy), superseded working drafts, and the raster duplicates of
 # figures that ship as vector PDFs.
+# Springer Nature ships sn-jnl.cls and its .bst files under its own terms, so
+# they are fetched rather than redistributed here (see README, "Building the
+# manuscript"). The paper/* rule below already excludes them.
 paper/*
 !paper/tables/
 paper/tables/*

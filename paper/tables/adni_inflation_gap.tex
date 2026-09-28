@@ -2,23 +2,28 @@
 % Do not hand-edit; regenerate from the bootstrap JSONs.
 \begin{table}[!ht]
 \centering
-\caption{ADNI inflation gap, 5 seeds, 15 epochs, ResNet-18, coronal centre slice. Numbers are mean AUROC with paired-seed bootstrap 95\% CI (B=10{,}000). ``Test contam.'' = mean \% of test subjects also appearing in the train partition. The MT1-excluded column drops the 28 magnetization-transfer T1 scans for a sequence-homogeneity sensitivity check.}
+\caption{ADNI inflation gap, 5 seeds, 15 epochs, ResNet-18, coronal centre slice. Numbers are mean AUROC with paired-seed bootstrap 95\% CI (B=10{,}000). ``Test contam.'' = mean \% of test subjects also appearing in the train partition. The lower panel drops the 28 magnetization-transfer T1 scans for a sequence-homogeneity sensitivity check.}
 \label{tab:adni_inflation_gap}
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{lrrrrrr}
+\footnotesize
+\begin{tabular}{@{}lrrr@{}}
   \toprule
-   & \multicolumn{3}{c}{\textbf{All scans (incl. MT1)}} & \multicolumn{3}{c}{\textbf{MT1 excluded}} \\
-  \cmidrule(lr){2-4} \cmidrule(lr){5-7}
-  Protocol & AUROC [95\% CI] & $n_{\text{test}}$ & Test contam. & AUROC [95\% CI] & $n_{\text{test}}$ & Test contam. \\
+  Protocol & AUROC [95\% CI] & $n_{\text{test}}$ & Test contam. \\
   \midrule
-  Random (leaky) & 0.947 [0.926, 0.965] & 169 & 99.7\% & 0.960 [0.947, 0.973] & 168 & 99.7\% \\
-  Subject-only & 0.837 [0.810, 0.862] & 169 & 0.0\% & 0.833 [0.805, 0.857] & 168 & 0.0\% \\
-  Component-safe (\textsc{SplitGuard}) & 0.829 [0.813, 0.846] & 165 & 0.0\% & 0.831 [0.810, 0.855] & 163 & 0.0\% \\
+  \multicolumn{4}{@{}l}{\textit{All scans (MT1 included):}} \\
+  Random (leaky) & 0.947 [0.926, 0.965] & 169 & 99.7\% \\
+  Subject-only & 0.837 [0.810, 0.862] & 169 & 0.0\% \\
+  Component-safe (\textsc{SplitGuard}) & 0.829 [0.813, 0.846] & 165 & 0.0\% \\
+  Total gap (random $-$ component-safe) & 0.118 [0.096, 0.145] & & \\
+  Subject-leakage (random $-$ subject-only) & 0.110 [0.086, 0.139] & & \\
+  Component-marginal (subject-only $-$ comp.-safe) & 0.008 [-0.033, 0.042] & & \\
   \midrule
-  \multicolumn{7}{l}{\textit{Inflation-gap decomposition (paired bootstrap):}} \\
-  Total (random $-$ component-safe) & 0.118 [0.096, 0.145] & & & 0.128 [0.097, 0.159] & & \\
-  Subject-leakage (random $-$ subject-only) & 0.110 [0.086, 0.139] & & & 0.127 [0.103, 0.154] & & \\
-  Component-marginal (subject-only $-$ comp.-safe) & 0.008 [-0.033, 0.042] & & & 0.002 [-0.017, 0.028] & & \\
+  \multicolumn{4}{@{}l}{\textit{MT1 acquisitions excluded:}} \\
+  Random (leaky) & 0.960 [0.947, 0.973] & 168 & 99.7\% \\
+  Subject-only & 0.833 [0.805, 0.857] & 168 & 0.0\% \\
+  Component-safe (\textsc{SplitGuard}) & 0.831 [0.810, 0.855] & 163 & 0.0\% \\
+  Total gap (random $-$ component-safe) & 0.128 [0.097, 0.159] & & \\
+  Subject-leakage (random $-$ subject-only) & 0.127 [0.103, 0.154] & & \\
+  Component-marginal (subject-only $-$ comp.-safe) & 0.002 [-0.017, 0.028] & & \\
   \bottomrule
-\end{tabular}}
+\end{tabular}
 \end{table}

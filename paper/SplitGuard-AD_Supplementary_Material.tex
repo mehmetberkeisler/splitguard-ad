@@ -87,6 +87,18 @@ $4$, AdamW at $10^{-4}$ with weight decay $10^{-2}$, $15$ epochs.
 \label{sm:operating_point}
 % ═══════════════════════════════════════════════════════════════════════════
 
+The clinical translation in the main text is anchored at a screening
+specificity of $0.90$. Table~\ref{tab:sm_operating_point} sweeps that choice,
+reporting sensitivity at four fixed specificities, specificity at three fixed
+sensitivities, and the Youden-$J$ point, for each of the three protocols and
+for the leaky-minus-honest difference. The anchor is not load-bearing: the
+leaky-minus-honest difference is positive at every one of the ten operating
+points in the sweep, from $+0.099$ (specificity at the Youden point) to
+$+0.424$ (sensitivity at specificity $0.95$), so no conclusion in the main text
+depends on where the threshold is placed. The magnitude does vary by roughly
+fourfold across the sweep, which is why the main text quotes one anchor
+explicitly rather than presenting the difference as a single number.
+
 \input{tables/operating_point}
 
 % ═══════════════════════════════════════════════════════════════════════════
@@ -236,7 +248,7 @@ row per scan), produced by
 Tier counts on the released cohort: \texttt{exact\_viscode} $1{,}695$
 ($77.7\%$), \texttt{date\_proximity} $485$ ($22.2\%$),
 \texttt{unresolved} $2$ ($0.1\%$). The companion summary
-(\texttt{reports/audits/adni/adni\_linkage\_audit\_summary.json})
+(\path{reports/audits/adni/adni_linkage_audit_summary.json})
 records the same counts plus the KDF parameters.
 
 We do not record a candidate-visit count or a minimum date-difference
