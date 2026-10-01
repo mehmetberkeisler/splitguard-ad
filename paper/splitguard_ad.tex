@@ -162,14 +162,18 @@ rebuild pipeline are released under Apache-2.0.
 \label{sec:intro}
 % ══════════════════════════════════════════════════════════════════════════════
 
-Alzheimer's disease (AD) is the leading cause of dementia worldwide
-and is a major target for medical-imaging deep learning. The
+Alzheimer's disease (AD) is the leading cause of dementia
+worldwide~\cite{who2023} and, under the NIA-AA diagnostic
+framework~\cite{jack2011}, a major target for medical-imaging deep
+learning. The
 modelling literature is mature: 3D residual networks~\cite{korolev2017residual}, hierarchical fully-convolutional
 architectures that jointly localise atrophy and
 classify~\cite{lian2020hierarchical}, and interpretability-aware
 frameworks validated against neuropathology~\cite{qiu2020explainable}.
-Hundreds of studies report near-perfect benchmark accuracy on
-structural MRI~\cite{who2023,jack2011,diagnostics2025}. These reports,
+Reported benchmark accuracy on structural MRI is routinely
+near-perfect: a recent scoping review of $44$ AD deep-learning studies
+finds a $19$-point accuracy gradient between studies judged at low and
+at high risk of leakage~\cite{diagnostics2025}. These reports,
 however, rarely survive patient-independent evaluations. The primary
 cause is \emph{patient-identity leakage} across train and test
 partitions, which arises in AD MRI through several distinct
@@ -316,10 +320,16 @@ from zero. It is released with the manifests and component tables behind
 the splits reported here.
 
 A subject-identity linear probe and a three-point degradation
-analysis localise the dominant mechanism to biometric leakage: both
-leaky and honest representations encode patient identity well above
-chance, and subject-only splitting alone removes most of the gap on
-every tier (\S\ref{sec:exp3_degrad}). The framework's value is
+analysis together point at biometric leakage, with the two kinds of
+evidence doing different work. The probe shows that both leaky and
+honest representations encode patient identity well above chance,
+which is a precondition for the shortcut and not evidence that it was
+taken: the probe's lift is the same under both protocols. The
+decomposition is what carries the causal weight, and it is available on
+the two tiers that have a subject-only protocol, where grouping by
+subject alone removes most of the gap ($0.110$ of the $0.118$ total on
+ADNI; \S\ref{sec:exp3_degrad}). OASIS-1 carries no such arm, so we do
+not claim the decomposition there. The framework's value is
 therefore not to make models \emph{forget} subject identity,
 which the representations preserve in either condition, but to
 deny models the opportunity to \emph{exploit} that identity at test
@@ -650,8 +660,11 @@ same-participant pairs, so merging its firings moves the Tier-1 test
 contamination from $70.0\%$ to $61.2\%$: real, and nowhere near a
 fix. At $d \leq 8$, where it recovers $82\%$ of adjacent-slice
 pairs, its $8{,}636$ firings merge the $6{,}400$ images into $27$
-components and join $1{,}343$ pairs carrying opposite labels, so the
-split stops separating anything at all. A rule with that shape
+components, so the split stops separating anything at all. A further
+$1{,}343$ of those firings join images carrying opposite labels and are
+refused rather than merged, because the splitter requires label-pure
+components: the rule is simultaneously too aggressive to split on and
+unable to act on a sixth of what it finds. A rule with that shape
 belongs in an audit report a human acts on, not in an automatic gate.
 
 We report the hash family and width explicitly because they are not
@@ -665,7 +678,12 @@ test partitions.
 \subsubsection{Component-safe split generation}
 Given target split ratios $r_\text{train} : r_\text{val} : r_\text{test}$
 and a class stratification target, \SGA{} assigns entire components to
-splits using a greedy bin-packing procedure seeded for reproducibility.
+splits by stratified subset-sum, seeded for reproducibility: within each
+stratum it selects the component subset whose sizes come closest to the
+validation target, then the test target from what remains, and leaves
+the rest to training. On Tier~1 the subset choice is an exact
+dynamic-programming solve; on ADNI it is the greedy descending-size
+variant of the same objective.
 The resulting split manifest is frozen as a CSV file and versioned; no
 training script may discover or modify splits at runtime.
 Algorithm~\ref{alg:splitguard} formalises the full procedure: leakage
@@ -705,21 +723,18 @@ RNG seed $s$
   \EndIf
 \EndFor
 \State $\{C_1, \ldots, C_k\} \gets$ connected components of $G = (V, E)$
-\State \textit{// Bin-pack components into partitions under class stratification}
-\State Initialise empty bins $B_\text{tr}, B_\text{val}, B_\text{te}$
+\State \textit{// Assign whole components, stratified, by subset-sum on size}
 \State $\text{rng} \gets \textsc{RandomGenerator}(s)$
-\State Sort components by $|C_i|$ descending; tie-break by class-balance deficit
-\For{$C_i$ in sorted order}
-  \State \textit{// Deficit for bin $B$, component $C_i$, target ratios $r$:}
-  \State \textit{// $\text{deficit}(B,C_i,r) = \sum_{\text{class } y}
-         \left|\,\frac{|B \cup C_i|_y}{|V| \cdot r_B}
-         - \frac{|V|_y}{|V|}\,\right|$,}
-  \State \textit{// i.e.\ sum over classes of the absolute deviation
-         from the cohort-wide class share, normalised to bin $B$'s
-         target ratio $r_B$.}
-  \State $B^\star \gets \arg\min_{B \in \{B_\text{tr}, B_\text{val}, B_\text{te}\}}$
-         $\text{deficit}(B, C_i, r)$
-  \State $B^\star \gets B^\star \cup C_i$
+\For{each stratum $S$ (class label, and on ADNI also field-strength bucket)}
+  \State Freeze a seeded shuffle rank on the components of $S$
+  \State Sort $S$ by $|C_i|$ descending, breaking ties on that rank
+  \State $n_\text{val} \gets \lfloor r_\text{val} \cdot |S| \rceil$;
+         $n_\text{te} \gets \lfloor r_\text{te} \cdot |S| \rceil$
+  \State $B_\text{val} \gets \textsc{ChooseSubset}(S, n_\text{val})$
+         \Comment{component sizes summing closest to the target}
+  \State $B_\text{te} \gets \textsc{ChooseSubset}(S \setminus B_\text{val}, n_\text{te})$
+  \State $B_\text{tr} \gets S \setminus (B_\text{val} \cup B_\text{te})$
+         \Comment{remainder, never chosen explicitly}
 \EndFor
 \State $\pi \gets$ assignment induced by $(B_\text{tr}, B_\text{val}, B_\text{te})$
 \State \textbf{return} $\pi$, audit report $\{$component sizes, class balance,
@@ -927,9 +942,9 @@ appears in training. The filename key, the only identifier the
 release provides, leaves seven test images in ten contaminated.
 Near-duplicate edges at $d \leq 4$ remove an eighth of that; at
 $d \leq 8$ the graph collapses ($8{,}636$ pairs merge the corpus into
-$27$ components, the largest holding $3{,}117$ images, and $1{,}343$
-of the merged pairs join images with opposite labels), which is a
-different failure rather than a fix. Only the recovered participant
+$27$ components, the largest holding $3{,}117$ images, while a further
+$1{,}343$ firings join opposite-label images and are refused rather than
+merged), which is a different failure rather than a fix. Only the recovered participant
 identity yields a clean split.}
 \label{tab:tier1_rules}
 \begin{tabular}{@{}lrrlr@{}}
@@ -1095,14 +1110,18 @@ excluded from the primary arm and re-included in the sensitivity arm
 
 Diagnosis labels are taken from the ADNI diagnostic summary table
 (\texttt{DXSUM\_PDXCONV\_ADNIALL}) under a phase-aware visit-level
-mapping. ADNI2--ADNI4 visits use the canonical \texttt{DIAGNOSIS}
-code (1=CN, 2=MCI, 3=AD) with longitudinal \texttt{DXCHANGE}
-transitions collapsed to the destination state. ADNI1 visits, which
-lack a single \texttt{DIAGNOSIS} code in this export, are resolved
-through the mutually exclusive legacy flags \texttt{DXAD},
-\texttt{DXMCI}, \texttt{DXNORM} (the ADNI1 case report form encodes
-diagnosis across three Boolean indicators rather than one categorical
-field). Scan-to-visit alignment uses a 180-day date-proximity join
+mapping. Every visit in the export we use carries the canonical
+\texttt{DIAGNOSIS} code (1=CN, 2=MCI, 3=AD), and all $2{,}180$ resolved
+labels in the released manifest come from it
+(\texttt{label\_source=DIAGNOSIS}). The released builder also
+implements two fallbacks for exports that differ from ours: a
+longitudinal \texttt{DXCHANGE} collapse to the destination state, and
+the mutually exclusive ADNI1 legacy flags \texttt{DXAD},
+\texttt{DXMCI}, \texttt{DXNORM}, which some ADNI1 case report forms
+use instead of one categorical field. Neither fallback fires on this
+export, which has no \texttt{DXCHANGE} column at all, so neither
+contributes a label reported here; we describe them because they are in
+the released code, not because they shaped these results. Scan-to-visit alignment uses a 180-day date-proximity join
 through the MRI metadata table, with a documented date-only fallback
 when the viscode-keyed lookup fails. The full mapping rule and edge-case
 handling are pre-specified before any model training; the resulting
@@ -1140,12 +1159,16 @@ single-channel PNG; this caching step is byte-identical to the
 volume-time computation in \S\ref{sec:data_oasis} but fits the full
 collection in 54\,MB rather than 77\,GB of NIfTI volumes. The leakage
 graph links scans sharing a subject identifier, a session identifier, a
-series UID, an MRI acquisition pipeline, or appearing across
-longitudinal follow-up visits; the 382-subject collection collapses
-into 382 single-subject components (mean 5.7 scans per component,
-range 4--11), so the frozen \SGA{} split is effectively a subject-stratified
-partition with additional safety against near-duplicate and
-series-level edges.
+series UID, or an acquisition date; these four rules fire on $1{,}800$,
+$223$, $209$ and $222$ pairs respectively. The ADNI builder computes no
+image-hash edges, by design and not by omission, so this tier carries no
+near-duplicate protection: that channel is measured on Tier~1, where the
+images are public and may be hashed and redistributed. The 382-subject
+collection collapses into 382 single-subject components (mean 5.7 scans
+per component, range 4--11), so the frozen \SGA{} split is effectively a
+subject-stratified partition with additional session-, series- and
+date-level edges that, on this cohort, every one of which is subsumed by
+the subject rule (\S\ref{sec:provenance_degradation}).
 
 The CN-vs-AD binary task universe excludes 768 MCI scans by
 construction (the binary task is cross-sectional, not longitudinal
@@ -1167,19 +1190,20 @@ gap in the sensitivity arm (\AdniConvGap{}) is \emph{larger} than in
 the primary arm (\AdniGapTotal{}), so the exclusion does not drive the
 headline result (Table~\ref{tab:adni_robustness}).
 Removing these $289$ scans leaves $1{,}123$ CN/AD scans. The frozen
-partitions contain $1{,}125$ scans, because two scans whose
+frozen split manifests carry $1{,}125$ rows, because two scans whose
 visit-level diagnosis did not resolve
-(\texttt{diagnosis\_group=unknown}, \S\ref{sec:data_adni}) were
-retained under the CN/AD label inherited from their single-subject
-component rather than dropped. Both are assigned to the training
-partition in all five seeds and therefore enter no reported test
-metric; we record them here rather than silently reconciling the
-count, and the released manifests flag them explicitly. The primary
-CN-vs-AD universe is thus $1{,}123$ diagnosis-resolved scans plus
-these two, across 220 single-subject components, equivalently 220 participants, since every component here contains exactly one
-subject; each frozen split
-produces train/validation/test partitions of 795/165/165 with zero
-subject or component overlap across partitions. Figure~\ref{fig:adni_dataflow} summarises the
+(\texttt{diagnosis\_group=unknown}, \S\ref{sec:data_adni}) are kept in
+the manifest and flagged there rather than deleted from it. They are
+not, however, evaluated: every trainer maps only CN and AD to a target
+and silently skips any other value, so the two rows enter no partition
+the model sees. The evaluated universe is therefore $1{,}123$ scans
+across 220 single-subject components, equivalently 220 participants,
+since every component here contains exactly one subject. Under
+component-safe splitting each frozen seed produces train/validation/test
+partitions of $793/165/165$ evaluated scans; the manifest row counts are
+two higher. We record the discrepancy rather than reconciling it
+silently, because a manifest row count and an evaluated scan count are
+different quantities and conflating them is how a cohort size drifts. Figure~\ref{fig:adni_dataflow} summarises the
 end-to-end pipeline from the 10 LONI IDA archive zips through the
 slice-cached manifest to the per-seed splits.
 
@@ -1438,7 +1462,7 @@ and coronal-centre-slice representation as
 same $220$-participant CN-vs-AD manifest ($1{,}125$ rows, of which
 $1{,}123$ are diagnosis-resolved; partition sizes differ
 slightly by protocol: $169/169/165$ test scans for Protocols~A, B
-and~C respectively, because the component-safe bin-packing cannot
+and~C respectively, because the component-safe subset-sum assignment cannot
 hit the target size exactly): Protocol~A randomly splits
 images 70/15/15 (the leaky protocol); Protocol~B partitions by subject
 70/15/15 without applying the leakage-graph component, series, or
@@ -1819,7 +1843,7 @@ components span $4$--$6$ scans (mean $4.65$), validation $7$--$9$
 (mean $7.50$) and test $5$--$7$ (mean $6.11$). Participants with
 longer longitudinal records are systematically routed away from
 training. Class balance survives this, because components are
-stratified by label before the bin-packing runs ($39.1\%$, $38.2\%$
+stratified by label before the subset-sum assignment runs ($39.1\%$, $38.2\%$
 and $40.0\%$ AD by image across the three partitions), but within each
 class the test partition is enriched for participants with more
 follow-up. That matters clinically: in this cohort AD participants
