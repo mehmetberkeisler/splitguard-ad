@@ -136,10 +136,11 @@ simulated: a widely used public 2D AD benchmark is, by content
 matching, a redistribution of $200$ OASIS-1 participants whose
 identifiers were replaced by a filename index that merges and splits
 them. Grouping by that index, the release's only identifier, still
-leaves $70\%$ of test images with a participant seen in training and
-\TierOneGapResidual{} AUROC of inflation. Upstream, $22\%$ of the ADNI
+leaves $70\%$ of test images with a participant seen in training; the
+AUROC consequence of that residual contamination,
+\TierOneGapResidual{}, is not resolved at five seeds. Upstream, $22\%$ of the ADNI
 labels rest on a $180$-day date-proximity join rather than an exact
-visit key. At $0.90$ specificity the ADNI gap is \MissedPerThousand{}
+visit key. At $0.90$ specificity the converter-inclusive ADNI gap is \MissedPerThousand{}
 additional missed diagnoses per $1{,}000$ patients screened. Split
 manifests, component tables, provenance-recovery scripts and the
 rebuild pipeline are released under Apache-2.0.
@@ -269,8 +270,10 @@ redistribution of $200$ OASIS-1 participants whose identifiers were
 replaced by a filename index that merges and splits them
 (\S\ref{sec:data_kaggle}). Grouping by that index, the strongest
 protocol its users can run, still leaves $70\%$ of the test images
-with a participant seen in training and \TierOneGapResidual{} AUROC of
-inflation standing (\S\ref{sec:exp1}). The deletion experiment above
+with a participant seen in training (\S\ref{sec:exp1}); the residual
+AUROC inflation this buys, \TierOneGapResidual{}, has an interval
+spanning zero at five seeds, so the contamination is the finding and
+its price is not. The deletion experiment above
 simulates provenance loss; this is a measured instance of it in a
 benchmark the field trains on.
 
@@ -299,7 +302,7 @@ reports \AdniSafeAUROC{}, an inflation gap of \AdniGapTotal{}
 (paired-seed interval \AdniGapCI{}, five seeds), replicated
 directionally on OASIS-1 and under a second backbone
 (\S\ref{sec:exp6_adni}). Re-expressed at a screening operating point
-of $0.90$ specificity, the same gap corresponds to
+of $0.90$ specificity, and measured on the converter-inclusive arm rather than the primary one, the gap corresponds to
 \MissedPerThousand{} additional missed diagnoses per $1{,}000$
 patients screened.
 
@@ -1224,9 +1227,18 @@ seed of five (Table~\ref{tab:tier1_truth}), and at seed $=42$ C$'$ is
 the more specific of the two while B$'$ is the more sensitive, which is
 what a threshold applied to a less separable score produces. The
 \TierOneGapResidual{} residual is therefore a five-seed mean and not a
-per-run guarantee; what the mechanism predicts, and what the data
-supports, is that grouping on a broken key leaves inflation standing on
-average, not that it leaves more in every run.
+per-run guarantee, and we hold it to the same standard as the ADNI
+component marginal rather than a softer one: its
+subject\,$\times$\,seed interval is $[-0.058, +0.113]$, which spans
+zero, exactly as ADNI's \AdniMarginal{} \AdniMarginalCI{} does. Both
+are unresolved at five seeds and we report both that way. What the
+Tier-1 tier establishes is therefore the \emph{contamination}, which is
+structural and needs no interval -- $70\%$ of test images share a
+participant with training under the release's own key -- not the AUROC
+consequence of that contamination, which these five seeds cannot pin
+down. The distinction matters because the contamination is what a
+practitioner can check and the AUROC consequence is what they would
+have to take on faith.
 
 \begin{figure}[!htbp]
 \centering
@@ -2083,18 +2095,29 @@ channel and no other. A naive split on a real cohort additionally leaks
 through slices of one volume, near-duplicates and re-acquisitions, none
 of which the slope sees.
 
-The two cohorts where we measured the total gap bear this out. Under
-random splitting, contamination is essentially complete on both: on
-ADNI1 because participants contribute about five scans each, and on
-Tier~1 because a participant's $32$ slices are all but certain to land
-on both sides of the split. The equation therefore predicts a drop of
+Two of the three cohorts bear this out, and the third does not; we give
+all three rather than the two that agree. Under random splitting,
+contamination is essentially complete on every one: on ADNI1 because
+participants contribute about five scans each, on Tier~1 because a
+participant's $32$ slices are all but certain to land on both sides of
+the split, and on OASIS-1 where $99.5\%$ of test subjects also appear in
+training. The equation therefore predicts a drop of
 at most $\DoseSlope{}$ on each, against a measured \AdniConvGap{} on the
 converter-inclusive ADNI1 arm the injected splits are built from and
 \TierOneGapTotal{} on Tier~1, and the larger shortfall on Tier~1
 is what one would expect where adjacent slices of one volume add a
 channel the slope does not price. On the converter-excluding primary
 arm the measured gap is \AdniGapTotal{}, which the predicted floor now
-matches to within $0.01$: the margin the floor leaves is a property of
+matches to within $0.01$. OASIS-1 is the case that does not fit: its
+contamination is as complete as the others' yet its gap is
+\OasisGapTotal{}, roughly a third of the predicted floor, so on that
+cohort the floor is not a floor. We take this as the boundary of the
+calibration rather than a refutation of it: OASIS-1 contributes five
+slices per participant from a single cross-sectional visit, so a
+contaminated test image resembles its training counterpart far less than
+a repeat visit of the same ADNI participant does, and the slope was
+fitted where repeat structure is the dominant form of overlap. The
+margin the floor leaves is therefore a property of
 the cohort it is applied to, not a guarantee, and on a cohort whose
 identity channel is the whole of its leakage the floor is the estimate. Used as a point estimate the
 equation would tell a reader their honest AUROC is higher than it is,
@@ -2232,9 +2255,20 @@ Protocol~C, against \ProvParticipantTenSubject{} of test
 \emph{participants} under Protocol~B. Read through
 Equation~\ref{eq:dose_response}, that is $+\ComposedTenSubject{}$ AUROC
 of expected optimism under Protocol~B against $+\ComposedTenSafe{}$
-under Protocol~C. The slope and the shares come from different arms of
-one code state (\S Declarations), which is one more reason to read
-the composition as an order of magnitude rather than a coefficient. Table~\ref{tab:provenance_degradation} reports the
+under Protocol~C. That composition under-predicts what the same
+experiment measures directly, and the comparison is worth stating
+because it bounds how much weight the chain carries: the provenance arm
+itself trains at every deletion level, and its test AUROC rises from
+$0.771$ at no loss to $0.866$ under subject-wise splitting and $0.829$
+under the component-safe protocol at $10\%$ loss, that is $+0.095$ and
+$+0.059$ against the two composed figures just given. The chain is low
+by rather more than a factor of two in both protocols. Two reasons are visible: the slope is fitted on
+a cohort whose contamination is varied with the training set held
+fixed, whereas deleting identifiers perturbs both sides, and the slope
+and the shares come from different arms of one code state
+(\S Declarations). We therefore read the composition as an order of
+magnitude and a lower bound, never as a coefficient, and we report the
+directly measured rise beside it rather than only the chain. Table~\ref{tab:provenance_degradation} reports the
 participant share $p$ alongside it, because that is what a split audit
 shows a reader.
 
@@ -2595,8 +2629,10 @@ participants to training at that same level. A widely used public
 benchmark shows the same failure without any intervention: it is
 OASIS-1 redistributed under an identifier that merges and splits
 participants, and a split that respects that identifier still leaves
-\TierOneGapResidual{} AUROC of inflation that nothing inside the
-release can reveal. A linear probe confirms that patient identity is
+$70\%$ of test images sharing a participant with training, a
+contamination nothing inside the release can reveal. Its AUROC price,
+\TierOneGapResidual{} on five seeds, is not resolved at that seed
+count. A linear probe confirms that patient identity is
 decodable far above chance, across sessions as well as within them,
 but that quantity is unchanged between leaky and honest protocols and
 therefore establishes decodability rather than causation; the causal
