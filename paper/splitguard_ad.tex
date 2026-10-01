@@ -263,7 +263,7 @@ each splitting protocol retains as provenance decays
 returns $36\%$ of test participants to the training partition, a roughly
 threefold amplification. A leakage graph that also carries session and series identifiers
 prevents $49\%$ of that residual leakage at $10\%$ loss and
-$31$--$37\%$ beyond it, while remaining exactly equivalent to
+$30$--$37\%$ beyond it, while remaining exactly equivalent to
 subject-wise splitting when provenance is intact. Both protocols are
 assigned by the same bin-packer, so the comparison isolates the
 grouping rather than the splitter. To our knowledge no prior study measures
@@ -785,7 +785,7 @@ verifying: (i)~zero component overlap across splits; (ii)~label
 distribution per split; (iii)~source/site/demographic association
 with label, reported as a per-axis Cram\'{e}r's $V$ between the audited
 covariate (site code extracted from ADNI \texttt{PTID}, scanner
-field strength, sex, age band) and the binary CN/AD label, computed
+field strength, sex) and the binary CN/AD label, computed
 per partition (a complementary axis to scanner-effect work such as
 Glocker~\etal~\cite{glocker2019scanner} and to harmonisation methods
 in the ComBat lineage~\cite{johnson2007combat,fortin2017combat,pomponio2020lifespan};
@@ -816,7 +816,7 @@ calibration, fairness, or clinical deployment readiness.}
 \toprule
 \textbf{Check} & \textbf{Status in v1} & \textbf{Behaviour} \\
 \midrule
-Subject overlap across partitions & \textbf{Blocking} & Any subject ID in $>1$ partition sets \texttt{passed=False}. \\
+Subject overlap across partitions & \textbf{Blocking} & Any non-blank subject ID in $>1$ partition sets \texttt{passed=False}; blank and \texttt{unknown} IDs are skipped, so a cohort without identifiers cannot pass by vacuity. \\
 Session overlap across partitions & \textbf{Blocking} & Any session ID in $>1$ partition sets \texttt{passed=False}. \\
 Component overlap across partitions & \textbf{Blocking} & Any component ID in $>1$ partition sets \texttt{passed=False}. \\
 \midrule
@@ -1184,8 +1184,11 @@ label, which conflates cross-sectional CN-vs-AD classification with
 progression-prediction. We adopt the cleaner option: exclude these
 $289$ scans from the primary arm and re-include them in a
 pre-specified sensitivity arm (\S\ref{sec:exp6_adni},
-``Sensitivity to converter exclusion''), reclassifying each
-mixed-label component to its CN-or-AD majority. The total inflation
+``Sensitivity to converter exclusion''), assigning each mixed-label
+component a CN-or-AD majority label for stratification only. No scan is
+relabelled: training and evaluation use each scan's own visit-level
+diagnosis throughout, so a converting participant contributes CN scans
+as CN and AD scans as AD within one component. The total inflation
 gap in the sensitivity arm (\AdniConvGap{}) is \emph{larger} than in
 the primary arm (\AdniGapTotal{}), so the exclusion does not drive the
 headline result (Table~\ref{tab:adni_robustness}).
@@ -1257,8 +1260,8 @@ sign consistency, the hierarchical interval, and last the paired-seed
 width.
 
 \paragraph{Training recipe and compute}
-All cohorts and both backbones share one recipe: ImageNet-pretrained
-ResNet-18 (or DenseNet-121 in the architecture arms),
+The three 2D cohorts and both 2D backbones share one recipe:
+ImageNet-pretrained ResNet-18 (or DenseNet-121 in the architecture arms),
 $3\!\times\!224\!\times\!224$ input with ImageNet mean/std
 normalisation, horizontal flip and $\pm 7^{\circ}$ rotation
 augmentation, AdamW with cosine annealing, weight decay $10^{-2}$,
@@ -1267,8 +1270,11 @@ Cohort-specific settings are learning rate $3\!\times\!10^{-4}$
 (Tier~1, OASIS-1) or $10^{-4}$ (ADNI); $30$, $20$ and $15$ epochs;
 batch size $32$ on Tier~1 and OASIS-1 and $16$ on ADNI; seeds
 $\{42,0,1,2,3\}$ on Tier~1 and OASIS-1 and $\{0,1,2,3,4\}$ on ADNI.
-The volumetric arm uses a 3D ResNet-18 on $128^3$ volumes, batch size
-$4$, $15$ epochs. Every run was executed in one code state with
+The volumetric arm departs from that recipe in three ways that matter
+for reading it: a 3D ResNet-18 on $128^3$ volumes at batch size $4$ for
+$15$ epochs, trained from random initialisation rather than ImageNet
+weights, on z-scored volumes with no augmentation. Tier~1 additionally
+trains under CUDA mixed precision, which the other arms do not use. Every run was executed in one code state with
 deterministic cuDNN kernels and seeded data loaders, on one NVIDIA H100
 except the dose-response matrix, rerun on an NVIDIA RTX PRO 4500, and the
 volumetric arm, run on an NVIDIA RTX 2000 Ada (\S Declarations); the full configuration is in Supplementary
@@ -1588,8 +1594,8 @@ The leaky level rises to $0.971$, against \AdniRandomAUROC{} in 2D,
 which is what a memorisable unit of one whole volume rather than one
 slice predicts. The honest level falls to $0.736$, against
 \AdniSafeAUROC{} in 2D, and that is not a leakage effect: this network
-is trained from scratch on $722$ volumes where the 2D arms fine-tune
-ImageNet features, so its honest performance is not a competitive
+is trained from scratch on $703$--$723$ volumes per run, where the 2D
+arms fine-tune ImageNet features, so its honest performance is not a competitive
 volumetric baseline and we do not offer it as one. The transferable
 quantity is the gap and not the level, here as everywhere else in this
 paper. The decomposition reproduces the 2D pattern: the subject layer
@@ -1677,8 +1683,8 @@ the same descriptive intervals. On Tier~1 the participant-safe
 protocol is the identity recovered in \S\ref{sec:data_kaggle}, not
 the release's own identifier, which is why its gap is larger here than
 the one a reader of that benchmark could measure. DenseNet-121
-replications are reported in \S\ref{sec:exp1},
-\S\ref{sec:exp5_oasis} and \S\ref{sec:exp6_adni}; the figure shows
+replications are reported in \S\ref{sec:exp5_oasis} (OASIS-1) and
+\S\ref{sec:exp6_adni} (ADNI); Tier~1 was run on ResNet-18 only; the figure shows
 ResNet-18 for visual parity with the rest of the paper.}
 \label{fig:cross_cohort}
 \end{figure}
@@ -2060,8 +2066,10 @@ not an artefact of the $0.90$ anchor: it holds across the sweep, and
 widens as the operating point tightens, which is the direction that
 matters for screening. Protocol~B crosses below Protocol~C near
 $0.95$, the same inversion the component marginal shows in
-Figure~\ref{fig:arm_forest}(b); Protocol~B's band is the widest of
-the three, so the component layer's apparent advantage over
+Figure~\ref{fig:arm_forest}(b); the two honest protocols' bands are wide
+and overlapping throughout (seed SD $0.08$--$0.12$ against $0.03$--$0.06$
+for the leaky protocol, B widest at the looser anchors and C widest at
+$0.95$), so the component layer's apparent advantage over
 subject-only splitting is not stable to the choice of anchor.}
 \label{fig:operating_point}
 \end{figure}
@@ -2355,7 +2363,7 @@ reproducing the equivalence reported in \S\ref{sec:leakage_graph}.
 They separate immediately thereafter: at $10\%$ identifier loss the
 leakage graph prevents $49\%$ of the participant leakage subject-wise
 splitting admits ($9.4$ versus $18.6$ straddling participants), and
-$31$--$37\%$ at higher loss rates.
+$30$--$37\%$ at higher loss rates.
 
 Both protocols are assigned by the same class-stratified bin-packer
 over their respective groupings, so the difference is attributable to
