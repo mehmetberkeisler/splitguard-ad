@@ -193,50 +193,44 @@ trained model recognises images from patients it has already
 analysed rather than generalising to new
 patients~\cite{wen2020,yagis2021,diagnostics2025}.
 
-That leakage inflates reported performance is established. Yagis
-et al.~\cite{yagis2021} contrasted slice-wise and subject-wise
-splitting on four cohorts; Wen et al.~\cite{wen2020} reviewed the AD
-convolutional-network literature and recommended subject-level
-partitioning; Rosenblatt et al.~\cite{rosenblatt2024} manipulated five
-distinct forms of leakage in connectome-based models across four
-datasets; and a recent scoping review of $44$ AD deep-learning studies
-found a $19$-point accuracy gradient between studies judged at low and
-high risk of leakage~\cite{diagnostics2025}. The phenomenon does not need
-re-demonstrating.
+That leakage inflates reported performance is established and does not
+need re-demonstrating: slice-wise against subject-wise splitting on
+four cohorts~\cite{yagis2021}, a review of the AD
+convolutional-network literature recommending subject-level
+partitioning~\cite{wen2020}, five distinct leakage forms manipulated in
+connectome models across four datasets~\cite{rosenblatt2024}, and a
+$19$-point accuracy gradient between studies judged at low and high
+risk of leakage in a scoping review of $44$~\cite{diagnostics2025}.
 
-Why patient identity in particular is the channel that matters is
-itself well established. Shortcut learning~\cite{geirhos2020shortcut}
-occurs when a model exploits stable but clinically irrelevant cues
-that correlate with the label: hospital-system markers in chest
-radiographs~\cite{zech2018variable}, non-lung cues in COVID
-classifiers~\cite{degrave2021shortcuts}, hidden subgroup
-failures~\cite{oakden2020hidden}. Structural MRI is unusually exposed to identity-based versions of it. Face-recognition software
-re-identifies anonymised scans~\cite{schwarz2019face}, the
-\emph{BrainPrint} signature is a stable per-subject
-fingerprint~\cite{wachinger2015brainprint}, learned representations
-support cross-cohort subject
+Why \emph{patient identity} is the channel that matters is equally well
+established. Shortcut learning~\cite{geirhos2020shortcut} exploits
+stable but clinically irrelevant cues correlated with the label, as
+with hospital-system markers in chest radiographs~\cite{zech2018variable},
+non-lung cues in COVID classifiers~\cite{degrave2021shortcuts} and
+hidden subgroup failures~\cite{oakden2020hidden}. Structural MRI is
+unusually exposed to the identity version: face recognition
+re-identifies anonymised scans~\cite{schwarz2019face}, \emph{BrainPrint}
+is a stable per-subject fingerprint~\cite{wachinger2015brainprint},
+learned representations support cross-cohort subject
 re-identification~\cite{deepbrainprint2023}, and even brain-age
 prediction carries subject-specific structural
-signal~\cite{liem2017brainage}. A model evaluated on
-subject-leaky data can therefore appear to recognise disease while
-partly recognising the patient. The same protocol-driven reliability
-gap is documented beyond AD MRI, in COVID
-imaging~\cite{roberts2021pitfalls}, in medical-imaging machine
-learning generally~\cite{varoquaux2022failures}, and as a
-cross-disciplinary leakage taxonomy~\cite{kapoor2023leakage}.
+signal~\cite{liem2017brainage}. A model evaluated on subject-leaky data
+can therefore appear to recognise disease while partly recognising the
+patient, a protocol-driven reliability gap also documented in COVID
+imaging~\cite{roberts2021pitfalls}, in medical-imaging machine learning
+generally~\cite{varoquaux2022failures}, and as a cross-disciplinary
+leakage taxonomy~\cite{kapoor2023leakage}.
 
-Subject-aware splitting is available in general-purpose libraries
-(scikit-learn \texttt{GroupKFold}~\cite{pedregosa2011sklearn}) and
-medical-imaging frameworks (MONAI~\cite{cardoso2022monai}), and a
-domain-general similarity-aware splitter has been
-proposed~\cite{datasail2025}; the
-CLAIM~\cite{claim2024,mongan2020claim}, TRIPOD+AI~\cite{tripod2024}
-and PROBAST~\cite{wolff2019probast} reporting guidelines all require
-subject-level splitting for a low risk-of-bias verdict. Protocol~B in
-this paper is operationally \texttt{GroupKFold} with
-\texttt{subject\_id} as the group key, so every comparison we report
-against it is a comparison against the practice those guidelines
-prescribe.
+The remedy is likewise available: subject-aware splitting ships in
+general-purpose libraries (\texttt{GroupKFold}~\cite{pedregosa2011sklearn})
+and medical-imaging frameworks (MONAI~\cite{cardoso2022monai}), a
+similarity-aware splitter has been proposed~\cite{datasail2025}, and
+CLAIM~\cite{claim2024,mongan2020claim}, TRIPOD+AI~\cite{tripod2024} and
+PROBAST~\cite{wolff2019probast} all require subject-level splitting for
+a low risk-of-bias verdict. Protocol~B groups by \texttt{subject\_id},
+the key those guidelines prescribe, though it is this paper's own
+participant-wise splitter rather than \texttt{GroupKFold} itself
+(\S\ref{sec:exp3_degrad}).
 
 What these studies leave unmeasured is the \emph{transfer function}.
 Two quantities govern how much optimism a benchmark reports, and
@@ -362,35 +356,9 @@ Across all of it, leakage is treated as a binary hazard: either the
 split respects patients or it does not, and the remedy is to group by
 subject. That framing presumes what it needs, a subject identifier
 that is present, complete and correct, which is the presumption this
-paper measures. Table~\ref{tab:related_work} places the present work
+paper measures. Supplementary Table~S4 places the present work
 against that literature on the axes that separate them.
 
-\begin{table}[!ht]
-\centering
-\footnotesize
-\caption{What prior leakage studies establish, and what this paper
-adds. ``Dose'' is a measured relationship between the amount of
-contamination and the reported score, rather than a comparison of two
-endpoints. ``Provenance'' is whether the identifiers a protocol needs
-are treated as a variable rather than assumed.}
-\label{tab:related_work}
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}lccccc@{}}
-\toprule
- & Inflation & Dose & Provenance & Observed & Split \\
- & shown & measured & varied & damage & manifests \\
-\midrule
-Wen \etal~\cite{wen2020} (review)      & \checkmark & -- & -- & -- & -- \\
-Yagis \etal~\cite{yagis2021}           & \checkmark & -- & -- & -- & -- \\
-Rumala~\cite{rumala2023}                & \checkmark & -- & -- & -- & -- \\
-Rosenblatt \etal~\cite{rosenblatt2024}  & \checkmark & three levels & -- & -- & -- \\
-Ghiasi \etal~\cite{ghiasi2026}          & \checkmark & -- & -- & -- & \checkmark \\
-DataSAIL~\cite{datasail2025} (tool)     & -- & -- & -- & -- & \checkmark \\
-\midrule
-This paper                              & \checkmark & continuous & \checkmark & \checkmark & \checkmark \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 The cross-tier inflation gap is validated on two source cohorts and
 one redistribution of one of them; the
@@ -515,7 +483,7 @@ and reported but not merged under the default policy. All four are
 implemented and auditable; none is load-bearing on these cohorts,
 which is why the component layer's measured marginal over
 subject-wise splitting is small
-(\S\ref{sec:exp3_degrad}, Table~\ref{tab:edge_provenance}). Demonstrating them requires a cohort
+(\S\ref{sec:exp3_degrad}, Supplementary Table~S5). Demonstrating them requires a cohort
 with re-acquisition or augmentation structure that subject identity
 does not already capture; we name this as the primary
 validation gap in \S\ref{sec:limitations}.}
@@ -592,46 +560,9 @@ the per-reason edge counts so a reader can see which rules actually
 fired: the ADNI tier supplies subject, session, series-UID,
 longitudinal and acquisition-date identifiers; the public-benchmark
 tier has no acquisition provenance at all, so only inferred subject and
-exact-SHA edges exist there. Table~\ref{tab:edge_provenance} gives the
+exact-SHA edges exist there. Supplementary Table~S5 gives the
 per-cohort breakdown.
 
-\begin{table}[!ht]
-\centering
-\footnotesize
-\caption{Which edge rules actually fire, per dataset, counted from the
-released graph-audit artefacts. The final column is the one that matters
-for interpreting the component layer: an edge is \emph{load-bearing} only
-if it merges a pair that no other rule had already merged. On ADNI the
-session, series-UID and acquisition-date rules fire on
-$223$, $209$ and $222$ pairs respectively, yet every resulting component
-still contains exactly one subject, so each of those edges joined a
-pair that \texttt{same\_subject} had already joined. They are redundant
-on these cohorts rather than inert, and become load-bearing only where
-subject identity is absent, corrupted, or inferred wrongly.
-\S\ref{sec:provenance_degradation} tests that claim directly by
-deleting subject identifiers at controlled rates.}
-\label{tab:edge_provenance}
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{3.4cm}r>{\raggedright\arraybackslash}p{3.5cm}@{}}
-\toprule
-Dataset & Edge rule & Pairs joined & Load-bearing here? \\
-\midrule
-ADNI1  & \texttt{same\_subject}     & 1{,}800 & Yes (sole component-forming rule) \\
-ADNI1  & \texttt{same\_session}     & 223 & No (subsumed by subject) \\
-ADNI1  & \texttt{same\_series\_uid} (source volume) & 209 & No (subsumed by subject) \\
-ADNI1  & \texttt{same\_acq\_date}   & 222 & No (subsumed by subject) \\
-\multicolumn{4}{@{}p{\linewidth}@{}}{\footnotesize $267/382$ ADNI components are formed by \texttt{same\_subject} alone; in the other $115$ the redundant rules also fire.} \\
-\midrule
-Kaggle & \texttt{same\_subject} (filename-inferred) & 6{,}076 & Fires, but the key is not participant identity \\
-Kaggle & \texttt{exact\_sha256\_duplicate} & 0 & No pairs found \\
-Kaggle & near-duplicate (dHash $\leq 4$) & 1{,}582 & Not merged (\textsc{review} policy) \\
-\midrule
-OASIS-1 & \texttt{same\_subject} & all 416 components & Yes \\
-OASIS-1 & \texttt{same\_session} & all 416 components & No (subsumed by subject) \\
-OASIS-1 & \texttt{same\_source\_volume} & all 416 components & No (subsumed by subject) \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 The practical consequence is stated plainly: on the two source
 cohorts the connected components coincide with participant grouping,
@@ -794,45 +725,8 @@ because the leakage gap this paper measures is dominated by the
 subject-identity channel that harmonisation does not fix
 post-hoc); and (iv)~a clinical claim boundary statement.
 The audit report issues a binary GO / NO-GO decision for training
-according to the formal criteria in Table~\ref{tab:go_nogo}.
+according to the formal criteria in Supplementary Table~S6.
 
-\begin{table}[!ht]
-\centering
-\footnotesize
-\caption{GO/NO-GO decision criteria of the released \SGA{} audit
-(\texttt{scripts/audit\_adni\_splits.py}). We distinguish what the
-released gate \emph{enforces} from what it \emph{reports} and from what
-the framework specifies but does not yet enforce, because a leakage
-audit whose advertised criteria exceed its implemented criteria is
-itself an evaluation-integrity failure. Only the three blocking
-checks determine the binary decision; every other quantity is written
-to the audit report for author and reviewer judgement without halting
-the pipeline. The gate certifies partition disjointness of the split
-manifest, \emph{not} site-generalisability, scanner-shift robustness,
-calibration, fairness, or clinical deployment readiness.}
-\label{tab:go_nogo}
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{>{\raggedright\arraybackslash}p{3.9cm}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}p{5.8cm}}
-\toprule
-\textbf{Check} & \textbf{Status in v1} & \textbf{Behaviour} \\
-\midrule
-Subject overlap across partitions & \textbf{Blocking} & Any non-blank subject ID in $>1$ partition sets \texttt{passed=False}; blank and \texttt{unknown} IDs are skipped, so a cohort without identifiers cannot pass by vacuity. \\
-Session overlap across partitions & \textbf{Blocking} & Any session ID in $>1$ partition sets \texttt{passed=False}. \\
-Component overlap across partitions & \textbf{Blocking} & Any component ID in $>1$ partition sets \texttt{passed=False}. \\
-\midrule
-Per-partition label balance & Reported & Class counts and ratios written to the report. \\
-Scanner field-strength balance & Reported & Marginal distribution per partition. \\
-Age and sex summaries & Reported & Per-partition demographic summary. \\
-Site--label association (Cram\'{e}r's $V$) & Reported & Computed by a separate script (\S\ref{sec:exp6_adni}); not consulted by the gate. \\
-Component-size balance across partitions & Reported & Per-partition component-size distribution, with a warning when partitions are not drawn from comparable participants. Added after auditing this project's own frozen splits, on which it fires (\S\ref{sec:limitations}); not consulted by the gate. \\
-\midrule
-Unresolved subject or diagnosis identifiers & \textbf{Not enforced in v1} & No check exists. Two ADNI scans with unresolved visit-level diagnosis passed the gate for this reason (\S\ref{sec:data_adni}). \\
-Frozen-manifest hash verification & \textbf{Not enforced in v1} & Hashed manifests are produced for release but the gate does not re-verify them. \\
-Residual near-duplicate cross-split & \textbf{Not enforced in v1} & Near-duplicate edges are applied when \emph{building} components, not re-checked after partitioning. \\
-Within-component label agreement & \textbf{Not enforced in v1} & Mixed-label converter components are handled by an explicit pre-specified exclusion rule (\S\ref{sec:data_adni}) rather than by the gate. \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \subsubsection{Model audit layer}
 \label{sec:model_audit}
@@ -1366,7 +1260,7 @@ resampling: subsampling participants leaves AUROC essentially
 unchanged, because it is a rank statistic over pairs. What it does mean
 is that the three AUROCs are estimated over differently composed test
 sets, and we report the composition rather than adjusting for it
-(\S\ref{sec:exp6_adni}, Table~\ref{tab:test_composition}).
+(\S\ref{sec:exp6_adni}, Supplementary Table~S8).
 
 \paragraph{Learning curves}
 Figure~\ref{fig:learning_curves} shows validation AUROC per epoch.
@@ -1542,29 +1436,6 @@ loss rather than seed count.
 
 \input{tables/adni_robustness}
 
-\begin{table}[!ht]
-\centering
-\small
-\caption{Test-partition composition per protocol on the ADNI
-converter-inclusive arm (five-seed means), the arm on which the
-subject-level aggregation is computed. The three protocols hold image count roughly constant
-but differ fourfold in how many distinct participants those images come
-from, because tightening the split rule packs more scans of fewer people
-into the test partition. Every protocol-to-protocol AUROC comparison in
-this paper is conditioned on this asymmetry, and we report it here rather
-than leaving it implicit.}
-\label{tab:test_composition}
-\begin{tabular}{@{}lrrr@{}}
-\toprule
-\textbf{Protocol} & \textbf{Test participants} & \textbf{Test images}
-                  & \textbf{Images per participant} \\
-\midrule
-A (random)         & $160.8$ & $213.0$ & $1.32$ \\
-B (subject-only)   & $48.0$  & $220.0$ & $4.58$ \\
-C (component-safe) & $38.0$  & $203.2$ & $5.35$ \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 The DenseNet-121 arm additionally replicates on OASIS-1
 (\OasisDenseGap{}, \S\ref{sec:exp5_oasis}), so the inflation is
@@ -1615,7 +1486,7 @@ Within the five frozen component-safe \SGA{} splits, this association
 is preserved rather than eliminated (script:
 \texttt{scripts/site\_scanner\_confound\_audit.py}; JSON:
 \texttt{reports/tables/adni/adni\_site\_scanner\_confound\_audit.json}).
-Table~\ref{tab:site_scanner_confound_audit} reports bias-corrected
+Supplementary Table~S7 reports bias-corrected
 Cram\'{e}r's $V$ (Bergsma's small-sample correction~\cite{bergsma2013}) for
 site$\times$label and sex$\times$label across the five primary-arm
 component-safe splits. The site--label association is moderate in
@@ -1634,40 +1505,6 @@ fix post-hoc (\S\ref{sec:method}). A site-stratified extension of
 the component-safe construction is named as future work in
 \S\ref{sec:limitations}.
 
-\begin{table}[!ht]
-\centering
-\footnotesize
-\caption{Site and sex confound audit on the five ADNI primary-arm
-component-safe splits ($1{,}125$ manifest rows, $1{,}123$
-diagnosis-resolved; CN/AD rows only).
-Bias-corrected Cram\'{e}r's $V$ (Bergsma~\cite{bergsma2013}) between each covariate
-and the binary CN/AD label per partition; mean and range across the
-five seeds. The site--label association is substantial in every
-partition and grows as the partition shrinks; it is \emph{exposed}
-by the audit but not \emph{resolved} by the component-safe split,
-which is the central caveat of \S\ref{sec:limitations}. The
-sex--label association is negligible in train and test but reaches
-$V=0.34$ in the small validation partition, an instability we
-attribute to its size ($n=165$) rather than to a population effect.
-Scanner field strength is constant ($1.5$\,T) across every partition
-of this cohort, so $V(\text{scanner}|\text{label})=0$ by
-construction and the covariate is not tabulated.}
-\label{tab:site_scanner_confound_audit}
-\begin{tabular}{@{}lccc c@{}}
-\toprule
-Partition & Rows (mean) & Unique sites (range) &
-$V(\text{site}|\text{label})$ (mean [min--max]) &
-$V(\text{sex}|\text{label})$ \\
-\midrule
-Train & 793 & 38--39 & 0.360 [0.347--0.375] & 0.000 \\
-Val   & 165 & 8--10  & 0.479 [0.464--0.495] & 0.343 \\
-Test  & 165 & 11--12 & 0.538 [0.418--0.715] & 0.046 \\
-\bottomrule
-\multicolumn{5}{l}{\footnotesize
-Scanner field strength is constant ($1.5$\,T) in every partition;
-$V(\text{scanner}|\text{label})=0$ throughout.}
-\end{tabular}
-\end{table}
 
 \begin{figure}[!ht]
 \centering
@@ -2459,7 +2296,7 @@ Connected Component Overlap & 0\% (\checkmark Pass) \\
 \midrule
 \multicolumn{2}{l}{\textbf{Reported, non-blocking}} \\
 Label join & $22\%$ of labels by $180$-day date proximity (\S\ref{sec:data_adni}) \\
-Site--label association & Cram\'{e}r's $V = 0.54$ in test (Table~\ref{tab:site_scanner_confound_audit}) \\
+Site--label association & Cram\'{e}r's $V = 0.54$ in test (Supplementary Table~S7) \\
 Component-size balance & Warning: partitions differ in scans per participant (\S\ref{sec:exp3_degrad}) \\
 \midrule
 \multicolumn{2}{l}{\textbf{Debiased Performance Estimates (Held-out Test, $n \approx$ \CardNTest{} per seed)}} \\
@@ -2553,7 +2390,7 @@ pipelines are independent of training.
           grouping on intact cohorts, and validated beyond it only
           under synthetic provenance loss.} On the two source cohorts every
           connected component contains exactly one participant
-          (Table~\ref{tab:edge_provenance}): the session, series-UID
+          (Supplementary Table~S5): the session, series-UID
           and acquisition-date rules fire, on $223$, $209$ and $222$
           ADNI pairs, but each joins a pair \texttt{same\_subject} had
           already joined. The marginal over Protocol~B is accordingly small and unstable:
@@ -2636,7 +2473,7 @@ pipelines are independent of training.
           $1.9$--$4.7\times$ wider depending on the arm, is run on every arm. The three
           protocols also do not
           place comparable numbers of patients in the test partition
-          (Table~\ref{tab:test_composition}): Protocol~A averages
+          (Supplementary Table~S8): Protocol~A averages
           $160.8$ distinct participants per seed, Protocol~B $48.0$,
           and Protocol~C $38.0$, over test partitions of similar image
           count. Protocol~C's AUROC is therefore estimated on roughly a
@@ -2725,7 +2562,7 @@ rather than only their intersection, belongs in the audit and was not in it.
 (ComBat-family methods~\cite{johnson2007combat,fortin2017combat,bashyam2022deepharmony},
 site-stratified splitting, leave-site-out evaluation) is complementary and outside this manuscript. Four of the
           audit's advertised criteria are reported rather than
-          enforced in this release (Table~\ref{tab:go_nogo}). The
+          enforced in this release (Supplementary Table~S6). The
           implementation covers structural MRI only, and its
           near-duplicate comparison is $\mathcal{O}(N^2)$, which is
           tractable at the scale studied here but would need
