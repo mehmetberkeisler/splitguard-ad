@@ -327,7 +327,12 @@ def main() -> int:
     # inferential quantity and says it is reported alongside on every arm. For
     # OASIS-1 it was not, and it is the one arm whose hierarchical interval
     # spans zero, so its absence flattered the replication claim.
-    for arm in ("oasis1", "tier1"):
+    # Every arm's hierarchical interval, because the manuscript claims the
+    # quantity is run on every arm and reported alongside. Five of nine were
+    # absent when that claim was first checked, including the OASIS-1
+    # DenseNet arm, whose interval spans zero.
+    for arm in ("oasis1", "oasis1_densenet121", "tier1", "adni_with_converters",
+                "adni_no_mt1", "adni_densenet121", "adni_size_balanced"):
         p = ROOT / "reports" / "gpu" / "bootstrap" / f"{arm}_hierarchical.json"
         d = load(p)
         if d:

@@ -1463,9 +1463,17 @@ loss rather than seed count.
 
 The DenseNet-121 arm additionally replicates on OASIS-1
 (\OasisDenseGap{}, \S\ref{sec:exp5_oasis}), so the inflation is
-consistent across two convolutional backbones on both source cohorts. A two-level subject\,$\times$\,seed
-hierarchical resampling of the primary arm widens the total-gap
-interval to \AdniHierCI{}. Calibration is far worse under
+consistent in direction across two convolutional backbones on both
+source cohorts, though on OASIS-1 neither backbone's hierarchical
+interval excludes zero. A two-level subject\,$\times$\,seed
+hierarchical resampling widens the total-gap interval on every arm, and
+we give all of them rather than only the primary one: \AdniHierCI{}
+(primary), $[+0.081, +0.208]$ (converter-inclusive), $[+0.072, +0.191]$
+(MT1 excluded), $[+0.087, +0.209]$ (DenseNet-121), $[+0.070, +0.209]$
+(size-balanced) and $[+0.145, +0.335]$ (volumetric). All six exclude
+zero. The two OASIS-1 arms are the exception and are reported with the
+cross-cohort comparison in \S\ref{sec:exp5_oasis}: $[-0.033, +0.107]$ on
+ResNet-18 and $[-0.021, +0.121]$ on DenseNet-121, both spanning zero. Calibration is far worse under
 both honest protocols than under the leaky one, and not ordered
 between them (Brier/ECE: Protocol~A $0.089$/$0.079$, Protocol~B
 $0.247$/$0.253$, Protocol~C
@@ -1956,7 +1964,9 @@ $k = \lfloor p \cdot 258 \rceil$ participants from the multi-visit
 training subset and substitute one alternate scan of each into the test
 set, displacing an equal number of original test scans. Because each
 donor contributes a single scan, the share of contaminated test
-\emph{participants} is always the larger number, which is why every
+\emph{participants} is never smaller and is usually far larger ($63\%$,
+$77\%$ and $86\%$ of test participants at $p = 0.25$, $0.50$ and
+$0.75$, converging to equality only at $p = 1$), which is why every
 composition below is done in scan units. Class
 balance of the \emph{injected partition} (118~CN $/$ 140~AD over $258$
 rows) is held fixed at every overlap level by stratified substitution.
