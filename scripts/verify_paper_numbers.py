@@ -322,6 +322,20 @@ def main() -> int:
                         "additional_missed_if_trusting_leaky"):
                 c.check(f"{anchor} {key}", block.get(key), 1, origin=str(p))
 
+    # ── Structured provenance corruption ────────────────────────────────
+    p = TABLES / "adni_provenance_stress_test.json"
+    d = load(p)
+    if d:
+        for mech in ("drop", "split", "merge"):
+            for lvl in ("0.1", "1.0"):
+                cell = (d.get("summary") or {}).get(mech, {}).get(lvl) or {}
+                for proto in ("subject_only", "component_safe"):
+                    c.check(f"stress {mech} {lvl} {proto} straddling",
+                            (cell.get(proto) or {}).get("straddling_mean"), 1, origin=str(p))
+                if cell.get("graph_prevented_share") is not None:
+                    c.check(f"stress {mech} {lvl} prevented",
+                            round(100 * cell["graph_prevented_share"]), 0, origin=str(p))
+
     # ── Cross-cohort hierarchical intervals ─────────────────────────────
     # The manuscript calls the hierarchical interval the more defensible
     # inferential quantity and says it is reported alongside on every arm. For

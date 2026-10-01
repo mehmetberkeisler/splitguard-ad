@@ -2324,6 +2324,57 @@ globally unique session and series keys, whereas the Tier-1 benchmark
 supplies neither, so the curve measured here is an upper bound on what
 the same protocol could achieve on a cohort stripped down to filenames.
 
+\subsection{Structured provenance corruption: where the graph earns its place}
+\label{sec:provenance_stress}
+
+The deletion experiment removes identifiers \emph{visibly}. A missing
+\texttt{subject\_id} is a value a splitter can see is absent, and the honest
+response, treating that scan as its own group, is available to any
+\texttt{GroupKFold} user. Redistribution rarely fails that politely. The
+Tier-1 benchmark in \S\ref{sec:exp1} carries a key for every image and the
+key is simply wrong: it splits $179$ of $200$ participants across several
+keys and merges others under one. Nothing is missing, so nothing looks
+broken.
+
+\paragraph{Design}
+We therefore apply a corruption operator
+$C \in \{\textsc{drop}, \textsc{split}, \textsc{merge}\}$ at intensity
+$\lambda$ to the ADNI1 primary manifest, rebuild both groupings on the
+corrupted result, and score residual leakage against untouched ground truth.
+\textsc{drop} removes a scan's identifier with probability $\lambda$;
+\textsc{split} deals a participant's scans into two pseudo-identifiers with
+probability $\lambda$, so one patient looks like two; \textsc{merge}
+relabels a random pair of participants to one pseudo-identifier, so two
+patients look like one. The last two mimic the observed Tier-1 failure modes
+and leave no field missing. Only the grouping differs between the protocols
+compared; both use the same class-stratified assigner, for the reason given
+above. No model is trained, because contamination is a property of the split;
+the AUROC consequence of a contamination level is what
+\S\ref{sec:adni_dose_response} measures, and the two compose.
+
+\paragraph{Result}
+The three mechanisms separate cleanly, and one of them is where the component
+layer stops being redundant. Under \textsc{drop} the graph halves the damage
+at $\lambda = 0.1$ ($16.8$ straddling participants under subject-wise
+grouping against $8.4$), falling to $31\%$ prevented at total loss, which
+reproduces \S\ref{sec:provenance_degradation} by a second route. Under
+\textsc{split} it prevents $50\%$ at $\lambda = 0.1$ (a small absolute
+effect at that intensity, $1.2$ straddling participants against $0.6$)
+and $90\%$ at
+$\lambda = 1$, where subject-wise grouping admits $61.6$ straddling
+participants and the graph admits $6.4$, with test-scan contamination falling
+from $64\%$ to $11\%$. That gap is the framework's reason to exist: when one
+participant is dealt into two keys, \texttt{same\_session},
+\texttt{same\_series\_uid} and \texttt{same\_acq\_date} still join the
+halves, and subject-wise grouping has nothing left to join them with. Under
+\textsc{merge} neither protocol admits leakage at any intensity, because
+over-grouping two patients into one key is conservative for contamination: it
+destroys the participant count and the independence of the test partition
+without ever placing a patient on both sides. We report that null because it
+bounds the claim. The graph protects against identity \emph{fragmentation},
+not against every corruption, and a merged key damages a study in a way no
+splitter can repair.
+
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Discussion}
 \label{sec:discussion}
