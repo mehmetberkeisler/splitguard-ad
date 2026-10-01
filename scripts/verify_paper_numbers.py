@@ -222,6 +222,27 @@ def main() -> int:
                        replaced_by="the number of seeds sharing the sign",
                        origin=str(p))
 
+    # ── Volumetric arm ──────────────────────────────────────────────────
+    # The 3D arm reports through \VolGapTotal and \VolGapCI, which are
+    # generated, but the manuscript also quotes its per-protocol levels and its
+    # decomposition. Those would otherwise be unchecked literals, which is how
+    # a stale R^2 pair and a retired one-GPU claim survived earlier passes.
+    p = ROOT / "reports" / "gpu" / "bootstrap" / "adni_3d_hierarchical.json"
+    d = load(p)
+    if d:
+        for proto, label in (("random", "leaky"), ("subject_only", "subject-only"),
+                             ("component_safe", "component-safe")):
+            block = (d.get("hierarchical_bootstrap") or {}).get(proto) or {}
+            c.check(f"volumetric {label} AUROC", block.get("point_mean_over_seeds"), 3, origin=str(p))
+        g = (d.get("inflation_gap") or {})
+        for key, label in (("total_random_minus_component_safe", "total gap"),
+                           ("subject_leakage_random_minus_subject_only", "subject part"),
+                           ("component_leakage_subject_only_minus_component_safe", "component marginal")):
+            block = g.get(key) or {}
+            c.check(f"volumetric {label} (point)", block.get("point"), 3, origin=str(p))
+            c.check(f"volumetric {label} CI lo", block.get("ci_lo"), 3, origin=str(p))
+            c.check(f"volumetric {label} CI hi", block.get("ci_hi"), 3, origin=str(p))
+
     # ── Converter-inclusive arm ─────────────────────────────────────────
     p = TABLES / "adni_inflation_gap_with_converters_bootstrap.json"
     d = load(p)

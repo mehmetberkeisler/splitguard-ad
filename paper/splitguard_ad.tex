@@ -1246,8 +1246,8 @@ $\{42,0,1,2,3\}$ on Tier~1 and OASIS-1 and $\{0,1,2,3,4\}$ on ADNI.
 The volumetric arm uses a 3D ResNet-18 on $128^3$ volumes, batch size
 $4$, $15$ epochs. Every run was executed in one code state with
 deterministic cuDNN kernels and seeded data loaders, on one NVIDIA H100
-except the dose-response matrix, which was rerun on an NVIDIA RTX PRO
-4500 (\S Declarations); the full configuration is in Supplementary
+except the dose-response matrix, rerun on an NVIDIA RTX PRO 4500, and the
+volumetric arm, run on an NVIDIA RTX 2000 Ada (\S Declarations); the full configuration is in Supplementary
 Table~S1.
 
 \subsection{Observed provenance damage on a redistributed benchmark}
@@ -1551,6 +1551,28 @@ having~\cite{vancalster2019calibration}. Test-set
 demographic composition is balanced by construction across the five
 frozen splits (mean $50\% \pm 6\%$ female, $49\% \pm 7\%$ aged
 $\geq 76$; $220$ participants, median age 76).
+
+\paragraph{Whole-volume input}
+The volumetric arm asks whether the shortcut belongs to the 2D slice or
+to the participant. A 3D ResNet-18 on $128^3$ volumes, trained on the
+same $220$ participants under the same three protocols, puts the total
+gap at \VolGapTotal{} \VolGapCI{}, positive in $5/5$ seeds and
+$[+0.145, +0.335]$ under the subject\,$\times$\,seed hierarchical
+resampling: about twice the \AdniGapTotal{} of the 2D primary arm. The
+gap widens from both ends, and only one of those ends is about leakage.
+The leaky level rises to $0.971$, against \AdniRandomAUROC{} in 2D,
+which is what a memorisable unit of one whole volume rather than one
+slice predicts. The honest level falls to $0.736$, against
+\AdniSafeAUROC{} in 2D, and that is not a leakage effect: this network
+is trained from scratch on $722$ volumes where the 2D arms fine-tune
+ImageNet features, so its honest performance is not a competitive
+volumetric baseline and we do not offer it as one. The transferable
+quantity is the gap and not the level, here as everywhere else in this
+paper. The decomposition reproduces the 2D pattern: the subject layer
+carries the inflation ($+0.268$ $[+0.163, +0.372]$) while the component
+layer adds nothing resolvable at five seeds ($-0.033$
+$[-0.185, +0.122]$, spanning zero, with subject-only at $0.703$ falling
+below component-safe just as it does in the converter-inclusive 2D arm).
 
 
 \paragraph{Site\,$\times$\,label confound check}
@@ -2510,12 +2532,18 @@ pipelines are independent of training.
           small-sample and seed-sensitive. ResNet-18 carries the
           primary results, with a pre-specified DenseNet-121 arm
           replicating the headline gap. Whether these quantities
-          transfer to volumetric models is untested here: the
-          volumetric arm is implemented against the same frozen
-          partitions ($128^3$ volumes, 3D ResNet-18, released as
-          \texttt{scripts/train\_adni\_3d.py}) and remains the
-          highest-priority follow-on, because it asks directly whether
-          the per-slice identity shortcut survives whole-volume input.
+          transfer to volumetric models is now partly answered rather
+          than open: the volumetric arm ($128^3$ volumes, 3D ResNet-18,
+          \texttt{scripts/train\_adni\_3d.py}) runs against the same
+          frozen partitions and puts the gap at \VolGapTotal{}
+          (\S\ref{sec:exp6_adni}), so the identity shortcut survives
+          whole-volume input and is in fact larger there. What does not
+          transfer is the \emph{level}: that network trains from scratch
+          on $722$ volumes while the 2D arms fine-tune ImageNet features,
+          so its honest AUROC of $0.736$ is a weak volumetric baseline
+          and the arm settles the direction of the effect, not the
+          achievable performance of 3D models. A pretrained or
+          larger-cohort volumetric replication remains open.
           Multiple-instance aggregation over per-slice predictions and
           transformer backbones remain open, and reuse the same frozen
           manifests.
@@ -2652,10 +2680,10 @@ about data provenance and measured both links of that dependency.
 Random image-level evaluation overstates ADNI1 AUROC by \AdniGapTotal{}
 on the primary arm (paired-seed interval \AdniGapCI{} at $n=5$,
 descriptive), and the gap survives every pre-specified variation of
-cohort, backbone, converter rule and acquisition type
-(Figure~\ref{fig:arm_forest}). Input dimensionality is the one
-variation we do not report: the volumetric arm is released but
-unrun (\S\ref{sec:limitations}).
+cohort, backbone, converter rule, acquisition type and input
+dimensionality (Figure~\ref{fig:arm_forest}; the volumetric arm in
+\S\ref{sec:exp6_adni}, where the gap is \VolGapTotal{}, about twice the
+2D value).
 
 Two controlled interventions locate the mechanism. Injecting
 contaminated test scans while holding the training set fixed gives
@@ -2688,10 +2716,11 @@ Algorithm~\ref{alg:splitguard}, and a benchmark report card.
 \section*{Acknowledgements}
 Every training run reported here was executed in one code state,
 with the software environment of each node recorded in the released run
-logs (approximately \GpuHours{}~GPU-hours in total). All arms but one
+logs (approximately \GpuHours{}~GPU-hours in total). Most arms
 ran on a single cloud-hosted NVIDIA H100 instance; the $50$-run
 dose-response matrix was rerun in that same code state on an NVIDIA RTX
-PRO 4500 instance, so its slope and the arms it is composed with differ
+PRO 4500 instance and the $15$-run volumetric arm on an NVIDIA RTX 2000
+Ada instance, so those arms and the ones they are compared with differ
 in hardware but not in code. We report the slope as a descriptive
 calibration constant and not as a transferable coefficient, which is
 how it is read throughout. Data used in preparation of this article

@@ -1,9 +1,9 @@
 # Re-run comparison: published artefacts vs regenerated
 
 Old: `runs_frozen/` (116 runs) — trained before the DataLoader rewiring in 877ca72, mostly before the first commit of the training code.
-New: `runs/` (195 runs) — one code state, one device.
+New: `runs/` (210 runs) — one code state, one device.
 
-Matched runs: 115. New-only: 80. Missing from the re-run: 1.
+Matched runs: 115. New-only: 95. Missing from the re-run: 1.
 
 ## `adni` — 15 runs
 
@@ -178,6 +178,21 @@ Mean absolute change +0.0286; largest single change +0.0836.
 
 ## New arms (no published counterpart)
 
+- `adni_3d/inflation_gap_seed0/component_safe` — 0.8457
+- `adni_3d/inflation_gap_seed0/random` — 0.9894
+- `adni_3d/inflation_gap_seed0/subject_only` — 0.6988
+- `adni_3d/inflation_gap_seed1/component_safe` — 0.6092
+- `adni_3d/inflation_gap_seed1/random` — 0.9597
+- `adni_3d/inflation_gap_seed1/subject_only` — 0.7049
+- `adni_3d/inflation_gap_seed2/component_safe` — 0.7161
+- `adni_3d/inflation_gap_seed2/random` — 0.9603
+- `adni_3d/inflation_gap_seed2/subject_only` — 0.6275
+- `adni_3d/inflation_gap_seed3/component_safe` — 0.7210
+- `adni_3d/inflation_gap_seed3/random` — 0.9810
+- `adni_3d/inflation_gap_seed3/subject_only` — 0.8671
+- `adni_3d/inflation_gap_seed4/component_safe` — 0.7856
+- `adni_3d/inflation_gap_seed4/random` — 0.9639
+- `adni_3d/inflation_gap_seed4/subject_only` — 0.6155
 - `adni_permutation_null/permutation_null_seed0/component_safe` — 0.4981
 - `adni_permutation_null/permutation_null_seed0/random` — 0.4445
 - `adni_permutation_null/permutation_null_seed0/subject_only` — 0.4400

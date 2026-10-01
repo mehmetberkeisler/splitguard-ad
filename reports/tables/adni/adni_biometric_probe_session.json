@@ -1,6 +1,6 @@
 {
   "created_at": "2026-09-27T16:39:28+00:00",
-  "manifest": "data/splits/adni_with_converters/adni_splitguard_seed0.csv",
+  "manifest": "/root/splitguard/data/splits/adni_with_converters/adni_splitguard_seed0.csv",
   "checkpoint_glob": "runs_gpu/adni_with_converters/inflation_gap_seed*/*/best_state.pt",
   "arch": "resnet18",
   "results_per_checkpoint": [
@@ -13,7 +13,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed0/component_safe/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed0/component_safe/best_state.pt"
     },
     {
       "checkpoint_label": "inflation_gap_seed0/random",
@@ -24,7 +24,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed0/random/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed0/random/best_state.pt"
     },
     {
       "checkpoint_label": "inflation_gap_seed0/subject_only",
@@ -35,7 +35,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed0/subject_only/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed0/subject_only/best_state.pt"
     },
     {
       "checkpoint_label": "inflation_gap_seed1/component_safe",
@@ -46,7 +46,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed1/component_safe/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed1/component_safe/best_state.pt"
     },
     {
       "checkpoint_label": "inflation_gap_seed1/random",
@@ -57,7 +57,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed1/random/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed1/random/best_state.pt"
     },
     {
       "checkpoint_label": "inflation_gap_seed1/subject_only",
@@ -68,7 +68,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed1/subject_only/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed1/subject_only/best_state.pt"
     },
     {
       "checkpoint_label": "inflation_gap_seed2/component_safe",
@@ -79,7 +79,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed2/component_safe/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed2/component_safe/best_state.pt"
     },
     {
       "checkpoint_label": "inflation_gap_seed2/random",
@@ -90,7 +90,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed2/random/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed2/random/best_state.pt"
     },
     {
       "checkpoint_label": "inflation_gap_seed2/subject_only",
@@ -101,7 +101,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed2/subject_only/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed2/subject_only/best_state.pt"
     },
     {
       "checkpoint_label": "inflation_gap_seed3/component_safe",
@@ -112,7 +112,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed3/component_safe/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed3/component_safe/best_state.pt"
     },
     {
       "checkpoint_label": "inflation_gap_seed3/random",
@@ -123,7 +123,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed3/random/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed3/random/best_state.pt"
     },
     {
       "checkpoint_label": "inflation_gap_seed3/subject_only",
@@ -134,7 +134,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed3/subject_only/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed3/subject_only/best_state.pt"
     },
     {
       "checkpoint_label": "inflation_gap_seed4/component_safe",
@@ -145,7 +145,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed4/component_safe/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed4/component_safe/best_state.pt"
     },
     {
       "checkpoint_label": "inflation_gap_seed4/random",
@@ -156,7 +156,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed4/random/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed4/random/best_state.pt"
     },
     {
       "checkpoint_label": "inflation_gap_seed4/subject_only",
@@ -167,7 +167,7 @@
       "n_eligible_subjects": 294,
       "n_train_imgs": 1062,
       "n_test_imgs": 327,
-      "checkpoint_path": "runs_gpu/adni_with_converters/inflation_gap_seed4/subject_only/best_state.pt"
+      "checkpoint_path": "/root/splitguard/runs_gpu/adni_with_converters/inflation_gap_seed4/subject_only/best_state.pt"
     }
   ],
   "summary_per_protocol": {
