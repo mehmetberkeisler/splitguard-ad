@@ -1228,7 +1228,7 @@ probability one and so adds nothing to the seed count itself. A
 two-level hierarchical (subject\,$\times$\,seed) bootstrap is run on
 every arm from its per-image predictions and reported alongside; it is
 the more defensible inferential quantity and is roughly
-$1.5$--$2\times$ wider. We weight, in decreasing order, effect size,
+$1.9$--$4.7\times$ wider across the arms. We weight, in decreasing order, effect size,
 sign consistency, the hierarchical interval, and last the paired-seed
 width.
 
@@ -1661,18 +1661,27 @@ ResNet-18 for visual parity with the rest of the paper.}
 
 Figure~\ref{fig:cross_cohort} places the ADNI gap in context under
 one reporting convention, paired-seed bootstrap intervals at
-$B=10{,}000$. The direction holds on both source cohorts: the small
-cross-sectional one (OASIS-1, \OasisGapTotal{} \OasisGapCI{}) and the
-longitudinal one with substantial repeat structure (ADNI,
-\AdniGapTotal{} \AdniGapCI{}). It holds again, at
-\TierOneGapTotal{} \TierOneGapCI{}, on the redistribution of the
-first, where each participant contributes $32$ slices rather than
-five. On all of them patient identity is the dominant leakage channel
-and the interval on the gap is clear of zero. The
-random-split benchmark therefore systematically overstates
-AD-classification performance by a magnitude that is robust to the
-seed array, the bootstrap scheme, the converter-inclusion rule, the
-acquisition type, and the CNN backbone.
+$B=10{,}000$. The gap is positive in the mean on both source cohorts:
+the small cross-sectional one (OASIS-1, \OasisGapTotal{}
+\OasisGapCI{}) and the longitudinal one with substantial repeat
+structure (ADNI, \AdniGapTotal{} \AdniGapCI{}). It is positive again,
+at \TierOneGapTotal{} \TierOneGapCI{} (hierarchical
+$[+0.159, +0.311]$), on the redistribution of the first, where each
+participant contributes $32$ slices rather than five. The three differ in how firmly, and we state the difference
+rather than averaging over it. On ADNI and Tier~1 the sign holds in
+every seed and both the paired-seed and the hierarchical intervals
+exclude zero. On OASIS-1 it does not: one of five seeds is negative
+($-0.010$), and while the paired-seed interval excludes zero the
+subject\,$\times$\,seed hierarchical interval is
+$[-0.033, +0.107]$, with the sign preserved in $84\%$ of resamples.
+OASIS-1 is therefore a directional replication at the level of the
+seed mean, not an independently significant one, and we read it that
+way throughout. Patient identity is the dominant leakage channel on
+the two cohorts where a subject-only protocol exists to decompose it,
+ADNI and Tier~1; OASIS-1 carries no such arm. Subject to that, the
+random-split benchmark overstates AD-classification performance by a
+magnitude robust to the seed array, the converter-inclusion rule, the
+acquisition type, the CNN backbone and input dimensionality.
 
 Figure~\ref{fig:arm_forest} consolidates the headline inflation
 results across both source cohorts, the redistributed benchmark, both
@@ -1915,10 +1924,10 @@ visible in absolute counts; the qualitative direction of the
 cost-of-leakage gap holds at any specificity above the
 no-discrimination diagonal.
 Averaged across the five seeds, sensitivity at specificity $= 0.90$ is
-$0.865 \pm 0.021$ under Protocol~A (leaky), $0.572 \pm 0.087$ under
-Protocol~B (subject-only), and $0.533 \pm 0.066$ under Protocol~C
+$0.866 \pm 0.046$ under Protocol~A (leaky), $0.551 \pm 0.105$ under
+Protocol~B (subject-only), and $0.535 \pm 0.103$ under Protocol~C
 (\SGA{}). Youden's J preserves the leaky-versus-honest separation
-($J = 0.770 / 0.397 / 0.480$ for Protocols A / B / C; $A-C = +0.290$)
+($J = 0.785 / 0.458 / 0.533$ for Protocols A / B / C; $A-C = +0.252$)
 but \emph{inverts} the B--C order relative to the fixed-specificity
 reading: under J the component-safe protocol scores above
 subject-only. That inversion is the same one seen in the
@@ -1948,11 +1957,13 @@ therefore \emph{larger}, not smaller.
 \paragraph{Robustness to operating-point choice}
 The leaky-vs-honest sensitivity gap is uniformly positive across every
 operating point checked and monotone in the specificity anchor
-($+0.290$ at $\mathrm{spec}\!=\!0.80$; $+0.333$ at
-$\mathrm{spec}\!=\!0.90$; $+0.352$ at $\mathrm{spec}\!=\!0.95$;
-Youden-J-optimal $+0.179$ in sensitivity and $+0.290$ in J). The
+($+0.270$ at $\mathrm{spec}\!=\!0.80$; $+0.331$ at
+$\mathrm{spec}\!=\!0.90$; $+0.424$ at $\mathrm{spec}\!=\!0.95$;
+Youden-J-optimal $+0.153$ in sensitivity and $+0.252$ in J). The
 $0.90$ specificity anchor used for the cost translation is therefore
-a conservative-middle pick rather than a favourable one. The full
+a middle pick: the gap is smaller at looser specificities and larger
+at $0.95$, so the anchor neither maximises nor minimises the reported
+cost. The full
 ten-row operating-point table is provided as Supplementary
 Table~S2.
 
@@ -1980,11 +1991,11 @@ sensitivity (\SensLeaky{}) and Protocol~C's honest sensitivity
 corresponds to the missed-diagnosis shortfall summarised in
 Figure~\ref{fig:cost_of_leakage}(b). At the population-screening prevalence
 of $13.8\%$ the leaky benchmark's sensitivity arithmetically implies
-$\approx 18.6$ missed AD diagnoses per $1{,}000$ screened older
-adults; the honest sensitivity implies $\approx 64.5$, a difference of
+$\approx 18.5$ missed AD diagnoses per $1{,}000$ screened older
+adults; the honest sensitivity implies $\approx 64.2$, a difference of
 \MissedPerThousand{} missed cases per $1{,}000$, equivalently, a $\sim 3.5\times$
 arithmetic underestimate of missed-diagnosis volume. At the tertiary-clinic anchor of $58.9\%$, the same arithmetic underestimate
-amplifies to $\approx 195.8$ additional missed cases per $1{,}000$.
+amplifies to $\approx 195.0$ additional missed cases per $1{,}000$ ($\approx 79.0$ apparent against $\approx 274.0$ actual), because the same sensitivity shortfall is applied to a larger diseased fraction.
 
 
 
@@ -2054,10 +2065,22 @@ set, displacing an equal number of original test scans. Because each
 donor contributes a single scan, the share of contaminated test
 \emph{participants} is always the larger number, which is why every
 composition below is done in scan units. Class
-balance (118~CN $/$ 140~AD) is preserved at every overlap level by
-stratified substitution. This is pure biometric-identity leakage:
-no slice or near-duplicate is shared between train and test, only the
-patient. We run the full $5\text{ seeds} \times 5\text{ overlaps}$
+balance of the \emph{injected partition} (118~CN $/$ 140~AD over $258$
+rows) is held fixed at every overlap level by stratified substitution.
+The partition the model is \emph{evaluated} on is not held fixed, and
+this qualifies the calibration: the binary pipeline drops MCI scans,
+substitution displaces them, and the evaluated CN/AD subset therefore
+grows from $207$ rows at $p=0$ to $258$ at $p=1$, with the AD share
+rising from $46\%$ to $54\%$. The dose axis is thus partly confounded
+with test composition, so the slope should be read as the response to
+contamination \emph{and} the modest enrichment that accompanies it,
+not to contamination alone. We report it rather than correct it
+because the two cannot be separated without changing the injection
+mechanism, and because the direction of the confound inflates nothing
+the paper relies on: the slope is used only as a floor
+(\S\ref{sec:adni_cost_of_leakage}). Otherwise this is biometric-identity
+leakage alone: no slice or near-duplicate is shared between train and
+test, only the patient. We run the full $5\text{ seeds} \times 5\text{ overlaps}$
 matrix on two architecture families (ResNet-18 and DenseNet-121,
 $15$ epochs each, $\mathrm{lr}=10^{-4}$ AdamW), a total of $50$
 training runs.
@@ -2155,8 +2178,15 @@ other cohorts or 3D representations.}
 
 \paragraph{Interpretation}
 The dose-response is approximately linear over the entire $[0,1]$
-overlap range; we do not observe a threshold effect or a saturating
-tail, which is consistent with the biometric-probe finding
+overlap range, with one qualification we state rather than smooth
+over: the ResNet-18 increments shrink monotonically across the sweep
+($+0.046$, $+0.035$, $+0.025$, $+0.020$) and the DenseNet-121 mean
+falls slightly at the last step ($0.9403$ at $p=0.75$ to $0.9387$ at
+$p=1$). That is a mild saturation as the leaky endpoint is approached,
+which is what a bounded metric does near its ceiling, and not a
+threshold below which contamination is harmless. No threshold effect
+appears anywhere in the range, which is consistent with the
+biometric-probe finding
 (\S\ref{sec:exp2_probe}) that subject identity is encoded as a
 roughly continuous signal in 2D MRI representations. Both
 architectures' $p=1$ endpoints converge near the Protocol~A leaky
@@ -2571,7 +2601,7 @@ pipelines are independent of training.
           propagate between-seed variation only. The hierarchical
           subject\,$\times$\,seed bootstrap, which also propagates
           participant-level sampling error and yields intervals
-          $\sim 1.5$--$2\times$ wider, is run on every arm. The three
+          $1.9$--$4.7\times$ wider depending on the arm, is run on every arm. The three
           protocols also do not
           place comparable numbers of patients in the test partition
           (Table~\ref{tab:test_composition}): Protocol~A averages

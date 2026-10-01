@@ -291,6 +291,20 @@ def main() -> int:
             for spec in ("0.80", "0.85", "0.90", "0.95"):
                 k = f"sens_at_spec_{spec}_mean"
                 c.check(f"{proto} sens@spec{spec}", d[proto].get(k), 3, origin=str(p))
+            # The prose quotes a standard deviation beside each mean. Only the
+            # means were checked, and the manuscript carried SDs roughly half
+            # the artefact's for a year: 0.021 against 0.046 at spec 0.90.
+            c.check(f"{proto} sens@spec0.90 SD", d[proto].get("sens_at_spec_0.90_sd"), 3,
+                    origin=str(p))
+            # Youden J per protocol, likewise quoted in prose and unchecked.
+            c.check(f"{proto} Youden J", d[proto].get("mean_youden_j"), 3, origin=str(p))
+        # The leaky-minus-honest deltas are quoted as a sweep in the robustness
+        # paragraph; the 0.95 anchor was understated by 0.07, which reversed the
+        # argument built on it.
+        deltas = d.get("_leaky_minus_honest") or {}
+        for key in ("sens_at_spec_0.80", "sens_at_spec_0.90", "sens_at_spec_0.95",
+                    "youden_sens", "youden_j"):
+            c.check(f"leaky-honest delta {key}", deltas.get(key), 3, origin=str(p))
 
     p = TABLES / "adni_cost_of_leakage.json"
     d = load(p)
@@ -298,6 +312,28 @@ def main() -> int:
         for proto in ("random", "component_safe"):
             v = d.get("by_protocol", {}).get(proto, {}).get("mean_sens_at_fixed_spec")
             c.check(f"cost-of-leakage sens ({proto})", v, 3, origin=str(p))
+        # The per-1000 counts are quoted in prose at both prevalence anchors.
+        # They were hand-typed and drifted (18.6/64.5/195.8 against the
+        # artefact's 18.5/64.2/195.0), which also made the stated difference
+        # disagree with the generated macro in the same sentence.
+        for anchor in ("prev_population", "prev_clinic"):
+            block = (d.get("cost_of_leakage") or {}).get(anchor) or {}
+            for key in ("leaky_apparent_missed_per_1000", "honest_actual_missed_per_1000",
+                        "additional_missed_if_trusting_leaky"):
+                c.check(f"{anchor} {key}", block.get(key), 1, origin=str(p))
+
+    # ── Cross-cohort hierarchical intervals ─────────────────────────────
+    # The manuscript calls the hierarchical interval the more defensible
+    # inferential quantity and says it is reported alongside on every arm. For
+    # OASIS-1 it was not, and it is the one arm whose hierarchical interval
+    # spans zero, so its absence flattered the replication claim.
+    for arm in ("oasis1", "tier1"):
+        p = ROOT / "reports" / "gpu" / "bootstrap" / f"{arm}_hierarchical.json"
+        d = load(p)
+        if d:
+            g = (d.get("inflation_gap") or {}).get("total_random_minus_component_safe") or {}
+            c.check(f"{arm} hierarchical CI lo", g.get("ci_lo"), 3, origin=str(p))
+            c.check(f"{arm} hierarchical CI hi", g.get("ci_hi"), 3, origin=str(p))
 
     # ── Site/scanner confound audit ─────────────────────────────────────
     p = TABLES / "adni_site_scanner_confound_audit.json"
