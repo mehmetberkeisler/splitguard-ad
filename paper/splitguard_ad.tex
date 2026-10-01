@@ -612,12 +612,16 @@ test partitions.
 \subsubsection{Component-safe split generation}
 Given target split ratios $r_\text{train} : r_\text{val} : r_\text{test}$
 and a class stratification target, \SGA{} assigns entire components to
-splits by stratified subset-sum, seeded for reproducibility: within each
-stratum it selects the component subset whose sizes come closest to the
-validation target, then the test target from what remains, and leaves
-the rest to training. On Tier~1 the subset choice is an exact
-dynamic-programming solve; on ADNI it is the greedy descending-size
-variant of the same objective.
+splits by stratified assignment against image-count targets, seeded for
+reproducibility: within each stratum it fills the validation target with
+whole components, then the test target from what remains, and leaves the
+rest to training. Targets are image counts rather than component counts,
+and the test target is the remainder after train and validation are
+rounded, so the three never over-subscribe the stratum. On Tier~1 the
+subset choice is an exact dynamic-programming solve; on ADNI it is a
+greedy descending-size fill approaching the target from below. Ties are
+broken on a frozen seeded rank, which is what makes the manifests both
+byte-reproducible and genuinely seed-sensitive.
 The resulting split manifest is frozen as a CSV file and versioned; no
 training script may discover or modify splits at runtime.
 Algorithm~\ref{alg:splitguard} formalises the full procedure: leakage
@@ -657,19 +661,25 @@ RNG seed $s$
   \EndIf
 \EndFor
 \State $\{C_1, \ldots, C_k\} \gets$ connected components of $G = (V, E)$
-\State \textit{// Assign whole components, stratified, by subset-sum on size}
+\State \textit{// Assign whole components, stratified, by image-count targets}
 \State $\text{rng} \gets \textsc{RandomGenerator}(s)$
-\For{each stratum $S$ (class label, and on ADNI also field-strength bucket)}
+\For{each stratum $S$ (class label; on ADNI also field-strength bucket)}
   \State Freeze a seeded shuffle rank on the components of $S$
-  \State Sort $S$ by $|C_i|$ descending, breaking ties on that rank
-  \State $n_\text{val} \gets \lfloor r_\text{val} \cdot |S| \rceil$;
-         $n_\text{te} \gets \lfloor r_\text{te} \cdot |S| \rceil$
-  \State $B_\text{val} \gets \textsc{ChooseSubset}(S, n_\text{val})$
-         \Comment{component sizes summing closest to the target}
-  \State $B_\text{te} \gets \textsc{ChooseSubset}(S \setminus B_\text{val}, n_\text{te})$
+  \State $m \gets \sum_{C \in S} |C|$
+         \Comment{targets are image counts, not component counts}
+  \State $m_\text{tr} \gets \text{round}(r_\text{tr} m)$;\;
+         $m_\text{val} \gets \text{round}(r_\text{val} m)$;\;
+         $m_\text{te} \gets m - m_\text{tr} - m_\text{val}$
+  \State $B_\text{val} \gets \textsc{ChooseSubset}(S, m_\text{val})$
+  \State $B_\text{te} \gets \textsc{ChooseSubset}(S \setminus B_\text{val}, m_\text{te})$
   \State $B_\text{tr} \gets S \setminus (B_\text{val} \cup B_\text{te})$
-         \Comment{remainder, never chosen explicitly}
+         \Comment{remainder; never chosen explicitly}
 \EndFor
+\Statex \textit{// \textsc{ChooseSubset}$(S,m)$: on ADNI, visit $S$ by $|C|$
+         descending with ties broken on the frozen rank and take each
+         component that still fits in the remaining budget, approaching $m$
+         from below; on Tier~1, solve the same objective exactly by
+         dynamic programming over attainable sums.}
 \State $\pi \gets$ assignment induced by $(B_\text{tr}, B_\text{val}, B_\text{te})$
 \State \textbf{return} $\pi$, audit report $\{$component sizes, class balance,
         cross-partition contamination, source/site/demographic associations$\}$
@@ -726,7 +736,9 @@ in the ComBat lineage~\cite{johnson2007combat,fortin2017combat,pomponio2020lifes
 \SGA{} surfaces the confound but does not attempt to remove it,
 because the leakage gap this paper measures is dominated by the
 subject-identity channel that harmonisation does not fix
-post-hoc); and (iv)~a clinical claim boundary statement.
+post-hoc). The clinical claim-boundary statement that appears in the
+benchmark report card (\S\ref{sec:discussion}) is authored rather than
+emitted by the audit, which reports no such field.
 The audit report issues a binary GO / NO-GO decision for training
 according to the formal criteria in Supplementary Table~S6.
 
