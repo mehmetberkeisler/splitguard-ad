@@ -55,6 +55,7 @@ ARMS = {
     "adni_no_mt1": (ADNI_PROTOCOLS, SEEDS),
     "adni_densenet121": (ADNI_PROTOCOLS, SEEDS),
     "adni_size_balanced": (ADNI_PROTOCOLS, SEEDS),
+    "adni_exact_linkage": (ADNI_PROTOCOLS, SEEDS),
     "adni_3d": (ADNI_PROTOCOLS, SEEDS),
     "tier1": (["random", "filename_subject", "true_participant"], TIER_SEEDS),
     "oasis1": (["random", "component_safe"], TIER_SEEDS),
@@ -571,7 +572,8 @@ def robustness_table(summary: dict, path: Path) -> None:
             ("Converter-inclusive", "adni_with_converters"),
             ("MT1 excluded", "adni_no_mt1"),
             ("DenseNet-121", "adni_densenet121"),
-            ("Size-balanced", "adni_size_balanced")]
+            ("Size-balanced", "adni_size_balanced"),
+            ("Exact label linkage", "adni_exact_linkage")]
     keys = ["total_random_minus_component_safe",
             "subject_leakage_random_minus_subject_only",
             "component_leakage_subject_only_minus_component_safe"]

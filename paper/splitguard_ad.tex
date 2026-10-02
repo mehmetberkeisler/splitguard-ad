@@ -309,12 +309,22 @@ patients screened.
 The instrument for all of this is \SGA{}, an executable audit layer
 that builds a per-image leakage graph, emits frozen component-safe
 split manifests, and gates training on a binary GO/NO-GO decision
-(\S\ref{sec:method}). It is the intervention arm of the provenance experiment rather than a
-contribution in its own right: on cohorts whose subject identifiers are
-intact its leakage graph reduces exactly to a subject grouping, with a
-marginal over \texttt{GroupKFold}-style splitting not distinguishable
-from zero. It is released with the manifests and component tables behind
-the splits reported here.
+(\S\ref{sec:method}). On cohorts whose subject identifiers are intact its leakage graph
+reduces exactly to a subject grouping, with a marginal over
+\texttt{GroupKFold}-style splitting not distinguishable from zero. We
+state that at the outset because it is the design target rather than a
+shortfall: a provenance-aware splitter that disagreed with participant
+grouping where participant identity is complete and correct would be
+wrong. The claim is about what happens when that condition fails. When
+one participant is dealt into two keys, a corruption the Tier-1 release
+exhibits for $179$ of its $200$ participants, subject-wise grouping has
+no way to rejoin the halves and the graph does: it prevents $90\%$ of
+the resulting leakage, where under simple identifier deletion it
+prevents half (\S\ref{sec:provenance_stress}). The framework's purpose
+is therefore to audit the assumption participant grouping rests on, and
+to retain protection when some provenance survives the loss of the
+identifier everything else was keyed to. It is released with the
+manifests and component tables behind the splits reported here.
 
 A subject-identity linear probe and a three-point degradation
 analysis together point at biometric leakage, with the two kinds of
@@ -1491,7 +1501,11 @@ to the participant. A 3D ResNet-18 on $128^3$ volumes, trained on the
 same $220$ participants under the same three protocols, puts the total
 gap at \VolGapTotal{} \VolGapCI{}, positive in $5/5$ seeds and
 $[+0.145, +0.335]$ under the subject\,$\times$\,seed hierarchical
-resampling: about twice the \AdniGapTotal{} of the 2D primary arm. The
+resampling, against \AdniGapTotal{} on the 2D primary arm. We report
+the two side by side rather than as a ratio: the recipes differ in
+pretraining and augmentation as well as in dimensionality, so the
+comparison establishes that the shortcut survives whole-volume input,
+not that volumes leak twice as much. The
 gap widens from both ends, and only one of those ends is about leakage.
 The leaky level rises to $0.971$, against \AdniRandomAUROC{} in 2D,
 which is what a memorisable unit of one whole volume rather than one
@@ -2450,12 +2464,15 @@ invisible in most published papers, which is the precise reason
 \SGA{} reports the audit as a binary pre-training GO/NO-GO gate
 rather than as a post-hoc diagnostic. Two clinical-scope notes
 follow. \emph{First}, CN-vs-AD with MCI excluded is the
-diagnostically easier cell of the AD imaging task; the cell that
-matters most for early-intervention decisions, CN-vs-MCI or
-stable-vs-converter MCI, is also the cell where subject identity
-carries the most signal relative to the disease signal, so a
-leakage audit applied to those tasks would almost certainly
-surface a larger inflation gap than the one we report here.
+diagnostically easier cell of the AD imaging task. The cells that
+matter most for early-intervention decisions, CN-vs-MCI and
+stable-vs-converter MCI, are harder, and whether provenance-related
+inflation is larger there is an open empirical question: we did not
+run those tasks, and the direction is not obvious from what we did
+run. A smaller disease signal need not mean a larger measured gap if
+the leaky protocol is also less able to exploit identity. The frozen
+manifests released here support that experiment without rebuilding
+the cohort.
 \emph{Second}, the headline absolute AUROC numbers (\AdniSafeAUROC{}
 honest, \AdniRandomAUROC{} leaky) are floor estimates from a single 2D coronal-centre
 slice and should not be read as performance ceilings; the
@@ -2688,8 +2705,8 @@ on the primary arm (paired-seed interval \AdniGapCI{} at $n=5$,
 descriptive), and the gap survives every pre-specified variation of
 cohort, backbone, converter rule, acquisition type and input
 dimensionality (Figure~\ref{fig:arm_forest}; the volumetric arm in
-\S\ref{sec:exp6_adni}, where the gap is \VolGapTotal{}, about twice the
-2D value).
+\S\ref{sec:exp6_adni}, where the gap is \VolGapTotal{} against
+\AdniGapTotal{} in 2D, under a different training recipe).
 
 Two controlled interventions locate the mechanism. Injecting
 contaminated test scans while holding the training set fixed gives
