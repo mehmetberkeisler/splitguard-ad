@@ -42,6 +42,7 @@ Usage
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import random
@@ -145,9 +146,12 @@ def main() -> int:
     ap.add_argument("--mechanisms", nargs="+", default=list(MECHANISMS))
     ap.add_argument("--levels", nargs="+", type=float, default=LEVELS)
     ap.add_argument("--seeds", nargs="+", type=int, default=SEEDS)
+    ap.add_argument("--emit-splits", type=Path, default=None,
+                    help="Also write one split CSV per (mechanism, intensity, seed, "
+                         "protocol) so the AUROC consequence of each corruption cell "
+                         "can be trained. Contamination needs no model; this does.")
     args = ap.parse_args()
 
-    import csv
     with args.split.open(encoding="utf-8") as fh:
         rows = [r for r in csv.DictReader(fh) if r.get("diagnosis_group") in BINARY]
     if not rows:
@@ -170,6 +174,17 @@ def main() -> int:
                     scored = residual_subject_leakage(corrupted, assignment)
                     records.append({"mechanism": mechanism, "intensity": level, "seed": seed,
                                     "protocol": protocol, "n_surviving_keys": n_keys, **scored})
+                    if args.emit_splits is not None and level > 0:
+                        out = (args.emit_splits /
+                               f"{mechanism}_lambda{level}_{protocol}_seed{seed}.csv")
+                        out.parent.mkdir(parents=True, exist_ok=True)
+                        fields = [f for f in rows[0] if not f.startswith("_")]
+                        with out.open("w", newline="", encoding="utf-8") as fh:
+                            w = csv.DictWriter(fh, fieldnames=fields)
+                            w.writeheader()
+                            for r in corrupted:
+                                w.writerow({**{k: r.get(k, "") for k in fields},
+                                            "split": assignment[r["image_id"]]})
 
     summary: dict[str, dict[str, dict[str, float]]] = {}
     for mechanism in args.mechanisms:

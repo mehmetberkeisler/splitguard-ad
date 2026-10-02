@@ -284,7 +284,21 @@ def main() -> int:
              "guarantee is preserved: each converter component is still "
              "assigned to a single partition.",
     )
+    parser.add_argument(
+        "--label-confidence",
+        nargs="+",
+        default=None,
+        help="Keep only scans whose label_confidence is in this set. Used for "
+             "the exact-linkage sensitivity arm, which drops the scans whose "
+             "diagnosis was matched to a visit by 180-day date proximity "
+             "rather than an exact visit key, so the leakage gap can be "
+             "measured where the label provenance is strongest. Must be "
+             "written to its own --split-dir.",
+    )
     args = parser.parse_args()
+    if args.label_confidence and args.split_dir == DEFAULT_SPLIT_DIR:
+        raise SystemExit("--label-confidence would overwrite the frozen splits; "
+                         "pass --split-dir and --summary-dir")
     if args.assignment != "size_descending" and args.split_dir == DEFAULT_SPLIT_DIR:
         raise SystemExit("--assignment shuffled would overwrite the frozen splits; pass --split-dir and --summary-dir.")
 
@@ -295,6 +309,11 @@ def main() -> int:
         )
 
     rows = read_components(args.components)
+    if args.label_confidence:
+        keep = set(args.label_confidence)
+        before = len(rows)
+        rows = [r for r in rows if r.get("label_confidence") in keep]
+        print(f"label_confidence filter {sorted(keep)}: {before} -> {len(rows)} scans")
     primary_labels = set(args.labels)
 
     # Pre-aggregate: one record per component (size, majority bucket, label).

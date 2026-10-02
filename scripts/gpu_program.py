@@ -69,7 +69,7 @@ OVERLAPS = ["0.0", "0.25", "0.50", "0.75", "1.0"]
 OUTPUT_FLAGS = ("--output", "--table", "--summary", "--output-dir", "--output-root", "--runs-root")
 DEFAULT_ORDER = ["tier1_truth", "adni_primary", "adni_converters", "adni_no_mt1", "adni_densenet121",
                  "tier2_oasis1", "adni_null", "adni_size_balanced", "identity_probe", "adni_provenance",
-                 "adni_3d", "adni_dose_response"]
+                 "adni_3d", "adni_dose_response", "adni_exact_linkage", "adni_stress"]
 
 
 # What each kind of stage imports at training time. A bare CUDA image has
@@ -182,6 +182,7 @@ def stages(device, volumes):
              "--device", device],
             [f"{TABLES}/adni/adni_permutation_null.json"], "adni_resnet18", 15, primary)],
         "adni_size_balanced": adni_arm("adni_size_balanced", "data/splits/adni_size_balanced", device),
+        "adni_exact_linkage": adni_arm("adni_exact_linkage", "data/splits/adni_exact_linkage", device),
         # needs the adni_converters checkpoints; "session" holds out a whole visit per participant
         "identity_probe": [command(
             [PY, "scripts/run_biometric_probe_adni.py", "--manifest", probe_rows,
@@ -202,6 +203,16 @@ def stages(device, volumes):
             [f"{RUNS}/adni_3d/inflation_gap_seed{seed}/{p}/test_predictions.csv"], "adni_3d", 1, [split])
             for seed in SEEDS for p in PROTOCOLS
             for split in [f"data/splits/adni_3d/adni_splitguard_seed{seed}.csv"]],
+        # The contamination half of the stress test needs no model and is
+        # already computed; this is its AUROC consequence, one training per
+        # (mechanism, intensity, protocol, seed) cell.
+        "adni_stress": [command(
+            [PY, "scripts/train_adni_baseline.py", "--split", str(s), "--output-root",
+             f"{RUNS}/adni_stress/{s.stem}", "--seed", 0, "--epochs", 15,
+             "--arch", "resnet18", "--device", device],
+            [f"{RUNS}/adni_stress/{s.stem}/baseline_seed0/test_predictions.csv"],
+            "adni_resnet18", 1, [str(s)])
+            for s in sorted((ROOT / "data" / "splits" / "adni_stress").glob("*.csv"))],
         "adni_dose_response": [command(
             [PY, "scripts/train_adni_baseline.py", "--split", split, "--output-root", run_dir, "--seed", seed,
              "--epochs", 15, "--arch", arch, "--device", device],
