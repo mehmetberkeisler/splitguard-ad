@@ -217,6 +217,26 @@ def main() -> int:
                                if "Overfull \\hbox" in l})
             r.check(f"no {name} text runs into the margin", not overfull,
                     "\n      ".join(overfull))
+            # An unresolved \ref renders as "??" in the PDF and in nothing the
+            # LaTeX log calls an error. The supplement is compiled on its own,
+            # so a reference into the manuscript resolves at no point and
+            # reaches the reviewer as "§??"; six did. Read the built PDF.
+            pdf = doc.with_suffix(".pdf")
+            if pdf.is_file():
+                out = subprocess.run(["pdftotext", str(pdf), "-"],
+                                     capture_output=True, text=True)
+                if out.returncode != 0:
+                    # Do not pass by default. A check that goes green because
+                    # its tool is missing is worse than no check: it reports
+                    # that something was verified when nothing was read.
+                    r.check(f"every {name} cross-reference resolves in the PDF",
+                            False, "pdftotext is unavailable, so the built PDF "
+                                   "was never read; install poppler to run this")
+                else:
+                    broken = re.findall(r"(?<![A-Za-z])\?\?", out.stdout)
+                    r.check(f"every {name} cross-reference resolves in the PDF",
+                            not broken,
+                            f"{len(broken)} occurrence(s) of ?? in the built PDF")
 
     # ── Report ──────────────────────────────────────────────────────────
     print(f"Checked {len(r.passes) + len(r.failures)} submission requirements\n")

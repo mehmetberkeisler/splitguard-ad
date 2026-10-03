@@ -1,0 +1,33 @@
+name: splitguard-ad
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - torch==2.8.0
+      - torchvision==0.23.0
+      - scikit-learn==1.9.1
+      - numpy==2.1.2
+      - scipy==1.18.1
+      - monai==1.5.0
+      - nibabel==5.3.3
+      - Pillow==11.0.0
+      - openpyxl==3.1.5
+      - matplotlib==3.11.2
+
+# Mirrors requirements.txt, which is itself read off the package list frozen on
+# the GPU node before training (runs_gpu/gpu_environment.txt). These versions
+# are therefore the provenance of the published numbers, not a preference.
+#
+# The set has to move together. The failure this project hit was an installed
+# scikit-learn older than the pin against a newer numpy: sklearn.metrics is a C
+# extension built for one numpy ABI, so it stops importing, every training
+# script dies at its first metric call, and all three verification gates keep
+# passing because none of them imports it. Check with
+#   python3 scripts/check_environment.py
+#
+# torch and torchvision ran as the CUDA 12.8 builds (2.8.0+cu128,
+# 0.23.0+cu128). Install them from the cu128 index to reproduce the node:
+#   pip install --index-url https://download.pytorch.org/whl/cu128 \
+#       torch==2.8.0 torchvision==0.23.0

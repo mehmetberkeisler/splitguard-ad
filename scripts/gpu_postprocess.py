@@ -190,7 +190,11 @@ def provenance_auroc(path: Path) -> dict | None:
             continue
         level = f"{record['deletion_fraction']:.2f}"
         grouped.setdefault(level, {}).setdefault(record["protocol"], []).append(record["test_auroc"])
-    return {level: {proto: round(sum(v) / len(v), 4) for proto, v in protos.items()}
+    # Six places, not four. The macro writer formats these to three, and
+    # rounding twice moves the last digit whenever the mean lands just below a
+    # midpoint: 0.86546 becomes 0.8655 becomes 0.866, where the value rounds
+    # to 0.865. The manuscript published that digit.
+    return {level: {proto: round(sum(v) / len(v), 6) for proto, v in protos.items()}
             for level, protos in sorted(grouped.items())} or None
 
 
@@ -768,7 +772,8 @@ def main() -> int:
     # ADNI arms: the multi-seed table and paired-seed bootstrap that the paper
     # tables, the figures and the verifier all read.
     summary["adni_bootstrap"] = {}
-    for arm in ("adni", "adni_with_converters", "adni_no_mt1", "adni_densenet121", "adni_size_balanced"):
+    for arm in ("adni", "adni_with_converters", "adni_no_mt1", "adni_densenet121",
+                "adni_size_balanced", "adni_exact_linkage"):
         seed_tables = sorted((args.tables / "adni").glob(f"{arm}_seed?.csv"))
         if not seed_tables:
             continue
@@ -802,6 +807,24 @@ def main() -> int:
             target = args.tables / "cross_cohort" / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(json.dumps(summary["paired_bootstrap"][arm], indent=1) + "\n", encoding="utf-8")
+
+    # The volumetric arm is not in the ADNI paired-seed loop above, so its
+    # hierarchical interval was the one the manuscript quotes from a path the
+    # release does not carry. Promote it the same way.
+    vol_hier = args.tables / "bootstrap" / "adni_3d_hierarchical.json"
+    if vol_hier.is_file():
+        shutil.copy(vol_hier, args.tables / "adni" / "adni_inflation_gap_3d_hierarchical.json")
+
+    # Same for the cross-cohort arms. The manuscript quotes their hierarchical
+    # intervals, the bootstrap tree is not released, and a reader checking the
+    # paper against the repository would otherwise find those claims
+    # unverifiable. The artefacts are seed-level aggregates with no identifiers.
+    for arm in ("tier1", "oasis1", "oasis1_densenet121"):
+        src = args.tables / "bootstrap" / f"{arm}_hierarchical.json"
+        if src.is_file():
+            dst = ROOT / "reports" / "tables" / f"{arm}_hierarchical.json"
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(src, dst)
 
     # Numbers the analysis scripts compute, so the prose can quote them as macros.
     summary["analysis"] = {}

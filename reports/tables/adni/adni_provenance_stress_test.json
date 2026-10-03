@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-10-02T06:11:57+00:00",
+  "created_at": "2026-10-02T18:07:20+00:00",
   "split_file": "data/splits/adni/adni_splitguard_seed0.csv",
   "n_scans": 1123,
   "mechanisms": [
@@ -21,7 +21,7 @@
     3,
     4
   ],
-  "trained": false,
+  "trained": true,
   "interpretation": "Contamination is a property of the split, so no model is trained here. drop removes identifiers visibly; split and merge corrupt them invisibly, which is what redistribution actually does. The graph can only help where an edge family other than same_subject survives the corruption.",
   "summary": {
     "drop": {
@@ -34,51 +34,112 @@
           "straddling_mean": 0,
           "test_scan_contamination_mean": 0.0
         },
-        "graph_prevented_share": null
+        "graph_prevented_share": null,
+        "auroc_optimism_prevented": null
       },
       "0.1": {
         "subject_only": {
           "straddling_mean": 16.8,
-          "test_scan_contamination_mean": 0.3373
+          "test_scan_contamination_mean": 0.3373,
+          "auroc_mean": 0.847,
+          "auroc_sd": 0.0524,
+          "n_seeds_trained": 5
         },
         "component_safe": {
           "straddling_mean": 8.4,
-          "test_scan_contamination_mean": 0.1775
+          "test_scan_contamination_mean": 0.1775,
+          "auroc_mean": 0.8135,
+          "auroc_sd": 0.0322,
+          "n_seeds_trained": 5
         },
-        "graph_prevented_share": 0.5
+        "graph_prevented_share": 0.5,
+        "auroc_optimism_prevented": 0.0335,
+        "auroc_paired": {
+          "mean": 0.0335,
+          "sd": 0.077,
+          "ci95_lo": -0.062,
+          "ci95_hi": 0.1291,
+          "n_positive": 4,
+          "n_seeds": 5
+        }
       },
       "0.25": {
         "subject_only": {
           "straddling_mean": 31.2,
-          "test_scan_contamination_mean": 0.3645
+          "test_scan_contamination_mean": 0.3645,
+          "auroc_mean": 0.8568,
+          "auroc_sd": 0.025,
+          "n_seeds_trained": 5
         },
         "component_safe": {
           "straddling_mean": 19.8,
-          "test_scan_contamination_mean": 0.3953
+          "test_scan_contamination_mean": 0.3953,
+          "auroc_mean": 0.8118,
+          "auroc_sd": 0.0457,
+          "n_seeds_trained": 5
         },
-        "graph_prevented_share": 0.3654
+        "graph_prevented_share": 0.3654,
+        "auroc_optimism_prevented": 0.045,
+        "auroc_paired": {
+          "mean": 0.0449,
+          "sd": 0.0353,
+          "ci95_lo": 0.0011,
+          "ci95_hi": 0.0887,
+          "n_positive": 4,
+          "n_seeds": 5
+        }
       },
       "0.5": {
         "subject_only": {
           "straddling_mean": 85.2,
-          "test_scan_contamination_mean": 0.9905
+          "test_scan_contamination_mean": 0.9905,
+          "auroc_mean": 0.945,
+          "auroc_sd": 0.0184,
+          "n_seeds_trained": 5
         },
         "component_safe": {
           "straddling_mean": 67,
-          "test_scan_contamination_mean": 0.8911
+          "test_scan_contamination_mean": 0.8911,
+          "auroc_mean": 0.9024,
+          "auroc_sd": 0.0484,
+          "n_seeds_trained": 5
         },
-        "graph_prevented_share": 0.2136
+        "graph_prevented_share": 0.2136,
+        "auroc_optimism_prevented": 0.0426,
+        "auroc_paired": {
+          "mean": 0.0426,
+          "sd": 0.0335,
+          "ci95_lo": 0.001,
+          "ci95_hi": 0.0842,
+          "n_positive": 5,
+          "n_seeds": 5
+        }
       },
       "1.0": {
         "subject_only": {
           "straddling_mean": 182.6,
-          "test_scan_contamination_mean": 0.9893
+          "test_scan_contamination_mean": 0.9893,
+          "auroc_mean": 0.9555,
+          "auroc_sd": 0.0131,
+          "n_seeds_trained": 5
         },
         "component_safe": {
           "straddling_mean": 125.4,
-          "test_scan_contamination_mean": 0.9787
+          "test_scan_contamination_mean": 0.9787,
+          "auroc_mean": 0.9591,
+          "auroc_sd": 0.0158,
+          "n_seeds_trained": 5
         },
-        "graph_prevented_share": 0.3133
+        "graph_prevented_share": 0.3133,
+        "auroc_optimism_prevented": -0.0036,
+        "auroc_paired": {
+          "mean": -0.0036,
+          "sd": 0.0244,
+          "ci95_lo": -0.0339,
+          "ci95_hi": 0.0266,
+          "n_positive": 3,
+          "n_seeds": 5
+        }
       }
     },
     "split": {
@@ -91,51 +152,112 @@
           "straddling_mean": 0,
           "test_scan_contamination_mean": 0.0
         },
-        "graph_prevented_share": null
+        "graph_prevented_share": null,
+        "auroc_optimism_prevented": null
       },
       "0.1": {
         "subject_only": {
           "straddling_mean": 1.2,
-          "test_scan_contamination_mean": 0.0071
+          "test_scan_contamination_mean": 0.0071,
+          "auroc_mean": 0.8498,
+          "auroc_sd": 0.0273,
+          "n_seeds_trained": 5
         },
         "component_safe": {
           "straddling_mean": 0.6,
-          "test_scan_contamination_mean": 0.0048
+          "test_scan_contamination_mean": 0.0048,
+          "auroc_mean": 0.8357,
+          "auroc_sd": 0.0215,
+          "n_seeds_trained": 5
         },
-        "graph_prevented_share": 0.5
+        "graph_prevented_share": 0.5,
+        "auroc_optimism_prevented": 0.0141,
+        "auroc_paired": {
+          "mean": 0.0141,
+          "sd": 0.0398,
+          "ci95_lo": -0.0353,
+          "ci95_hi": 0.0635,
+          "n_positive": 3,
+          "n_seeds": 5
+        }
       },
       "0.25": {
         "subject_only": {
           "straddling_mean": 1.6,
-          "test_scan_contamination_mean": 0.0178
+          "test_scan_contamination_mean": 0.0178,
+          "auroc_mean": 0.8681,
+          "auroc_sd": 0.0329,
+          "n_seeds_trained": 5
         },
         "component_safe": {
           "straddling_mean": 0.8,
-          "test_scan_contamination_mean": 0.0036
+          "test_scan_contamination_mean": 0.0036,
+          "auroc_mean": 0.8534,
+          "auroc_sd": 0.0282,
+          "n_seeds_trained": 5
         },
-        "graph_prevented_share": 0.5
+        "graph_prevented_share": 0.5,
+        "auroc_optimism_prevented": 0.0147,
+        "auroc_paired": {
+          "mean": 0.0147,
+          "sd": 0.0312,
+          "ci95_lo": -0.024,
+          "ci95_hi": 0.0534,
+          "n_positive": 4,
+          "n_seeds": 5
+        }
       },
       "0.5": {
         "subject_only": {
           "straddling_mean": 4,
-          "test_scan_contamination_mean": 0.0759
+          "test_scan_contamination_mean": 0.0759,
+          "auroc_mean": 0.8446,
+          "auroc_sd": 0.0336,
+          "n_seeds_trained": 5
         },
         "component_safe": {
           "straddling_mean": 1,
-          "test_scan_contamination_mean": 0.0035
+          "test_scan_contamination_mean": 0.0035,
+          "auroc_mean": 0.8061,
+          "auroc_sd": 0.0351,
+          "n_seeds_trained": 5
         },
-        "graph_prevented_share": 0.75
+        "graph_prevented_share": 0.75,
+        "auroc_optimism_prevented": 0.0385,
+        "auroc_paired": {
+          "mean": 0.0385,
+          "sd": 0.0528,
+          "ci95_lo": -0.027,
+          "ci95_hi": 0.1041,
+          "n_positive": 4,
+          "n_seeds": 5
+        }
       },
       "1.0": {
         "subject_only": {
           "straddling_mean": 61.6,
-          "test_scan_contamination_mean": 0.6357
+          "test_scan_contamination_mean": 0.6357,
+          "auroc_mean": 0.8768,
+          "auroc_sd": 0.0429,
+          "n_seeds_trained": 5
         },
         "component_safe": {
           "straddling_mean": 6.4,
-          "test_scan_contamination_mean": 0.1066
+          "test_scan_contamination_mean": 0.1066,
+          "auroc_mean": 0.8516,
+          "auroc_sd": 0.0623,
+          "n_seeds_trained": 5
         },
-        "graph_prevented_share": 0.8961
+        "graph_prevented_share": 0.8961,
+        "auroc_optimism_prevented": 0.0252,
+        "auroc_paired": {
+          "mean": 0.0252,
+          "sd": 0.0792,
+          "ci95_lo": -0.0732,
+          "ci95_hi": 0.1236,
+          "n_positive": 3,
+          "n_seeds": 5
+        }
       }
     },
     "merge": {
@@ -148,51 +270,112 @@
           "straddling_mean": 0,
           "test_scan_contamination_mean": 0.0
         },
-        "graph_prevented_share": null
+        "graph_prevented_share": null,
+        "auroc_optimism_prevented": null
       },
       "0.1": {
         "subject_only": {
           "straddling_mean": 0,
-          "test_scan_contamination_mean": 0.0
+          "test_scan_contamination_mean": 0.0,
+          "auroc_mean": 0.8412,
+          "auroc_sd": 0.0534,
+          "n_seeds_trained": 5
         },
         "component_safe": {
           "straddling_mean": 0,
-          "test_scan_contamination_mean": 0.0
+          "test_scan_contamination_mean": 0.0,
+          "auroc_mean": 0.8412,
+          "auroc_sd": 0.0534,
+          "n_seeds_trained": 5
         },
-        "graph_prevented_share": null
+        "graph_prevented_share": null,
+        "auroc_optimism_prevented": 0.0,
+        "auroc_paired": {
+          "mean": 0.0,
+          "sd": 0.0,
+          "ci95_lo": 0.0,
+          "ci95_hi": 0.0,
+          "n_positive": 0,
+          "n_seeds": 5
+        }
       },
       "0.25": {
         "subject_only": {
           "straddling_mean": 0,
-          "test_scan_contamination_mean": 0.0
+          "test_scan_contamination_mean": 0.0,
+          "auroc_mean": 0.8064,
+          "auroc_sd": 0.0655,
+          "n_seeds_trained": 5
         },
         "component_safe": {
           "straddling_mean": 0,
-          "test_scan_contamination_mean": 0.0
+          "test_scan_contamination_mean": 0.0,
+          "auroc_mean": 0.8064,
+          "auroc_sd": 0.0655,
+          "n_seeds_trained": 5
         },
-        "graph_prevented_share": null
+        "graph_prevented_share": null,
+        "auroc_optimism_prevented": 0.0,
+        "auroc_paired": {
+          "mean": 0.0,
+          "sd": 0.0,
+          "ci95_lo": 0.0,
+          "ci95_hi": 0.0,
+          "n_positive": 0,
+          "n_seeds": 5
+        }
       },
       "0.5": {
         "subject_only": {
           "straddling_mean": 0,
-          "test_scan_contamination_mean": 0.0
+          "test_scan_contamination_mean": 0.0,
+          "auroc_mean": 0.8152,
+          "auroc_sd": 0.0506,
+          "n_seeds_trained": 5
         },
         "component_safe": {
           "straddling_mean": 0,
-          "test_scan_contamination_mean": 0.0
+          "test_scan_contamination_mean": 0.0,
+          "auroc_mean": 0.8152,
+          "auroc_sd": 0.0506,
+          "n_seeds_trained": 5
         },
-        "graph_prevented_share": null
+        "graph_prevented_share": null,
+        "auroc_optimism_prevented": 0.0,
+        "auroc_paired": {
+          "mean": 0.0,
+          "sd": 0.0,
+          "ci95_lo": 0.0,
+          "ci95_hi": 0.0,
+          "n_positive": 0,
+          "n_seeds": 5
+        }
       },
       "1.0": {
         "subject_only": {
           "straddling_mean": 0,
-          "test_scan_contamination_mean": 0.0
+          "test_scan_contamination_mean": 0.0,
+          "auroc_mean": 0.8076,
+          "auroc_sd": 0.0598,
+          "n_seeds_trained": 5
         },
         "component_safe": {
           "straddling_mean": 0,
-          "test_scan_contamination_mean": 0.0
+          "test_scan_contamination_mean": 0.0,
+          "auroc_mean": 0.8076,
+          "auroc_sd": 0.0598,
+          "n_seeds_trained": 5
         },
-        "graph_prevented_share": null
+        "graph_prevented_share": null,
+        "auroc_optimism_prevented": 0.0,
+        "auroc_paired": {
+          "mean": 0.0,
+          "sd": 0.0,
+          "ci95_lo": 0.0,
+          "ci95_hi": 0.0,
+          "n_positive": 0,
+          "n_seeds": 5
+        }
       }
     }
   },
@@ -2447,5 +2630,30 @@
       "n_test_scans": 165,
       "test_scan_contamination": 0.0
     }
-  ]
+  ],
+  "auroc_aggregate": {
+    "cells": 8,
+    "cells_positive": 7,
+    "cell_labels": [
+      "drop 0.1",
+      "drop 0.25",
+      "drop 0.5",
+      "drop 1.0",
+      "split 0.1",
+      "split 0.25",
+      "split 0.5",
+      "split 1.0"
+    ],
+    "mean_of_cell_means": 0.0262,
+    "sd_of_cell_means": 0.0169,
+    "sign_test_p_one_sided": 0.0352,
+    "wilcoxon_w_plus": 35,
+    "wilcoxon_p_one_sided": 0.0078,
+    "cells_ci_excluding_zero": [
+      "drop 0.25",
+      "drop 0.5"
+    ],
+    "note": "Cells share seeds and a base manifest, so these aggregates are descriptive of a consistent direction, not an independent test. merge is excluded: its difference is zero by construction."
+  },
+  "auroc_note": "Per-cell AUROC is the mean over seeds of the recomputed test AUROC, using the same rank statistic as every other arm. A positive auroc_optimism_prevented means the component-safe grouping scored lower, i.e. it declined optimism the subject-only grouping accepted."
 }

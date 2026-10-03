@@ -50,6 +50,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = PROJECT_ROOT / "data" / "manifests" / "adni" / "adni_manifest.csv"
 DEFAULT_OUTPUT = PROJECT_ROOT / "data" / "manifests" / "adni" / "adni_linkage_audit.csv"
 DEFAULT_SUMMARY = PROJECT_ROOT / "reports" / "audits" / "adni" / "adni_linkage_audit_summary.json"
+DEFAULT_SPLIT = PROJECT_ROOT / "data" / "splits" / "adni" / "adni_splitguard_seed0.csv"
+DEFAULT_PUBLISHED = (PROJECT_ROOT / "reports" / "tables" / "adni" /
+                     "adni_linkage_audit_summary.json")
 
 SALT_ENV_VAR = "SPLITGUARD_RELEASE_SALT"
 PBKDF2_ITERATIONS = 600_000
@@ -75,6 +78,18 @@ RELEASE_FIELDS = [
 ]
 
 
+def tier_share(n_scans: int, n_exact: int, n_date: int) -> dict:
+    """Scan count, exact-key count, date-match count and the date share.
+
+    The exact count is passed rather than derived as n_scans - n_date: two
+    scans resolve to neither tier, and subtracting would quietly file them
+    under the exact visit key.
+    """
+    return {"n_scans": n_scans, "n_exact_viscode": n_exact,
+            "n_date_proximity": n_date,
+            "date_proximity_share": round(100 * n_date / n_scans, 1) if n_scans else None}
+
+
 def hash_ptid(ptid: str, salt: str) -> str:
     return hashlib.pbkdf2_hmac(
         "sha256", ptid.encode("utf-8"), salt.encode("utf-8"),
@@ -87,6 +102,12 @@ def main() -> int:
     ap.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     ap.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     ap.add_argument("--summary", type=Path, default=DEFAULT_SUMMARY)
+    ap.add_argument("--published-summary", type=Path, default=DEFAULT_PUBLISHED,
+                    help="Aggregate copy of the summary, inside the released "
+                         "tables tree. Pass an empty path to skip it.")
+    ap.add_argument("--primary-split", type=Path, default=DEFAULT_SPLIT,
+                    help="A frozen primary-arm split, to break the join tiers "
+                         "down by the universe each result is measured on.")
     ap.add_argument("--salt", default=None,
                     help=f"Secret release salt; or set ${SALT_ENV_VAR}.")
     args = ap.parse_args()
@@ -142,11 +163,44 @@ def main() -> int:
         writer.writeheader()
         writer.writerows(out_rows)
 
+    # The shares differ by universe, and the manuscript quotes all three. The
+    # primary arm is the worst case: excluding converter components removes
+    # scans the visit key covers almost perfectly, which raises the date-match
+    # share of what is left. Reporting only the cohort-wide figure would
+    # understate the exposure of the arm the headline is measured on.
+    by_tier = collections.Counter(
+        (r["in_cnad_universe"], r["join_tier"]) for r in out_rows)
+    cnad_n = sum(n for (universe, _), n in by_tier.items() if universe == "yes")
+    cnad_date = by_tier[("yes", "date_proximity")]
+    universes = {
+        "all_scans": tier_share(len(out_rows), tier_counts["exact_viscode"],
+                                tier_counts["date_proximity"]),
+        "cnad_universe": tier_share(cnad_n, by_tier[("yes", "exact_viscode")], cnad_date),
+    }
+    if args.primary_split.is_file():
+        with args.primary_split.open(newline="", encoding="utf-8") as handle:
+            split_rows = [r for r in csv.DictReader(handle)
+                          if (r.get("diagnosis_group") or "") in ("CN", "AD")]
+        split_tiers = collections.Counter(
+            CONFIDENCE_TO_TIER.get((r.get("label_confidence") or "").strip(), "unresolved")
+            for r in split_rows)
+        universes["primary_arm"] = tier_share(
+            len(split_rows), split_tiers["exact_viscode"], split_tiers["date_proximity"])
+        universes["primary_arm"]["split_file"] = str(
+            args.primary_split.relative_to(PROJECT_ROOT))
+        excluded_n = cnad_n - len(split_rows)
+        if excluded_n > 0:
+            universes["converter_components_excluded"] = tier_share(
+                excluded_n,
+                by_tier[("yes", "exact_viscode")] - split_tiers["exact_viscode"],
+                cnad_date - split_tiers["date_proximity"])
+
     unresolved = [r for r in out_rows if r["join_tier"] == "unresolved"]
     summary = {
         "n_scans": len(out_rows),
         "n_subjects": len(ptid_hashes),
         "join_tier_counts": dict(sorted(tier_counts.items())),
+        "by_universe": universes,
         "unresolved_scans": len(unresolved),
         "unresolved_in_cnad_universe": sum(
             1 for r in unresolved if r["in_cnad_universe"] == "yes"
@@ -163,6 +217,14 @@ def main() -> int:
     }
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     args.summary.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    # The audit rows are Tier-3 and stay local, but this summary is counts and
+    # shares only, which the release boundary already publishes. The manuscript
+    # quotes three date-match shares against three denominators, so a reader
+    # who cannot regenerate the rows should still be able to check them.
+    if args.published_summary:
+        args.published_summary.parent.mkdir(parents=True, exist_ok=True)
+        args.published_summary.write_text(json.dumps(summary, indent=2) + "\n",
+                                          encoding="utf-8")
 
     print(f"Wrote {len(out_rows)} rows to {args.output}")
     for tier, n in sorted(tier_counts.items()):

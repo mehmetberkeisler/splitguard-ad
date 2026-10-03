@@ -294,6 +294,32 @@ def summarize(split_rows: list[dict[str, object]], target_rows: list[dict]) -> d
     }
 
 
+def compositional_warnings(summary: dict) -> list[str]:
+    """Advisory findings: true of the split, but not reasons to refuse it.
+
+    Disjointness is the only hard constraint. These are the properties that
+    make a disjoint split a poor one, and the audit stayed silent about them
+    until the frozen ADNI manifests turned out to have one.
+    """
+    out: list[str] = []
+    sizes = summary.get("component_size_by_split") or {}
+    if len(sizes) >= 2:
+        means = {k: v for k, v in sizes.items() if v}
+        if means and max(means.values()) > 1.5 * min(means.values()):
+            spread = ", ".join(f"{k} {v:.2f}" for k, v in sorted(means.items()))
+            out.append(
+                "Component-size imbalance across partitions (mean images per "
+                f"component: {spread}). Participants with longer records may be "
+                "routed away from training. The split is still leakage-free.")
+    shares = summary.get("binary_share_by_split") or {}
+    if len(shares) >= 2 and max(shares.values()) - min(shares.values()) > 0.10:
+        spread = ", ".join(f"{k} {100*v:.1f}%" for k, v in sorted(shares.items()))
+        out.append(
+            f"Class-mix imbalance across partitions ({spread}). A threshold "
+            "selected on validation may not transfer to test.")
+    return out
+
+
 def markdown_table(headers: list[str], rows: list[list[object]]) -> str:
     header_line = "| " + " | ".join(headers) + " |"
     separator = "| " + " | ".join("---" for _ in headers) + " |"
@@ -368,12 +394,30 @@ def write_audit(summary: dict, split_path: Path, audit_path: Path, seed: int) ->
         ],
     )
 
-    go_no_go = (
-        "GO for Step 4: baseline training can use this split manifest. "
-        "The split is component-safe and preserves exact binary balance."
-        if summary["overlap_check_passed"]
-        else "NO-GO: component overlap was detected and must be fixed before training."
-    )
+    # A single undifferentiated GO conflates two different things. Partition
+    # disjointness is a hard constraint: violate it and the evaluation is
+    # invalid. Composition balance is not: a split can be provably
+    # leakage-free and still route long-record participants away from
+    # training, which is what the frozen ADNI manifests do and what the audit
+    # as originally specified could not say. Blocking and advisory findings
+    # are therefore reported separately, and a warning never downgrades a GO.
+    warnings = compositional_warnings(summary)
+    if not summary["overlap_check_passed"]:
+        go_no_go = ("NO-GO: component overlap was detected and must be fixed "
+                    "before training.")
+    elif warnings:
+        go_no_go = (
+            "GO for Step 4, with " + str(len(warnings)) + " compositional "
+            "warning(s): the split is component-safe and preserves exact "
+            "binary balance, so it is valid for training. The warnings below "
+            "concern how the partitions are composed, not whether they are "
+            "disjoint; they do not block training and are not errors.")
+    else:
+        go_no_go = ("GO for Step 4: baseline training can use this split "
+                    "manifest. The split is component-safe, preserves exact "
+                    "binary balance, and raises no compositional warning.")
+    warning_block = ("\n".join(f"- {w}" for w in warnings)
+                     if warnings else "- None.")
 
     content = f"""# Current JPEG SplitGuard Seed {seed} Split Audit
 
@@ -411,6 +455,20 @@ def write_audit(summary: dict, split_path: Path, audit_path: Path, seed: int) ->
 ## QC Decision
 
 **{go_no_go}**
+
+### Blocking checks
+
+These determine the verdict. A failure here invalidates the evaluation.
+
+- Component overlap across partitions: **{len(summary["leaking_components"])}**
+
+### Compositional warnings
+
+These do not block training. They describe how the partitions are composed
+rather than whether they are disjoint, and a split can be provably
+leakage-free while raising every one of them.
+
+{warning_block}
 
 ## Next Step
 

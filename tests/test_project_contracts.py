@@ -4,6 +4,7 @@ import random
 import re
 import sys
 import unittest
+from collections import Counter, defaultdict
 from pathlib import Path
 
 
@@ -172,6 +173,88 @@ class ProjectContractTests(unittest.TestCase):
             self.assertAlmostEqual(trainer.auroc(y, scores),
                                    reference.auroc(list(zip(y, scores))), places=12)
 
+    def test_label_permutation_keeps_one_label_per_participant_across_partitions(self):
+        # The null control permuted labels inside each partition, which gave a
+        # participant who straddles train and test a different label on each
+        # side. Identity memorisation then cannot pay off, every protocol lands
+        # at chance, and the control reads as "leakage manufactures nothing"
+        # when it has in fact been prevented from manufacturing anything. The
+        # corrected permutation runs once over the cohort; nothing in the
+        # numbers it produces would reveal a regression, so it is pinned here.
+        null = load_module(ROOT / "scripts" / "run_adni_permutation_null.py")
+        rows = [{"image_id": f"i{i}", "subject_id": f"s{i // 3}",
+                 "diagnosis_group": "AD" if i % 2 else "CN"} for i in range(30)]
+        splits = {"train": rows[:20], "val": rows[20:24], "test": rows[16:]}
+        self.assertTrue({r["subject_id"] for r in splits["train"]}
+                        & {r["subject_id"] for r in splits["test"]},
+                        "the fixture must contain a straddling participant")
+
+        moved = 0
+        for seed in range(20):
+            permuted = null.permute_splits(splits, random.Random(seed))
+            if any(a["diagnosis_group"] != b["diagnosis_group"]
+                   for a, b in zip(rows, permuted["train"] + permuted["val"])):
+                moved += 1
+            labels = defaultdict(set)
+            for phase_rows in permuted.values():
+                for row in phase_rows:
+                    labels[row["subject_id"]].add(row["diagnosis_group"])
+            self.assertFalse([s for s, v in labels.items() if len(v) > 1],
+                             "a participant carries two permuted labels")
+            original = Counter(r["diagnosis_group"] for r in rows)
+            union = {r["image_id"]: r["diagnosis_group"]
+                     for phase_rows in permuted.values() for r in phase_rows}
+            self.assertEqual(Counter(union.values()), original,
+                             "the permutation must deal the same labels back out")
+
+        # Label-preserving and consistent is also what the identity function
+        # is, so require that some seeds actually move a label.
+        self.assertGreater(moved, 0, "permute_splits never changed a label")
+
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AuditVerdictTests(unittest.TestCase):
+    """A split can be identity-safe and still be a poor split.
+
+    The gate returned one undifferentiated GO, so the frozen ADNI manifests
+    passed every check while being stratified by component size. Blocking and
+    advisory findings are now separate, and these tests pin the distinction:
+    a warning must never block, and overlap must always block.
+    """
+
+    def setUp(self):
+        self.mod = load_module(ROOT / "scripts" / "make_current_splitguard_split.py")
+
+    def test_a_balanced_split_raises_nothing(self):
+        self.assertEqual(self.mod.compositional_warnings(
+            {"component_size_by_split": {"train": 5.0, "val": 5.1, "test": 5.0},
+             "binary_share_by_split": {"train": 0.40, "val": 0.39, "test": 0.41}}), [])
+
+    def test_the_frozen_adni_composition_is_flagged(self):
+        # The real means from the frozen manifests: 4.65 / 7.50 / 6.11.
+        warnings = self.mod.compositional_warnings(
+            {"component_size_by_split": {"train": 4.65, "val": 7.50, "test": 6.11}})
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("Component-size imbalance", warnings[0])
+        self.assertIn("still leakage-free", warnings[0],
+                      "a warning must say plainly that it does not block")
+
+    def test_the_converter_arm_class_mix_is_flagged(self):
+        # 41.3% / 20.7% / 37.5% AD by image, the defect Limitations reports.
+        warnings = self.mod.compositional_warnings(
+            {"binary_share_by_split": {"train": 0.413, "val": 0.207, "test": 0.375}})
+        self.assertTrue(any("Class-mix imbalance" in w for w in warnings))
+
+    def test_warnings_are_advisory_and_overlap_is_not(self):
+        source = (ROOT / "scripts" / "make_current_splitguard_split.py").read_text()
+        verdict = source[source.index("warnings = compositional_warnings"):
+                         source.index("warning_block")]
+        self.assertIn('if not summary["overlap_check_passed"]', verdict,
+                      "overlap must be the only thing that produces NO-GO")
+        no_go = verdict.count("NO-GO")
+        self.assertEqual(no_go, 1, "exactly one branch may return NO-GO")
+        self.assertIn("do not block training", verdict + source,
+                      "the report must state that warnings do not block")

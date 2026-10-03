@@ -32,9 +32,12 @@ identity memorisation could not pay off under Protocol A, and the null would
 collapse to 0.5 everywhere for reasons that have nothing to do with the split
 protocol.
 
-The permutation is applied independently within each partition so that the
-class balance of every partition is preserved exactly; only the assignment of
-labels to patients moves.
+The permutation is applied once over the whole cohort, so a patient who
+straddles a partition boundary carries the same permuted label on both sides.
+An earlier version permuted inside each partition independently, which kept
+per-partition class balance exact and, by giving a straddling patient two
+different labels, answered question 1 while quietly foreclosing question 2.
+The realised per-partition balance is now recorded per run instead.
 
 Usage
 -----
@@ -102,8 +105,34 @@ def permute_labels_by_subject(
 def permute_splits(
     splits: dict[str, list[dict[str, str]]], rng: random.Random
 ) -> dict[str, list[dict[str, str]]]:
-    """Permute within each partition independently, preserving per-partition balance."""
-    return {phase: permute_labels_by_subject(rows, rng) for phase, rows in splits.items()}
+    """Permute once over the whole cohort, then deal the labels back per partition.
+
+    Permuting inside each partition independently preserves per-partition
+    class balance exactly, and it also forecloses the second question this
+    script exists to ask. A participant who straddles train and test under
+    Protocol A would draw an independent label on each side, so memorising
+    "this patient carries label 1" could not pay off at test time, and every
+    protocol would land at chance for a reason that has nothing to do with
+    leakage. That is the same failure the module docstring attributes to
+    permuting per image, reached by a different route.
+
+    One permutation over the union keeps each participant internally
+    consistent wherever their scans land. The cost is that per-partition
+    class balance is no longer exact; the realised balance is recorded per
+    run rather than enforced.
+    """
+    union = [row for rows in splits.values() for row in rows]
+    relabelled = {row["image_id"]: row["diagnosis_group"]
+                  for row in permute_labels_by_subject(union, rng)}
+    return {phase: [{**row, "diagnosis_group": relabelled[row["image_id"]]} for row in rows]
+            for phase, rows in splits.items()}
+
+
+def class_balance(splits: dict[str, list[dict[str, str]]]) -> dict[str, dict[str, int]]:
+    """AD/CN scan counts per partition, so the permutation's cost is visible."""
+    return {phase: {label: sum(1 for r in rows if r["diagnosis_group"] == label)
+                    for label in ("CN", "AD")}
+            for phase, rows in splits.items()}
 
 
 def run_one_seed(
@@ -159,7 +188,8 @@ def run_one_seed(
                 arch=arch,
             )
         metrics_payload["overlap"] = overlap_stats(permuted)
-        metrics_payload["labels_permuted"] = "per_subject_within_partition"
+        metrics_payload["labels_permuted"] = "per_subject_over_cohort"
+        metrics_payload["permuted_class_balance"] = class_balance(permuted)
         seed_record[label] = metrics_payload
         auroc = metrics_payload.get("test_metrics", {}).get("auroc")
         print(f"  seed={seed} {label:15s} permuted-label AUROC = {auroc}")
@@ -172,7 +202,7 @@ def run_one_seed(
                 "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 "seed": seed,
                 "split_file": str(split_path),
-                "permutation": "per_subject_within_partition",
+                "permutation": "per_subject_over_cohort",
                 "results": seed_record,
             },
             indent=2,
@@ -187,7 +217,7 @@ def summarise(per_seed: dict[int, dict], output_path: Path) -> None:
     protocols = ("random", "subject_only", "component_safe")
     summary: dict[str, object] = {
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "permutation": "per_subject_within_partition",
+        "permutation": "per_subject_over_cohort",
         "n_seeds": len(per_seed),
         "by_protocol": {},
     }

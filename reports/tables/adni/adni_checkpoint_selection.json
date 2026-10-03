@@ -1,0 +1,93 @@
+{
+  "arms": {
+    "adni": {
+      "random": {
+        "best_val_mean": 0.9729,
+        "test_mean": 0.9472,
+        "selection_optimism_mean": 0.0257,
+        "selection_optimism_ci95_lo": -0.0109,
+        "selection_optimism_ci95_hi": 0.0624,
+        "n_val_mean": 168,
+        "n_seeds": 5
+      },
+      "subject_only": {
+        "best_val_mean": 0.8668,
+        "test_mean": 0.8372,
+        "selection_optimism_mean": 0.0296,
+        "selection_optimism_ci95_lo": -0.0129,
+        "selection_optimism_ci95_hi": 0.072,
+        "n_val_mean": 171,
+        "n_seeds": 5
+      },
+      "component_safe": {
+        "best_val_mean": 0.8032,
+        "test_mean": 0.8289,
+        "selection_optimism_mean": -0.0256,
+        "selection_optimism_ci95_lo": -0.0622,
+        "selection_optimism_ci95_hi": 0.0109,
+        "n_val_mean": 165,
+        "n_seeds": 5
+      }
+    },
+    "adni_size_balanced": {
+      "random": {
+        "best_val_mean": 0.9729,
+        "test_mean": 0.9472,
+        "selection_optimism_mean": 0.0257,
+        "selection_optimism_ci95_lo": -0.0109,
+        "selection_optimism_ci95_hi": 0.0624,
+        "n_val_mean": 168,
+        "n_seeds": 5
+      },
+      "subject_only": {
+        "best_val_mean": 0.8668,
+        "test_mean": 0.8372,
+        "selection_optimism_mean": 0.0296,
+        "selection_optimism_ci95_lo": -0.0129,
+        "selection_optimism_ci95_hi": 0.072,
+        "n_val_mean": 171,
+        "n_seeds": 5
+      },
+      "component_safe": {
+        "best_val_mean": 0.844,
+        "test_mean": 0.8114,
+        "selection_optimism_mean": 0.0326,
+        "selection_optimism_ci95_lo": -0.0806,
+        "selection_optimism_ci95_hi": 0.1459,
+        "n_val_mean": 167,
+        "n_seeds": 5
+      }
+    },
+    "adni_with_converters": {
+      "random": {
+        "best_val_mean": 0.9523,
+        "test_mean": 0.9568,
+        "selection_optimism_mean": -0.0045,
+        "selection_optimism_ci95_lo": -0.0207,
+        "selection_optimism_ci95_hi": 0.0117,
+        "n_val_mean": 211,
+        "n_seeds": 5
+      },
+      "subject_only": {
+        "best_val_mean": 0.8464,
+        "test_mean": 0.7886,
+        "selection_optimism_mean": 0.0578,
+        "selection_optimism_ci95_lo": -0.0449,
+        "selection_optimism_ci95_hi": 0.1605,
+        "n_val_mean": 207,
+        "n_seeds": 5
+      },
+      "component_safe": {
+        "best_val_mean": 0.7891,
+        "test_mean": 0.815,
+        "selection_optimism_mean": -0.0259,
+        "selection_optimism_ci95_lo": -0.078,
+        "selection_optimism_ci95_hi": 0.0261,
+        "n_val_mean": 165,
+        "n_seeds": 5
+      }
+    }
+  },
+  "primary_optimism_spread": 0.0552,
+  "interpretation": "Selection optimism is the best validation AUROC minus the test AUROC. With real labels it is small and of comparable size under all three protocols, so checkpoint selection does not differentially flatter the leaky arm and cannot account for the reported inflation gap. Under permuted labels, where validation carries no signal at all, the same quantity reaches +0.159 for component-safe splitting; that is the no-signal worst case and is reported separately."
+}

@@ -1,16 +1,30 @@
-# Core deep-learning and scientific stack
-torch==2.9.1
-torchvision==0.24.1
-scikit-learn==1.5.1
-numpy==1.26.4
-Pillow==10.4.0
-nibabel==5.3.3
-openpyxl==3.1.5
-matplotlib==3.9.2
+# The environment that produced the published results.
+#
+# These versions are not chosen; they are read off the environment recorded on
+# the GPU node that ran the arms (runs_gpu/gpu_environment.txt, frozen by
+# scripts/gpu_setup.sh at the start of the run rather than assumed in advance).
+# The node used the image's CUDA 12.8 wheels, whose versions carry a +cu128
+# local suffix (torch 2.8.0+cu128, torchvision 0.23.0+cu128); the pins below
+# name the upstream versions so this file also installs on a CPU-only machine.
+#
+# matplotlib is the one entry that was never on the node: every figure is
+# rendered locally, and the released figure PDFs name 3.11.2 as their producer.
+#
+# scripts/check_environment.py holds this file to the running interpreter and
+# exits non-zero on any mismatch, because a drift that leaves the verification
+# gates green while the training scripts cannot import their metrics is the
+# failure mode this project actually hit.
 
-# Report / document generation (used by build_aihealth_template_docx.py
-# and render_aihealth_camera_ready_pdf.py; safe to omit if only the
-# core inflation-gap pipeline is being run)
-python-docx==1.1.2
-reportlab==4.2.5
-pypdf==5.1.0
+# Training and analysis, as recorded on the GPU node
+torch==2.8.0
+torchvision==0.23.0
+scikit-learn==1.9.1
+numpy==2.1.2
+scipy==1.18.1
+monai==1.5.0
+nibabel==5.3.3
+Pillow==11.0.0
+openpyxl==3.1.5
+
+# Figures, rendered locally
+matplotlib==3.11.2

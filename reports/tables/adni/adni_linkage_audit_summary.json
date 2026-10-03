@@ -1,0 +1,50 @@
+{
+  "n_scans": 2182,
+  "n_subjects": 382,
+  "join_tier_counts": {
+    "date_proximity": 485,
+    "exact_viscode": 1695,
+    "unresolved": 2
+  },
+  "by_universe": {
+    "all_scans": {
+      "n_scans": 2182,
+      "n_exact_viscode": 1695,
+      "n_date_proximity": 485,
+      "date_proximity_share": 22.2
+    },
+    "cnad_universe": {
+      "n_scans": 1412,
+      "n_exact_viscode": 1115,
+      "n_date_proximity": 297,
+      "date_proximity_share": 21.0
+    },
+    "primary_arm": {
+      "n_scans": 1123,
+      "n_exact_viscode": 841,
+      "n_date_proximity": 282,
+      "date_proximity_share": 25.1,
+      "split_file": "data/splits/adni/adni_splitguard_seed0.csv"
+    },
+    "converter_components_excluded": {
+      "n_scans": 289,
+      "n_exact_viscode": 274,
+      "n_date_proximity": 15,
+      "date_proximity_share": 5.2
+    }
+  },
+  "unresolved_scans": 2,
+  "unresolved_in_cnad_universe": 0,
+  "kdf": "PBKDF2-HMAC-SHA256, 600000 iterations",
+  "salt_disclosed": false,
+  "released_fields": [
+    "scan_uid",
+    "ptid_hash",
+    "acq_date",
+    "join_tier",
+    "label_source",
+    "diagnosis_group",
+    "in_cnad_universe"
+  ],
+  "note": "join_tier=exact_viscode means the diagnosis came from a direct (RID, VISCODE) match; date_proximity means the visit key failed and the label was taken from the nearest clinical visit within the 180-day tolerance; unresolved means neither succeeded."
+}

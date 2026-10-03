@@ -148,15 +148,21 @@ class Checker:
         historical reporting rather than a stale leftover.
         """
         window = 240
-        for name, text in self.sources.items():
+        # Search the whitespace-collapsed text, not the raw source. LaTeX wraps
+        # prose wherever the line fills, so a phrase this guard hunts is as
+        # likely to sit across a newline as not, and a raw find() then reports
+        # the stale value absent while it is on the page. Four guards added in
+        # one sitting were vacuous for exactly this reason, and the remaining
+        # ones were sound only by accident of where the lines happened to break.
+        needle = " ".join(stale.split())
+        for name, raw in self.sources.items():
+            text = " ".join(raw.split())
             start = 0
             while True:
-                idx = text.find(stale, start)
+                idx = text.find(needle, start)
                 if idx == -1:
                     break
-                # Collapse whitespace: a sanctioning phrase must not depend on
-                # where LaTeX happens to wrap the line it sits on.
-                context = " ".join(text[max(0, idx - window): idx + window].split())
+                context = text[max(0, idx - window): idx + window]
                 if not any(marker in context for marker in allow_near):
                     self.failures.append(
                         (label, f"stale value {stale!r} still present "
@@ -164,7 +170,7 @@ class Checker:
                          f"{origin}; in {name}")
                     )
                     return
-                start = idx + len(stale)
+                start = idx + len(needle)
         self.passes.append((label, f"stale {stale!r} absent or contextualised"))
 
     def check_int(self, label: str, value, *, origin: str) -> None:
@@ -227,7 +233,11 @@ def main() -> int:
     # generated, but the manuscript also quotes its per-protocol levels and its
     # decomposition. Those would otherwise be unchecked literals, which is how
     # a stale R^2 pair and a retired one-GPU claim survived earlier passes.
-    p = ROOT / "reports" / "gpu" / "bootstrap" / "adni_3d_hierarchical.json"
+    # Prefer the promoted copy, which is the one a reader of the repository
+    # actually has; the bootstrap tree it is computed in is not released.
+    p = TABLES / "adni_inflation_gap_3d_hierarchical.json"
+    if not p.is_file():
+        p = ROOT / "reports" / "gpu" / "bootstrap" / "adni_3d_hierarchical.json"
     d = load(p)
     if d:
         for proto, label in (("random", "leaky"), ("subject_only", "subject-only"),
@@ -322,19 +332,143 @@ def main() -> int:
                         "additional_missed_if_trusting_leaky"):
                 c.check(f"{anchor} {key}", block.get(key), 1, origin=str(p))
 
+    # ── Label-join tiers, per universe ──────────────────────────────────
+    # The manuscript quotes three different date-match shares against three
+    # different denominators, which is correct and reads like an error unless
+    # each one traces to the artefact that computed it.
+    # Prefer the published aggregate copy: the audit rows are Tier-3 and stay
+    # local, so reading only the local summary would make these claims
+    # UNCHECKED for everyone but the authors.
+    p = TABLES / "adni_linkage_audit_summary.json"
+    if not p.is_file():
+        p = ROOT / "reports" / "audits" / "adni" / "adni_linkage_audit_summary.json"
+    d = load(p)
+    for universe, block in (d.get("by_universe") or {}).items():
+        for key, places in (("n_scans", 0), ("n_exact_viscode", 0),
+                            ("n_date_proximity", 0), ("date_proximity_share", 1)):
+            # LaTeX writes thousands as 1{,}123, so offer both groupings.
+            alt = ([f"{block[key]:,}".replace(",", "{,}"), f"{block[key]:,}"]
+                   if key.startswith("n_") else None)
+            c.check(f"linkage {universe} {key}", block.get(key), places,
+                    origin=str(p), alt=alt)
+
+    # ── Label-permutation positive control ──────────────────────────────
+    # The control carries the paper's strongest mechanism claim and its only
+    # measured noise floor, so every number it supplies is checked, not just
+    # the headline.
+    p = TABLES / "adni_permutation_null.json"
+    d = load(p)
+    if d:
+        for proto in ("random", "subject_only", "component_safe"):
+            iv = (d.get("per_protocol_interval") or {}).get(proto) or {}
+            c.check(f"permuted {proto} AUROC", iv.get("mean"), 3, origin=str(p))
+            c.check(f"permuted {proto} CI lo", iv.get("ci95_lo"), 3, origin=str(p))
+            c.check(f"permuted {proto} CI hi", iv.get("ci95_hi"), 3, origin=str(p))
+            cv = (d.get("training_curves") or {}).get(proto) or {}
+            c.check(f"permuted {proto} final train loss",
+                    cv.get("final_train_loss_mean"), 3, origin=str(p))
+            c.check(f"permuted {proto} final val AUROC",
+                    cv.get("final_val_auroc_mean"), 3, origin=str(p))
+        for proto, block in (d.get("checkpoint_selection") or {}).items():
+            c.check(f"permuted {proto} selection optimism",
+                    block.get("selection_optimism_mean"), 3, origin=str(p))
+            c.check_int(f"permuted {proto} val participants",
+                        block.get("val_participants_mean"), origin=str(p))
+        for proto, block in (d.get("label_agreement") or {}).items():
+            c.check(f"permuted {proto} label agreement",
+                    block.get("agreement_with_true_diagnosis"), 1, origin=str(p))
+        for name in ("random_minus_component_safe", "subject_only_minus_component_safe"):
+            contrast = (d.get("paired_contrasts") or {}).get(name) or {}
+            c.check(f"permuted paired {name}", contrast.get("mean"), 3, origin=str(p))
+            c.check(f"permuted paired {name} CI lo", contrast.get("ci95_lo"), 3, origin=str(p))
+            c.check(f"permuted paired {name} CI hi", contrast.get("ci95_hi"), 3, origin=str(p))
+
+    # ── Tier-1 mapping audit, the forensic claim ────────────────────────
+    # The manuscript asserts that a public benchmark is a redistribution of
+    # OASIS-1. That is a claim about someone else's dataset, so every number
+    # behind it is held to the artefact that produced it.
+    p = ROOT / "reports" / "tables" / "tier1_ground_truth_audit.json"
+    d = load(p)
+    if d:
+        m = d.get("mapping") or {}
+        # check_int, not check(..., 0): these are counts, and the manuscript
+        # writes thousands as 6{,}400, which only check_int offers as a variant.
+        for key in ("n_images", "n_oasis_volumes_searched", "n_unambiguous",
+                    "n_participants", "participants_split_across_folders",
+                    "n_images_agreeing_with_cdr"):
+            c.check_int(f"tier1 mapping {key}", m.get(key), origin=str(p))
+        for key in ("min_self_correlation", "max_other_participant_correlation"):
+            c.check(f"tier1 mapping {key}", m.get(key), 4, origin=str(p))
+        lab = d.get("labels_vs_cdr") or {}
+        c.check_int("tier1 participants agreeing with CDR",
+                    lab.get("participants_with_expected_cdr"), origin=str(p))
+        ov = d.get("tier2_overlap") or {}
+        c.check_int("tier1 participants shared with tier2", ov.get("shared"), origin=str(p))
+
+    # ── Checkpoint selection, real labels ───────────────────────────────
+    # The reviewer objection this answers is that the protocols hold
+    # different validation sizes and the checkpoint is chosen on validation
+    # AUROC. The numbers are quoted in Limitations and must trace.
+    p = TABLES / "adni_checkpoint_selection.json"
+    d = load(p)
+    if d:
+        primary = (d.get("arms") or {}).get("adni") or {}
+        for proto, block in primary.items():
+            c.check(f"selection optimism ({proto})",
+                    block.get("selection_optimism_mean"), 3, origin=str(p))
+        if d.get("primary_optimism_spread") is not None:
+            c.check("selection optimism spread",
+                    d["primary_optimism_spread"], 3, origin=str(p))
+
     # ── Structured provenance corruption ────────────────────────────────
     p = TABLES / "adni_provenance_stress_test.json"
     d = load(p)
     if d:
         for mech in ("drop", "split", "merge"):
-            for lvl in ("0.1", "1.0"):
+            # Every intensity, not just the endpoints: the stress tables print
+            # the whole matrix, so a mid-level cell that drifted from its
+            # artefact would otherwise go unchecked.
+            for lvl in ("0.0", "0.1", "0.25", "0.5", "1.0"):
                 cell = (d.get("summary") or {}).get(mech, {}).get(lvl) or {}
                 for proto in ("subject_only", "component_safe"):
                     c.check(f"stress {mech} {lvl} {proto} straddling",
                             (cell.get(proto) or {}).get("straddling_mean"), 1, origin=str(p))
+                for proto in ("subject_only", "component_safe"):
+                    c.check(f"stress {mech} {lvl} {proto} contamination",
+                            (cell.get(proto) or {}).get("test_scan_contamination_mean"), 3,
+                            origin=str(p))
+                # lambda = 0 is the uncorrupted manifest, which is the
+                # primary arm itself: no cell was trained for it.
+                if (cell.get("subject_only") or {}).get("auroc_mean") is not None:
+                    for proto in ("subject_only", "component_safe"):
+                        c.check(f"stress {mech} {lvl} {proto} AUROC",
+                                (cell.get(proto) or {}).get("auroc_mean"), 3, origin=str(p))
+                if cell.get("auroc_optimism_prevented") is not None:
+                    c.check(f"stress {mech} {lvl} optimism prevented",
+                            cell["auroc_optimism_prevented"], 3, origin=str(p))
+                pr = cell.get("auroc_paired")
+                if pr:
+                    for bound in ("ci95_lo", "ci95_hi"):
+                        c.check(f"stress {mech} {lvl} {bound}", pr[bound], 3, origin=str(p))
+                    c.check_text(f"stress {mech} {lvl} seeds favouring C",
+                                 f"{pr['n_positive']}/{pr['n_seeds']}", origin=str(p))
                 if cell.get("graph_prevented_share") is not None:
                     c.check(f"stress {mech} {lvl} prevented",
-                            round(100 * cell["graph_prevented_share"]), 0, origin=str(p))
+                            100 * cell["graph_prevented_share"], 1, origin=str(p),
+                            alt=[fmt(round(100 * cell["graph_prevented_share"]), 0)])
+        agg = d.get("auroc_aggregate")
+        if agg:
+            c.check("stress aggregate mean of cell means",
+                    agg["mean_of_cell_means"], 3, origin=str(p))
+            c.check("stress aggregate SD of cell means",
+                    agg["sd_of_cell_means"], 3, origin=str(p))
+            c.check("stress aggregate sign-test p",
+                    agg["sign_test_p_one_sided"], 3, origin=str(p))
+            c.check("stress aggregate Wilcoxon p",
+                    agg["wilcoxon_p_one_sided"], 3, origin=str(p))
+            c.check("stress aggregate Wilcoxon W+", agg["wilcoxon_w_plus"], 0, origin=str(p))
+            c.check("stress aggregate cells compared", agg["cells"], 0, origin=str(p))
+            c.check("stress aggregate cells favouring C", agg["cells_positive"], 0, origin=str(p))
 
     # ── Cross-cohort hierarchical intervals ─────────────────────────────
     # The manuscript calls the hierarchical interval the more defensible
@@ -346,13 +480,30 @@ def main() -> int:
     # absent when that claim was first checked, including the OASIS-1
     # DenseNet arm, whose interval spans zero.
     for arm in ("oasis1", "oasis1_densenet121", "tier1", "adni_with_converters",
-                "adni_no_mt1", "adni_densenet121", "adni_size_balanced"):
+                "adni_no_mt1", "adni_densenet121", "adni_size_balanced",
+                "adni_3d", "adni_exact_linkage"):
+        # Prefer the copy inside the released tables tree, so these checks are
+        # not UNCHECKED for a reader who cloned the repository. Only the ADNI
+        # arms are promoted there; the cross-cohort ones still read from the
+        # bootstrap tree.
         p = ROOT / "reports" / "gpu" / "bootstrap" / f"{arm}_hierarchical.json"
+        promoted = (TABLES / f"adni_inflation_gap{arm[len('adni'):]}_hierarchical.json"
+                    if arm.startswith("adni")
+                    else ROOT / "reports" / "tables" / f"{arm}_hierarchical.json")
+        if promoted.is_file():
+            p = promoted
         d = load(p)
         if d:
             g = (d.get("inflation_gap") or {}).get("total_random_minus_component_safe") or {}
             c.check(f"{arm} hierarchical CI lo", g.get("ci_lo"), 3, origin=str(p))
             c.check(f"{arm} hierarchical CI hi", g.get("ci_hi"), 3, origin=str(p))
+            # Tier 1's hierarchical component marginal is quoted in the text as
+            # the counterpart of ADNI's, and was unchecked.
+            m = ((d.get("inflation_gap") or {})
+                 .get("component_leakage_subject_only_minus_component_safe") or {})
+            if arm == "tier1" and m:
+                c.check("tier1 hierarchical marginal CI lo", m.get("ci_lo"), 3, origin=str(p))
+                c.check("tier1 hierarchical marginal CI hi", m.get("ci_hi"), 3, origin=str(p))
 
     # ── Site/scanner confound audit ─────────────────────────────────────
     p = TABLES / "adni_site_scanner_confound_audit.json"
@@ -399,17 +550,24 @@ def main() -> int:
         c.check(f"{label} gap CI hi", g.get("ci_hi"), 3, origin=str(path))
 
     # ── Architecture-breadth and acquisition-type sensitivity arms ───────
+    # Every arm whose row the robustness table prints, not only the two checked
+    # when this block was written: a row generated from an artefact nobody
+    # verifies is a row that can drift from its source silently.
     for label, name in [("densenet121", "adni_inflation_gap_densenet121_bootstrap.json"),
-                        ("no_mt1", "adni_inflation_gap_no_mt1_bootstrap.json")]:
+                        ("no_mt1", "adni_inflation_gap_no_mt1_bootstrap.json"),
+                        ("size_balanced", "adni_inflation_gap_size_balanced_bootstrap.json"),
+                        ("exact_linkage", "adni_inflation_gap_exact_linkage_bootstrap.json"),
+                        ("with_converters", "adni_inflation_gap_with_converters_bootstrap.json")]:
         d = load(TABLES / name)
         if not d:
             continue
         g = d["inflation_gap"]["total_random_minus_component_safe"]
+        s = d["inflation_gap"]["subject_leakage_random_minus_subject_only"]
         m = d["inflation_gap"]["component_leakage_subject_only_minus_component_safe"]
-        c.check(f"{label} arm gap", g.get("point_estimate"), 3, origin=name)
-        c.check(f"{label} arm CI lo", g.get("ci_lo"), 3, origin=name)
-        c.check(f"{label} arm CI hi", g.get("ci_hi"), 3, origin=name)
-        c.check(f"{label} arm marginal", m.get("point_estimate"), 3, origin=name)
+        for part, gap in (("gap", g), ("subject part", s), ("marginal", m)):
+            c.check(f"{label} arm {part}", gap.get("point_estimate"), 3, origin=name)
+            c.check(f"{label} arm {part} CI lo", gap.get("ci_lo"), 3, origin=name)
+            c.check(f"{label} arm {part} CI hi", gap.get("ci_hi"), 3, origin=name)
 
     # ── Subject-identity probe (ADNI, component-safe representations) ─────
     for name, label in (("adni_biometric_probe.json", "image hold-out"),
@@ -509,6 +667,12 @@ def main() -> int:
                 c.check(f"{field} ({proto})",
                         _stats.mean(float(r[field]) for r in values) if values else None, 3,
                         origin=str(table))
+            # The leaky protocol's test-subject contamination is the number the
+            # Results paragraph opens with, and it came from this same file.
+            if values and "test_subject_contamination_pct" in values[0]:
+                c.check(f"test-subject contamination ({proto})",
+                        _stats.mean(float(r["test_subject_contamination_pct"])
+                                    for r in values), 1, origin=str(table))
     else:
         MISSING.append(str(table))
 
@@ -558,6 +722,23 @@ def main() -> int:
                     statistics.mean(straddling), 1, origin=str(p))
             c.check(f"provenance overlap p ({tag})",
                     statistics.mean(overlap), 3, origin=str(p))
+        # The trained half: the manuscript quotes the no-loss AUROC and both
+        # protocols' AUROC at 10% loss as literals, and then the two rises it
+        # compares the composed dose-response prediction against. All four
+        # were unchecked, which is how a number that duplicates a macro drifts
+        # from it.
+        auroc = {k: statistics.mean(r["test_auroc"] for r in v)
+                 for k, v in agg.items() if all("test_auroc" in r for r in v)}
+        base = auroc.get((0.0, "component_safe"))
+        if base is not None:
+            c.check("provenance AUROC at no loss", base, 3, origin=str(p))
+            for proto in ("subject_only", "component_safe"):
+                ten = auroc.get((0.1, proto))
+                if ten is None:
+                    continue
+                c.check(f"provenance AUROC at 10% ({proto})", ten, 3, origin=str(p))
+                c.check(f"provenance AUROC rise at 10% ({proto})", ten - base, 3,
+                        origin=str(p))
 
     # ── Split composition (audit-gate blind spot) ───────────────────────
     # The partitions are disjoint by construction and unbalanced in
@@ -600,6 +781,13 @@ def main() -> int:
             c.check(f"{label} {field} ({phase})", value, 3 if field.startswith("ad") else 2,
                     origin=name,
                     alt=[fmt(100 * value, 1)] if field.startswith("ad") and value is not None else None)
+            # The decimal form of a share occurs in other artefacts, so the
+            # check above can pass on a coincidence while the percentage the
+            # Limitations paragraph actually prints goes unguarded. Assert the
+            # printed form too, for the arm that paragraph is about.
+            if label == "converter arm" and value is not None:
+                c.check_text(f"{label} AD share printed ({phase})",
+                             f"{fmt(100 * value, 1)}\\%", origin=name)
 
     # ── Superseded values that must not survive anywhere ────────────────
     # Every entry here is a number this project once printed and later
@@ -631,6 +819,20 @@ def main() -> int:
          "recomputed under validation-selected thresholds"),
         ("hierarchical CI lower (mis-rounded)", "+0.072, +0.217", "+0.071, +0.218",
          "rounded the wrong way from 0.0714 / 0.2176"),
+        # Claim strength, retired on external review. These were missed by a
+        # grep twice because LaTeX wraps them across lines; check_absent
+        # collapses whitespace, which is the only reliable way to hold them.
+        ("single-cause framing", "The primary cause is", "One important cause is",
+         "external review: domain shift, selection bias and site shift are also causes"),
+        ("identity as the only channel", "the channel that matters",
+         "a particularly important shortcut channel",
+         "external review: softened to one channel among several"),
+        ("universal transfer function", "leave unmeasured is the \\emph{transfer function}",
+         "how evaluation optimism changes with leakage magnitude",
+         "external review: the slope is experiment-specific, not a transfer function"),
+        ("unqualified dose claim", "Leakage buys optimism at a measurable rate",
+         "Within the tested configuration",
+         "external review: the DenseNet arm gives a different slope on the same data"),
         ("component marginal sign (converter arm)", "$+0.043$", "-0.043",
          "unified on the Protocol B - Protocol C convention"),
         ("Tier-1 gap on the filename-key split", "0.157 \\pm 0.016", "the recovered-participant gap",
@@ -656,8 +858,37 @@ def main() -> int:
                         # optimism at 10% identifier loss is itself +0.043 once
                         # the dose slope is 0.125, which is the retracted
                         # converter-arm marginal to the digit.
-                        "AUROC of optimism", "AUROC of expected optimism"),
+                        "AUROC of optimism", "AUROC of expected optimism",
+                        # Second collision, same digits: the seed-paired
+                        # difference at drop lambda = 0.5 rounds to +0.043 in
+                        # the stress AUROC table. Its interval sits beside it in
+                        # the row, which no other context reproduces.
+                        r"[+0.001,\, +0.084]"),
         )
+
+    # ── Retracted values, anywhere in a shipped artefact ────────────────
+    # The manuscript and supplement are checked above, but they are not the
+    # only files that reach a reviewer. The graphical abstract is a tracked
+    # PDF, is uploaded alongside the submission, and is generated by hand, so
+    # nothing regenerates it when a number moves. It carried a gap of +0.129,
+    # AUROCs of 0.949/0.819, a cohort size of 382 and the retracted 98.3%
+    # attribution for two months after each was superseded.
+    abstract = ROOT / "paper" / "SplitGuard-AD_GraphicalAbstract.pdf"
+    if abstract.is_file():
+        import subprocess as _sp
+        proc = _sp.run(["pdftotext", str(abstract), "-"], capture_output=True, text=True)
+        if proc.returncode == 0:
+            shipped = proc.stdout
+            for stale, why in (("0.949", "leaky AUROC, now 0.947"),
+                               ("0.819", "component-safe AUROC, now 0.829"),
+                               ("+0.129", "total gap, now +0.118"),
+                               ("382 subjects", "the primary arm has 220 participants"),
+                               ("98.3", "retracted subject-identity attribution")):
+                if stale in shipped:
+                    c.failures.append((f"graphical abstract still shows {stale}",
+                                       why, str(abstract)))
+                else:
+                    c.passes.append((f"graphical abstract free of {stale}", why))
 
     # ── Numbers whose GPU stage has not completed ───────────────────────
     # Only macros the manuscript actually uses: a generated number for an arm

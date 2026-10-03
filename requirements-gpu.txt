@@ -1,15 +1,22 @@
 # GPU node environment for the single-code-state re-run (scripts/gpu_setup.sh).
-# Matches requirements.txt for everything the training and analysis code
-# imports, plus MONAI for the volumetric arm. The exact versions that resolve
-# on the node are frozen into runs/gpu_environment.txt by the setup script, so
-# the environment the results came from is recorded rather than assumed.
-torch==2.9.1
-torchvision==0.24.1
-numpy==1.26.4
-scikit-learn==1.5.1
-scipy>=1.11,<1.17
-Pillow==10.4.0
+#
+# This file is only used by the venv fallback path, taken when the image has no
+# CUDA torch. The path that actually ran the published arms used the image's own
+# CUDA wheels and froze whatever resolved into runs/gpu_environment.txt, so the
+# environment the results came from is recorded rather than assumed. The pins
+# here are that recorded environment, so the fallback reproduces the node
+# instead of installing a different stack.
+#
+# torch and torchvision were the CUDA 12.8 builds (2.8.0+cu128, 0.23.0+cu128);
+# install them from the cu128 index to match, for example:
+#   pip install --index-url https://download.pytorch.org/whl/cu128 \
+#       torch==2.8.0 torchvision==0.23.0
+torch==2.8.0
+torchvision==0.23.0
+numpy==2.1.2
+scikit-learn==1.9.1
+scipy==1.18.1
+Pillow==11.0.0
 nibabel==5.3.3
 openpyxl==3.1.5
-matplotlib==3.9.2
 monai==1.5.0

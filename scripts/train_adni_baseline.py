@@ -379,6 +379,7 @@ def train_and_eval(
     output_dir: Path,
     device_str: str,
     arch: str = "resnet18",
+    checkpoint_rule: str = "best-val",
 ) -> dict:
     deps = lazy_imports()
     torch = deps["torch"]
@@ -438,7 +439,16 @@ def train_and_eval(
             "val_balanced_accuracy": round(float(val_metrics["balanced_accuracy"]), 4),
         })
 
-    if best_state is not None:
+    # Checkpoint rule. The default keeps the best-validation-AUROC epoch,
+    # which is what every reported arm used. The protocols do not hold
+    # comparable validation partitions, though -- component-safe splitting
+    # leaves the fewest participants -- so a reviewer can fairly ask whether
+    # the gap is partly an artefact of selecting harder on a noisier signal.
+    # "final" answers that by fixing the epoch in advance, which makes the
+    # comparison independent of validation entirely.
+    if checkpoint_rule == "final":
+        best_val_auc = float("nan")          # nothing was selected on
+    elif best_state is not None:
         model.load_state_dict(best_state)
     test_metrics, y_true, y_prob = evaluate(model, test_loader, device)
     # Validation predictions under the SAME best checkpoint. These are what
@@ -515,7 +525,9 @@ def train_and_eval(
         # in the artefact the manuscript's hyperparameter table is built from.
         "arch": arch,
         "device": str(device),
-        "best_val_auroc": round(best_val_auc, 4),
+        "checkpoint_rule": checkpoint_rule,
+        "best_val_auroc": (None if checkpoint_rule == "final"
+                           else round(best_val_auc, 4)),
         "wall_time_sec": round(time.time() - started_at, 1),
         "label_distribution": dict(Counter(row["diagnosis_group"] for row in splits["train"])),
     }

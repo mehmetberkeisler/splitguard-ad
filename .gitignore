@@ -24,9 +24,15 @@ Alzheimer_MRI_binary/
 oasis1/
 data/
 
-# Model checkpoints and run outputs
-runs/
-runs_gpu/
+# Model checkpoints and run outputs. The two run trees are listed as globs
+# rather than as directories so the recorded GPU environment can be excepted:
+# git does not descend into an excluded directory, so a negation inside one
+# never takes effect. That one file is the provenance the manuscript cites for
+# every reported AUROC, and it holds package versions and a GPU model only.
+runs/*
+!runs/gpu_environment.txt
+runs_gpu/*
+!runs_gpu/gpu_environment.txt
 runs_smoke/
 runs_frozen/
 .venv-gpu/
@@ -187,6 +193,14 @@ reports/tables/adni/adni_inventory.csv
 # calibration only, no image-to-participant mapping.
 !reports/tables/tier1_ground_truth_audit.json
 !reports/tables/tier1_split_rules_vs_truth.json
+# The cross-cohort hierarchical intervals, for the same reason as above: the
+# manuscript quotes all three, the bootstrap tree they are computed in is not
+# released, and without these a reader checking the paper against this
+# repository is told four artefacts are absent rather than that the claims
+# hold. Seed-level aggregates, no identifiers.
+!reports/tables/tier1_hierarchical.json
+!reports/tables/oasis1_hierarchical.json
+!reports/tables/oasis1_densenet121_hierarchical.json
 
 # Keep two canonical methodology docs in the public release; exclude
 # everything else under docs/ (internal planning, reviewer-feedback,

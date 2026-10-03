@@ -267,7 +267,11 @@ def main() -> int:
 
     if not args.src.exists():
         print(f"error: source not found: {args.src}", file=sys.stderr)
-        print("       run scripts/extract_adni1.sh first.", file=sys.stderr)
+        print("       ADNI volumes are not redistributed with this repository and", file=sys.stderr)
+        print("       there is no extraction script for them. Download ADNI1 from", file=sys.stderr)
+        print("       LONI under your own data-use agreement and extract the NIfTI", file=sys.stderr)
+        print(f"       volumes to {DEFAULT_SRC},", file=sys.stderr)
+        print("       or pass --src. See docs/DATA_ACCESS.md.", file=sys.stderr)
         return 2
 
     scans = sorted(args.src.rglob("*.nii"))

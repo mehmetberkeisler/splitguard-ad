@@ -73,7 +73,10 @@ Loss & inverse-freq BCE & inverse-freq BCE & inverse-freq BCE \\
 Seed array & $\{0,1,2,3,42\}$ & $\{0,1,2,3,42\}$ & $\{0,1,2,3,4\}$ \\
 Backend & CUDA H100 & CUDA H100 & CUDA H100; RTX PRO 4500 \\
          &          &          & (dose-response matrix); \\
-         &          &          & RTX 2000 Ada (volumetric arm) \\
+         &          &          & RTX 2000 Ada (volumetric arm); \\
+         &          &          & RTX 4090 (exact-linkage, \\
+         &          &          & structured-corruption and \\
+         &          &          & label-permutation arms) \\
 Mixed precision & AMP & off & off \\
 \bottomrule
 \end{tabular}
@@ -86,7 +89,11 @@ precision on CUDA and the OASIS-1 and ADNI trainers do not. Within any one
 cohort every protocol is trained under identical settings, which is the
 condition the inflation-gap comparison requires. The volumetric ADNI arm
 uses a 3D ResNet-18 on $128^3$ skull-stripped, z-scored volumes, batch size
-$4$, AdamW at $10^{-4}$ with weight decay $10^{-2}$, $15$ epochs.
+$4$, AdamW at $10^{-4}$ with weight decay $10^{-2}$, $15$ epochs. The
+exact-linkage, structured-corruption and label-permutation arms use the
+ADNI1 column unchanged; they vary the manifest or the labels, never the
+training configuration, which is what lets their contrasts be read against
+the primary arm.
 
 % ═══════════════════════════════════════════════════════════════════════════
 \section{Operating-point sensitivity table (ADNI)}
@@ -94,7 +101,44 @@ $4$, AdamW at $10^{-4}$ with weight decay $10^{-2}$, $15$ epochs.
 % ═══════════════════════════════════════════════════════════════════════════
 
 The clinical translation in the main text is anchored at a screening
-specificity of $0.90$. Table~\ref{tab:sm_operating_point} sweeps that choice,
+specificity of $0.90$. \paragraph{The cost-of-leakage arithmetic in full}
+The main text quotes one figure from this translation. The identity is
+deterministic, $\text{missed}/1000 = 1000 \cdot \text{prev} \cdot
+(1 - \text{sens})$, applied to the measured sensitivity at a fixed
+specificity of $0.90$ on the converter-inclusive arm.
+Table~\ref{tab:sm_cost_of_leakage} reports it at
+two prevalence anchors rather than one so that the dependence on prevalence
+is visible rather than hidden in a single number.
+
+\begin{table}[!ht]
+\centering
+\small
+\caption{Cost-of-leakage arithmetic at two prevalence anchors, converter-inclusive
+ADNI arm, sensitivity read at fixed specificity $0.90$. ``Leaky apparent'' is
+what the benchmark would predict; ``honest actual'' is what the
+component-safe sensitivity delivers at the same prevalence. The difference is
+the cost of trusting the benchmark. These are prevalence-weighted
+re-expressions of a measured sensitivity difference, not deployment
+estimates.}
+\label{tab:sm_cost_of_leakage}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Prevalence anchor} & \textbf{Leaky apparent} & \textbf{Honest actual}
+ & \textbf{Additional missed} \\
+ & \multicolumn{3}{c}{missed AD diagnoses per $1{,}000$ screened} \\
+\midrule
+US population, 75--84, $13.8\%$~\cite{rajan2021} & $18.5$ & $64.2$ & $45.7$ \\
+Memory clinic, $58.9\%$~\cite{thomas2024prompt}  & $79.0$ & $274.0$ & $195.0$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+The two rows differ by a factor of four, which is the point: the count is a
+function of the population it is applied to, and quoting one anchor without
+the other would invite exactly the deployment reading the main text declines.
+
+Table~\ref{tab:sm_operating_point} sweeps that choice,
 reporting sensitivity at four fixed specificities, specificity at three fixed
 sensitivities, and the Youden-$J$ point, for each of the three protocols and
 for the leaky-minus-honest difference. The anchor is not load-bearing: the
@@ -305,7 +349,7 @@ external-cohort replication.}
 \section{Related work: what each prior treatment of leakage measures}
 % ═══════════════════════════════════════════════════════════════════════════
 
-Table~\ref{tab:related_work} places this work against prior treatments of leakage in AD MRI along the five axes the main text uses: whether inflation is shown, whether a dose is measured, whether provenance is varied, whether damage is observed rather than simulated, and whether split manifests are released.
+Table~\ref{tab:related_work} places this work against prior treatments of leakage in AD MRI along the six axes the main text uses: whether inflation is shown, whether a dose is measured, whether provenance is varied, whether the mechanism is demonstrated rather than argued, whether damage is observed rather than simulated, and whether split manifests are released.
 
 \begin{table}[!ht]
 \centering
@@ -314,27 +358,92 @@ Table~\ref{tab:related_work} places this work against prior treatments of leakag
 adds. ``Dose'' is a measured relationship between the amount of
 contamination and the reported score, rather than a comparison of two
 endpoints. ``Provenance'' is whether the identifiers a protocol needs
-are treated as a variable rather than assumed.}
+are treated as a variable rather than assumed. ``Mechanism'' is whether
+the inflation is shown to come from patient recall by an intervention
+that removes the disease signal, rather than argued from saliency or
+from representation content.}
 \label{tab:related_work}
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}lccccc@{}}
+\begin{tabular}{@{}lcccccc@{}}
 \toprule
- & Inflation & Dose & Provenance & Observed & Split \\
- & shown & measured & varied & damage & manifests \\
+ & Inflation & Dose & Provenance & Mechanism & Observed & Split \\
+ & shown & measured & varied & shown & damage & manifests \\
 \midrule
-Wen \etal~\cite{wen2020} (review)      & \checkmark & -- & -- & -- & -- \\
-Yagis \etal~\cite{yagis2021}           & \checkmark & -- & -- & -- & -- \\
-Rumala~\cite{rumala2023}                & \checkmark & -- & -- & -- & -- \\
-Rosenblatt \etal~\cite{rosenblatt2024}  & \checkmark & three levels & -- & -- & -- \\
-Ghiasi \etal~\cite{ghiasi2026}          & \checkmark & -- & -- & -- & \checkmark \\
-DataSAIL~\cite{datasail2025} (tool)     & -- & -- & -- & -- & \checkmark \\
+Wen \etal~\cite{wen2020} (review)      & \checkmark & -- & -- & -- & -- & -- \\
+Yagis \etal~\cite{yagis2021}           & \checkmark & -- & -- & -- & -- & -- \\
+Rumala~\cite{rumala2023}                & \checkmark & -- & -- & saliency & -- & -- \\
+Rosenblatt \etal~\cite{rosenblatt2024}  & \checkmark & three levels & -- & -- & -- & -- \\
+Ghiasi \etal~\cite{ghiasi2026}          & \checkmark & -- & -- & -- & -- & \checkmark \\
+DataSAIL~\cite{datasail2025} (tool)     & -- & -- & -- & -- & -- & \checkmark \\
 \midrule
-This paper                              & \checkmark & continuous & \checkmark & \checkmark & \checkmark \\
+This paper                              & \checkmark & continuous & \checkmark & \checkmark & \checkmark & \checkmark \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 % ═══════════════════════════════════════════════════════════════════════════
+% ═══════════════════════════════════════════════════════════════════════════
+\section{Tier-1 provenance reconstruction: the mapping audit}
+\label{sm:tier1_forensics}
+% ═══════════════════════════════════════════════════════════════════════════
+
+The main text states that the Tier-1 benchmark is a redistribution of
+OASIS-1. Because that is a concrete claim about an existing public dataset,
+it is held to a forensic standard here rather than asserted.
+
+Each Tier-1 image is matched by normalised cross-correlation against every
+axial slice of every OASIS-1 \texttt{t88\_masked\_gfc} volume. A match is
+accepted only when one source slice correlates far above every other
+candidate, so the evidence is the \emph{separation} between the best and
+second-best match rather than the best match alone.
+Table~\ref{tab:sm_tier1_forensics} reports the audit.
+
+\begin{table}[!ht]
+\centering
+\small
+\caption{Tier-1 to OASIS-1 mapping audit. The decisive row is the
+separation: the weakest correct match still correlates at $0.9996$, while
+the strongest match to any \emph{other} participant reaches only $0.9623$.
+No threshold between those two values changes any assignment, which is why
+the mapping is reported as recovered rather than inferred.}
+\label{tab:sm_tier1_forensics}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Quantity} & \textbf{Value} \\
+\midrule
+Redistributed images considered & $6{,}400$ \\
+OASIS-1 volumes searched & $436$ \\
+Images matched & $6{,}400$ \\
+\quad of which unambiguous & $6{,}400$ \\
+\quad ambiguous & $0$ \\
+\quad unmatched & $0$ \\
+\midrule
+Source participants recovered & $200$ \\
+Images per recovered participant & $32$ \\
+Axial slice range used & $71$--$102$ \\
+Participants split across class folders & $0$ \\
+\midrule
+Minimum self-correlation (weakest correct match) & $0.9996$ \\
+Maximum correlation to a different participant & $0.9623$ \\
+\midrule
+Images whose folder label agrees with the source CDR & $6{,}400$ \\
+Participants whose label agrees with CDR & $200$ of $200$ \\
+Recovered participants also present in Tier~2 & $200$ of $200$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Two further checks support the reading. The folder labels reproduce the
+source CDR exactly for all $200$ participants, which an accidental or
+partial correspondence would not do. And every recovered participant is
+present in Tier~2, so Tier~1 is not an independent cohort and is not
+counted as one anywhere in the main text.
+
+\texttt{scripts/audit\_tier1\_ground\_truth.py} regenerates this table from a
+reader's own Kaggle and OASIS-1 downloads. The participant-level mapping
+itself is not redistributed; the script that recovers it is.
+
 \section{Which leakage-graph edge rules fire, per cohort}
 % ═══════════════════════════════════════════════════════════════════════════
 
@@ -353,7 +462,7 @@ still contains exactly one subject, so each of those edges joined a
 pair that \texttt{same\_subject} had already joined. They are redundant
 on these cohorts rather than inert, and become load-bearing only where
 subject identity is absent, corrupted, or inferred wrongly.
-\S\ref{sec:provenance_degradation} tests that claim directly by
+The main text's provenance-degradation experiment tests that claim directly by
 deleting subject identifiers at controlled rates.}
 \label{tab:edge_provenance}
 \setlength{\tabcolsep}{4pt}
@@ -411,13 +520,13 @@ Component overlap across partitions & \textbf{Blocking} & Any component ID in $>
 Per-partition label balance & Reported & Class counts and ratios written to the report. \\
 Scanner field-strength balance & Reported & Marginal distribution per partition. \\
 Age and sex summaries & Reported & Per-partition demographic summary. \\
-Site--label association (Cram\'{e}r's $V$) & Reported & Computed by a separate script (\S\ref{sec:exp6_adni}); not consulted by the gate. \\
-Component-size balance across partitions & Reported & Per-partition component-size distribution, with a warning when partitions are not drawn from comparable participants. Added after auditing this project's own frozen splits, on which it fires (\S\ref{sec:limitations}); not consulted by the gate. \\
+Site--label association (Cram\'{e}r's $V$) & Reported & Computed by a separate script (reported with the ADNI results in the main text); not consulted by the gate. \\
+Component-size balance across partitions & Reported & Per-partition component-size distribution, with a warning when partitions are not drawn from comparable participants. Added after auditing this project's own frozen splits, on which it fires (see the main text's Limitations); not consulted by the gate. \\
 \midrule
-Unresolved subject or diagnosis identifiers & \textbf{Not enforced in v1} & No check exists. Two ADNI scans with unresolved visit-level diagnosis passed the gate for this reason (\S\ref{sec:data_adni}). \\
+Unresolved subject or diagnosis identifiers & \textbf{Not enforced in v1} & No check exists. Two ADNI scans with unresolved visit-level diagnosis passed the gate for this reason (see the main text's ADNI cohort description). \\
 Frozen-manifest hash verification & \textbf{Not enforced in v1} & Hashed manifests are produced for release but the gate does not re-verify them. \\
 Residual near-duplicate cross-split & \textbf{Not enforced in v1} & Near-duplicate edges are applied when \emph{building} components, not re-checked after partitioning. \\
-Within-component label agreement & \textbf{Not enforced in v1} & Mixed-label converter components are handled by an explicit pre-specified exclusion rule (\S\ref{sec:data_adni}) rather than by the gate. \\
+Within-component label agreement & \textbf{Not enforced in v1} & Mixed-label converter components are handled by an explicit pre-specified exclusion rule (stated in the main text's ADNI cohort description) rather than by the gate. \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -439,7 +548,7 @@ and the binary CN/AD label per partition; mean and range across the
 five seeds. The site--label association is substantial in every
 partition and grows as the partition shrinks; it is \emph{exposed}
 by the audit but not \emph{resolved} by the component-safe split,
-which is the central caveat of \S\ref{sec:limitations}. The
+which is the central caveat of the main text's Limitations. The
 sex--label association is negligible in train and test but reaches
 $V=0.34$ in the small validation partition, an instability we
 attribute to its size ($n=165$) rather than to a population effect.

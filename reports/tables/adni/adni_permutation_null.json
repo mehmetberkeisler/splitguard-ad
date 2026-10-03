@@ -1,48 +1,137 @@
 {
-  "created_at": "2026-09-27T15:39:40+00:00",
-  "permutation": "per_subject_within_partition",
+  "created_at": "2026-10-02T11:45:51+00:00",
+  "permutation": "per_subject_over_cohort",
   "n_seeds": 5,
   "by_protocol": {
     "random": {
       "per_seed_auroc": [
-        0.4445,
-        0.5869,
-        0.5475,
-        0.5101,
-        0.4377
+        0.8688,
+        0.8288,
+        0.874,
+        0.911,
+        0.9073
       ],
-      "mean": 0.5053,
-      "sd": 0.0647,
-      "min": 0.4377,
-      "max": 0.5869
+      "mean": 0.878,
+      "sd": 0.0334,
+      "min": 0.8288,
+      "max": 0.911
     },
     "subject_only": {
       "per_seed_auroc": [
-        0.44,
-        0.5217,
-        0.5734,
-        0.5224,
-        0.5403
+        0.4908,
+        0.4888,
+        0.4816,
+        0.4871,
+        0.6545
       ],
-      "mean": 0.5196,
-      "sd": 0.0492,
-      "min": 0.44,
-      "max": 0.5734
+      "mean": 0.5206,
+      "sd": 0.075,
+      "min": 0.4816,
+      "max": 0.6545
     },
     "component_safe": {
       "per_seed_auroc": [
-        0.4981,
-        0.4387,
-        0.4537,
-        0.5828,
-        0.612
+        0.2953,
+        0.4253,
+        0.4233,
+        0.4561,
+        0.5333
       ],
-      "mean": 0.5171,
-      "sd": 0.0772,
-      "min": 0.4387,
-      "max": 0.612
+      "mean": 0.4267,
+      "sd": 0.0859,
+      "min": 0.2953,
+      "max": 0.5333
     }
   },
-  "permuted_inflation_gap": -0.0118,
-  "interpretation": "component_safe under permuted labels is the empirical noise floor for a test partition of this size: any protocol-to-protocol difference smaller than its spread is not distinguishable from noise at this n. permuted_inflation_gap is the gap produced by patient-identity leakage alone, with no disease signal available to learn; a positive value is direct evidence that leakage manufactures inflation by itself."
+  "permuted_inflation_gap": 0.4513,
+  "interpretation": "component_safe under permuted labels is the empirical noise floor for a test partition of this size: any protocol-to-protocol difference smaller than its spread is not distinguishable from noise at this n. permuted_inflation_gap is the gap produced by patient-identity leakage alone, with no disease signal available to learn; a positive value is direct evidence that leakage manufactures inflation by itself.",
+  "paired_contrasts": {
+    "random_minus_component_safe": {
+      "mean": 0.4513,
+      "sd": 0.0762,
+      "ci95_lo": 0.3568,
+      "ci95_hi": 0.5459,
+      "n_seeds": 5
+    },
+    "subject_only_minus_component_safe": {
+      "mean": 0.0939,
+      "sd": 0.0656,
+      "ci95_lo": 0.0125,
+      "ci95_hi": 0.1753,
+      "n_seeds": 5
+    }
+  },
+  "per_protocol_interval": {
+    "random": {
+      "mean": 0.878,
+      "sd": 0.0334,
+      "ci95_lo": 0.8365,
+      "ci95_hi": 0.9195,
+      "n_seeds": 5
+    },
+    "subject_only": {
+      "mean": 0.5206,
+      "sd": 0.075,
+      "ci95_lo": 0.4275,
+      "ci95_hi": 0.6136,
+      "n_seeds": 5
+    },
+    "component_safe": {
+      "mean": 0.4267,
+      "sd": 0.0859,
+      "ci95_lo": 0.32,
+      "ci95_hi": 0.5333,
+      "n_seeds": 5
+    }
+  },
+  "training_curves": {
+    "random": {
+      "final_train_loss_mean": 0.068,
+      "final_train_loss_sd": 0.01,
+      "final_val_auroc_mean": 0.863,
+      "final_val_auroc_sd": 0.021
+    },
+    "subject_only": {
+      "final_train_loss_mean": 0.037,
+      "final_train_loss_sd": 0.004,
+      "final_val_auroc_mean": 0.453,
+      "final_val_auroc_sd": 0.082
+    },
+    "component_safe": {
+      "final_train_loss_mean": 0.045,
+      "final_train_loss_sd": 0.01,
+      "final_val_auroc_mean": 0.481,
+      "final_val_auroc_sd": 0.078
+    }
+  },
+  "label_agreement": {
+    "random": {
+      "n_test_rows": 845,
+      "agreement_with_true_diagnosis": 48.3
+    },
+    "subject_only": {
+      "n_test_rows": 845,
+      "agreement_with_true_diagnosis": 55.1
+    },
+    "component_safe": {
+      "n_test_rows": 825,
+      "agreement_with_true_diagnosis": 50.3
+    }
+  },
+  "label_agreement_note": "Percentage of scored test rows whose permuted label happens to equal the participant's true diagnosis. Near 50 means the permutation destroyed the disease association, which is the precondition for reading the random arm's AUROC as patient recall.",
+  "curve_note": "All three protocols drive the permuted training loss to a comparably low value, so they memorise the training set to a comparable degree. Only the random split's memorisation transfers to its validation partition, because that partition holds the same patients.",
+  "checkpoint_selection": {
+    "random": {
+      "selection_optimism_mean": -0.008,
+      "val_participants_mean": 124
+    },
+    "subject_only": {
+      "selection_optimism_mean": 0.007,
+      "val_participants_mean": 33
+    },
+    "component_safe": {
+      "selection_optimism_mean": 0.159,
+      "val_participants_mean": 22
+    }
+  }
 }

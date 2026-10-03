@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draw every inflation-gap arm as a forest plot.
+"""Draw the inflation-gap arms as a forest plot.
 
 The arms currently reach the reader as a table of point estimates and
 intervals. A table is the wrong shape for the claim being made about them:
@@ -10,6 +10,9 @@ sit relative to each other and to zero, which is what a forest plot shows
 and a column of numbers does not.
 
 (a) Total gap, random minus component-safe. Every interval excludes zero.
+    The rows are the two cross-cohort arms and the six ADNI robustness arms
+    the manuscript tabulates; the volumetric arm is reported separately
+    because it changes architecture, input and recipe at once.
 
 (b) Component-layer marginal, subject-only minus component-safe. Drawn on
     its own axis because it is a different quantity an order of magnitude
@@ -71,13 +74,27 @@ def collect() -> list:
                      "total": (g["point"], g["ci_lo"], g["ci_hi"]),
                      "marginal": None})
 
+    # Every ADNI robustness arm the manuscript tabulates, so the figure and
+    # the robustness table cover the same set. The volumetric arm is
+    # deliberately absent: it trains a different architecture on a different
+    # input under a different recipe, and the manuscript declines the
+    # comparison a shared axis would invite.
     for label, name, colour in (
         ("Tier 3 (ADNI1), ResNet-18", "adni_inflation_gap_bootstrap.json", INK),
         ("ADNI1, DenseNet-121", "adni_inflation_gap_densenet121_bootstrap.json", NEUTRAL),
         ("ADNI1, MT1 excluded", "adni_inflation_gap_no_mt1_bootstrap.json", NEUTRAL),
         ("ADNI1, converter-inclusive", "adni_inflation_gap_with_converters_bootstrap.json", NEUTRAL),
+        ("ADNI1, size-balanced", "adni_inflation_gap_size_balanced_bootstrap.json", NEUTRAL),
+        ("ADNI1, exact label linkage", "adni_inflation_gap_exact_linkage_bootstrap.json", NEUTRAL),
     ):
-        ig = load(TABLES / name)["inflation_gap"]
+        path = TABLES / name
+        if not path.is_file():
+            # A fresh checkout may not carry every arm's bootstrap yet. Skip
+            # the row rather than failing the rebuild, but say so: the caption
+            # claims the figure covers every tabulated arm.
+            print(f"  note: no {name}; {label} is missing from the forest plot")
+            continue
+        ig = load(path)["inflation_gap"]
         t = ig["total_random_minus_component_safe"]
         m = ig["component_leakage_subject_only_minus_component_safe"]
         rows.append({"label": label, "colour": colour,
@@ -123,8 +140,10 @@ def main() -> int:
     import matplotlib.pyplot as plt
 
     rows = collect()
+    # Height follows the row count: a fixed height crowded the labels as
+    # soon as the arm list grew past six.
     fig, (axa, axb) = plt.subplots(
-        1, 2, figsize=(TWO_COL_W, 2.75), sharey=True,
+        1, 2, figsize=(TWO_COL_W, max(2.75, 0.34 * len(rows) + 0.75)), sharey=True,
         gridspec_kw={"width_ratios": [1.0, 1.0], "wspace": 0.12},
     )
     draw_panel(axa, rows, "total", "(a) Total gap (A $-$ C)", "AUROC difference")

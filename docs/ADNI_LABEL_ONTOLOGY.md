@@ -203,6 +203,14 @@ plus the new fields this ontology requires:
 | `label_source` | one of `DIAGNOSIS`, `DXCHANGE`, `DXNORM`, `DXMCI`, `DXAD`, or `""` |
 | `label_confidence` | one of `clinical_table`, `date_only_match`, `other_dementia`, `no_mri_meta_match`, `missing` |
 
+`label_confidence` is not only a record: `make_adni_splitguard_split.py
+--label-confidence clinical_table` builds the exact-linkage arm from it, which
+is how the paper measures what the date-proximity fallback costs the headline
+gap. `scripts/build_linkage_audit.py` reports the tier shares per universe,
+and they differ: 22.2% of all scans, 21.0% of the CN/AD universe, 25.1% of the
+primary arm, because excluding converter components removes scans the visit
+key covers almost perfectly.
+
 ---
 
 ## 7. Historical manifest-builder bugs (resolved as of v1.0)

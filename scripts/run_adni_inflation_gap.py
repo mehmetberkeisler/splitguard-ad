@@ -124,6 +124,7 @@ def run_one_seed(
     device: str,
     resume: bool = False,
     arch: str = "resnet18",
+    checkpoint_rule: str = "best-val",
 ) -> dict:
     rows = read_split_rows(split_path)
     if not rows:
@@ -171,6 +172,7 @@ def run_one_seed(
             output_dir=output_dir,
             device_str=device,
             arch=arch,
+            checkpoint_rule=checkpoint_rule,
         )
         metrics_payload["overlap"] = overlap_stats(splits)
         seed_record[label] = metrics_payload
@@ -252,6 +254,12 @@ def main() -> int:
     parser.add_argument("--no-pretrained", action="store_true")
     parser.add_argument("--device", default="auto")
     parser.add_argument(
+        "--checkpoint-rule", choices=("best-val", "final"), default="best-val",
+        help="Which epoch to evaluate. 'best-val' keeps the best validation "
+             "AUROC, which every reported arm used. 'final' fixes the epoch in "
+             "advance, making the protocol comparison independent of a "
+             "validation partition whose size differs between protocols.")
+    parser.add_argument(
         "--resume",
         action="store_true",
         help="Skip protocols whose runs/adni/inflation_gap_seed{N}/{label}/metrics.json "
@@ -288,6 +296,7 @@ def main() -> int:
             pretrained=not args.no_pretrained,
             device=args.device,
             resume=args.resume,
+            checkpoint_rule=args.checkpoint_rule,
             arch=args.arch,
         )
 

@@ -88,10 +88,9 @@
 
 
 % ── Title ─────────────────────────────────────────────────────────────────────
-\title[Data Provenance and Evaluation Validity in AD MRI Deep Learning]{Data
-       Provenance and Evaluation Validity in Alzheimer's Disease
-       MRI Deep Learning: Controlled Leakage and
-       Provenance-Degradation Experiments (SplitGuard-AD)}
+\title[Patient Leakage Under Degraded Provenance in AD MRI]{Patient Leakage
+       Under Degraded Data Provenance in Alzheimer's Disease MRI Deep
+       Learning: Controlled Experiments and the SplitGuard-AD Audit}
 
 % ── Authors ───────────────────────────────────────────────────────────────────
 % Affiliation order: Medipol School of Medicine (a), Medipol Engineering (b),
@@ -117,33 +116,32 @@
 
 % ── Abstract ──────────────────────────────────────────────────────────────────
 \abstract{Deep-learning models for Alzheimer's disease (AD) classification from
-structural MRI routinely report near-perfect benchmark performance
-that does not survive patient-independent evaluation. We treat this as
-a data-provenance problem and measure both links of the dependency. On
-ADNI1 ($220$ cognitively normal (CN) and AD participants, $1{,}123$
-scans, one 2D coronal-centre slice per scan), a random-split area
-under the receiver operating characteristic curve (AUROC) of
-\AdniRandomAUROC{} falls to \AdniSafeAUROC{} under component-safe
-evaluation: an inflation gap of \AdniGapTotal{} \AdniGapCI{},
-replicated on OASIS-1 (\OasisGapTotal{}) and under a DenseNet-121
-backbone. Two controlled interventions calibrate it. Injecting contaminated
-test scans gives $+\DoseSlope{}$ AUROC per unit contamination.
-Deleting participant identifiers shows that a leakage graph prevents
-$49\%$ of the residual leakage subject-wise splitting admits at $10\%$
-identifier loss, where that tenth alone returns $36\%$ of test
-participants to training. A third instance is observed rather than
-simulated: a widely used public 2D AD benchmark is, by content
-matching, a redistribution of $200$ OASIS-1 participants whose
-identifiers were replaced by a filename index that merges and splits
-them. Grouping by that index, the release's only identifier, still
-leaves $70\%$ of test images with a participant seen in training; the
-AUROC consequence of that residual contamination,
-\TierOneGapResidual{}, is not resolved at five seeds. Upstream, $22\%$ of the ADNI
-labels rest on a $180$-day date-proximity join rather than an exact
-visit key. At $0.90$ specificity the converter-inclusive ADNI gap is \MissedPerThousand{}
-additional missed diagnoses per $1{,}000$ patients screened. Split
-manifests, component tables, provenance-recovery scripts and the
-rebuild pipeline are released under Apache-2.0.
+structural MRI routinely report near-perfect benchmark performance that
+does not survive patient-independent evaluation. Splitting by patient
+assumes the provenance defining patient identity is complete and correct,
+an assumption redistribution and metadata loss routinely violate. We ask
+how patient-independent evaluation behaves when it degrades. On ADNI1
+($220$ cognitively normal and AD participants, $1{,}123$ scans, one 2D
+coronal-centre slice per scan), a random-split area under the receiver
+operating characteristic curve (AUROC) of \AdniRandomAUROC{} falls to
+\AdniSafeAUROC{} under component-safe evaluation: an inflation gap of
+\AdniGapTotal{} \AdniGapCI{}, replicated on OASIS-1 (\OasisGapTotal{}) and
+under DenseNet-121. Three controlled experiments separate the links.
+Permuting diagnosis labels across participants breaks the systematic
+participant-level association between diagnosis and anatomy, yet random
+splitting still reaches $0.878$ AUROC while both patient-aware protocols
+sit at chance: the apparent skill is patient recall. Injecting test-set
+overlap into a fixed training set raises AUROC by $+\DoseSlope{}$ per unit
+of contaminated test scans here. Deleting participant identifiers shows
+that a leakage graph prevents $49\%$ of the leakage subject-wise splitting
+admits at $10\%$ loss. One case is observed, not simulated: by content
+matching, a widely used public 2D AD benchmark is a redistribution of
+$200$ OASIS-1 participants whose identifiers became a filename index that
+merges and splits them, and grouping by it still leaves $70\%$ of test
+images sharing a participant with training. Patient independence depends
+on both the splitting procedure and the integrity of the provenance
+defining patient identity. Manifests, audit code and the rebuild pipeline
+are released under Apache-2.0.
 }
 
 % ── Keywords ──────────────────────────────────────────────────────────────────
@@ -175,7 +173,7 @@ Reported benchmark accuracy on structural MRI is routinely
 near-perfect: a recent scoping review of $44$ AD deep-learning studies
 finds a $19$-point accuracy gradient between studies judged at low and
 at high risk of leakage~\cite{diagnostics2025}. These reports,
-however, rarely survive patient-independent evaluations. The primary
+however, rarely survive patient-independent evaluations. One important
 cause is \emph{patient-identity leakage} across train and test
 partitions, which arises in AD MRI through several distinct
 channels (visualised in Figure~\ref{fig:leakage_modes}):
@@ -203,8 +201,8 @@ connectome models across four datasets~\cite{rosenblatt2024}, and a
 $19$-point accuracy gradient between studies judged at low and high
 risk of leakage in a scoping review of $44$~\cite{diagnostics2025}.
 
-Why \emph{patient identity} is the channel that matters is equally well
-established. Shortcut learning~\cite{geirhos2020shortcut} exploits
+Why \emph{patient identity} is a particularly important shortcut channel
+in longitudinal structural MRI is equally well established. Shortcut learning~\cite{geirhos2020shortcut} exploits
 stable but clinically irrelevant cues correlated with the label, as
 with hospital-system markers in chest radiographs~\cite{zech2018variable},
 non-lung cues in COVID classifiers~\cite{degrave2021shortcuts} and
@@ -233,7 +231,9 @@ the key those guidelines prescribe, though it is this paper's own
 participant-wise splitter rather than \texttt{GroupKFold} itself
 (\S\ref{sec:exp3_degrad}).
 
-What these studies leave unmeasured is the \emph{transfer function}.
+What these studies leave unmeasured is how evaluation optimism changes
+with leakage magnitude, and how provenance degradation determines the
+leakage that survives a patient-aware split.
 Two quantities govern how much optimism a benchmark reports, and
 neither has been characterised. The first is how much optimism a unit
 of leakage buys. Rosenblatt et al.\ come closest, reporting
@@ -251,102 +251,34 @@ In this work we measure both quantities on a single cohort, using one
 experimental template for each: hold everything fixed, sweep one
 controlled quantity, and read off the curve.
 
-\textbf{Provenance governs leakage, non-linearly.} Deleting subject
-identifiers from ADNI1 at controlled rates shows how much protection
-each splitting protocol retains as provenance decays
-(\S\ref{sec:provenance_degradation}). Subject-wise splitting degrades sharply: removing $10\%$ of identifiers
-returns $36\%$ of test participants to the training partition, a roughly
-threefold amplification. A leakage graph that also carries session and series identifiers
-prevents $49\%$ of that residual leakage at $10\%$ loss and
-$30$--$37\%$ beyond it, while remaining exactly equivalent to
-subject-wise splitting when provenance is intact. Both protocols are
-assigned by the same bin-packer, so the comparison isolates the
-grouping rather than the splitter. To our knowledge no prior study measures
-the robustness of a splitting protocol to degraded provenance.
+We measure both links of that chain on a single cohort in one code
+state, manipulating the two quantities independently. Provenance
+integrity is varied by deleting participant identifiers at controlled
+rates, and by corrupting them in the two ways redistribution actually
+corrupts them: dealing one participant across several keys, and merging
+several under one. Test-set contamination is varied separately, by
+injecting a measured share of training participants into the test
+partition while the training set is held fixed. A participant-label
+permutation serves as the positive control: with the association between
+anatomy and diagnosis destroyed, any discrimination a protocol retains
+is patient recall and nothing else. One case is observed rather than
+imposed, in a widely used public benchmark that redistributes a research
+cohort under an identifier that merges and splits its participants.
 
-\textbf{The damage is observable in the wild.} A widely used public
-2D AD benchmark turns out, by content matching, to be a
-redistribution of $200$ OASIS-1 participants whose identifiers were
-replaced by a filename index that merges and splits them
-(\S\ref{sec:data_kaggle}). Grouping by that index, the strongest
-protocol its users can run, still leaves $70\%$ of the test images
-with a participant seen in training (\S\ref{sec:exp1}); the residual
-AUROC inflation this buys, \TierOneGapResidual{}, has an interval
-spanning zero at five seeds, so the contamination is the finding and
-its price is not. The deletion experiment above
-simulates provenance loss; this is a measured instance of it in a
-benchmark the field trains on.
-
-\textbf{Leakage buys optimism at a measurable rate.} Holding the
-training set fixed and injecting test-set subject overlap across the
-full range calibrates the consequence at $+\DoseSlope{}$ AUROC per unit
-of contaminated test scans (\S\ref{sec:adni_dose_response}). Composing the two curves
-gives the chain: a tenth of the patient index going missing is worth
-roughly $+\ComposedTenSubject{}$ AUROC of optimism under subject-wise
-splitting and $+\ComposedTenSafe{}$ under the component-safe protocol,
-though that composition does not hold at every loss level, for reasons
-we give in \S\ref{sec:provenance_degradation}.
-
-\textbf{The labels themselves rest on an unaudited join.} Of the
-labels in a standard ADNI1 derivation, $22\%$ are assigned through a
-$180$-day date-proximity match rather than an exact visit key
-($21\%$ within the CN/AD subset, \S\ref{sec:data_adni}). The evaluation literature audits how data
-are split; the metadata join that produces the labels those splits
-partition has not been audited.
-
-These are anchored to a conventional endpoint measurement. On the
-ADNI1 CN-versus-AD primary arm ($220$ participants, $1{,}123$ scans,
-one 2D coronal-centre slice per scan), random image-level splitting
-reports an AUROC of \AdniRandomAUROC{} where component-safe evaluation
-reports \AdniSafeAUROC{}, an inflation gap of \AdniGapTotal{}
-(paired-seed interval \AdniGapCI{}, five seeds), replicated
-directionally on OASIS-1 and under a second backbone
-(\S\ref{sec:exp6_adni}). Re-expressed at a screening operating point
-of $0.90$ specificity, and measured on the converter-inclusive arm rather than the primary one, the gap corresponds to
-\MissedPerThousand{} additional missed diagnoses per $1{,}000$
-patients screened.
-
-The instrument for all of this is \SGA{}, an executable audit layer
-that builds a per-image leakage graph, emits frozen component-safe
-split manifests, and gates training on a binary GO/NO-GO decision
-(\S\ref{sec:method}). On cohorts whose subject identifiers are intact its leakage graph
-reduces exactly to a subject grouping, with a marginal over
-\texttt{GroupKFold}-style splitting not distinguishable from zero. We
-state that at the outset because it is the design target rather than a
-shortfall: a provenance-aware splitter that disagreed with participant
-grouping where participant identity is complete and correct would be
-wrong. The claim is about what happens when that condition fails. When
-one participant is dealt into two keys, a corruption the Tier-1 release
-exhibits for $179$ of its $200$ participants, subject-wise grouping has
-no way to rejoin the halves and the graph does: it prevents $90\%$ of
-the resulting leakage, where under simple identifier deletion it
-prevents half (\S\ref{sec:provenance_stress}). The framework's purpose
-is therefore to audit the assumption participant grouping rests on, and
-to retain protection when some provenance survives the loss of the
-identifier everything else was keyed to. It is released with the
-manifests and component tables behind the splits reported here.
-
-A subject-identity linear probe and a three-point degradation
-analysis together point at biometric leakage, with the two kinds of
-evidence doing different work. The probe shows that both leaky and
-honest representations encode patient identity well above chance,
-which is a precondition for the shortcut and not evidence that it was
-taken: the probe's lift is the same under both protocols. The
-decomposition is what carries the causal weight, and it is available on
-the two tiers that have a subject-only protocol, where grouping by
-subject alone removes most of the gap ($0.110$ of the $0.118$ total on
-ADNI; \S\ref{sec:exp3_degrad}). OASIS-1 carries no such arm, so we do
-not claim the decomposition there. The framework's value is
-therefore not to make models \emph{forget} subject identity,
-which the representations preserve in either condition, but to
-deny models the opportunity to \emph{exploit} that identity at test
-time. Running both protocols on the same cohort additionally surfaces three
-secondary outputs the leaky benchmark would have hidden, presented as
-illustrations rather than deployment claims: a cost-of-leakage
-translation (\S\ref{sec:adni_cost_of_leakage}), a dose-response
-calibration (\S\ref{sec:adni_dose_response}), and an exploratory
-sex-stratified difference that the leaky protocol flattens
-(Supplementary Material~S6).
+This paper makes three contributions. First, it shows that
+patient-independent evaluation has an untested dependency on provenance
+integrity, and quantifies how much leakage survives a patient-aware
+protocol as that provenance is degraded and corrupted. Second, it
+calibrates what the surviving leakage is worth, through a contamination
+dose-response and a permutation control that separates patient recall
+from disease signal. Third, it releases \SGA{}, an executable audit that
+builds a per-image leakage graph from whatever identifier evidence a
+cohort carries, emits a frozen component-safe partition and reports a
+pre-training decision, together with the manifests, component tables and
+rebuild pipeline behind every number reported here. Where participant
+identity is intact the audit's component layer reduces to participant
+grouping, and we report that equivalence as a result rather than
+defending it as a feature.
 
 The observation that random image-level splits inflate AD MRI scores
 is not new by itself. Wen \etal~\cite{wen2020} and Yagis
@@ -383,10 +315,18 @@ OASIS-3~\cite{lamontagne2019oasis3})
 is explicitly named as the immediate next step
 (\S\ref{sec:limitations}) rather than as a contribution. We do not
 run head-to-head comparisons against general-purpose splitting tools
-or biometric re-identification models; the contribution is the
-AD-specific framework plus the quantitative findings above.
+or biometric re-identification models. The contribution is the
+measurement: that patient-independent evaluation has an untested
+dependency on provenance integrity, and that both links of the chain
+from degraded provenance to admitted leakage to evaluation optimism can
+be quantified experimentally. \SGA{} is the audit that operationalises
+it, and its component layer is deliberately equivalent to participant
+grouping where participant identity is intact; we report that
+equivalence as a finding rather than defending it as a feature.
 
 % ══════════════════════════════════════════════════════════════════════════════
+
+
 \section{Materials and Methods}
 \label{sec:methods}
 
@@ -509,7 +449,7 @@ validation gap in \S\ref{sec:limitations}.}
 \label{sec:method}
 % ══════════════════════════════════════════════════════════════════════════════
 
-\SGA{} is an end-to-end evaluation framework comprising five sequential
+\SGA{} is an open-source reference implementation and audit pipeline, not a general-purpose library: it comprises five sequential
 modules (Figure~\ref{fig:pipeline}).
 
 \begin{figure}[!ht]
@@ -839,8 +779,9 @@ single key, while $179$ of the $200$ participants are spread across
 two or more keys and one is spread across $32$. A further $128$
 images ($2.0\%$) carry no parsable index at all. Grouping by this key
 is therefore not subject-wise splitting: it is grouping on a key that
-is wrong in both directions at once, and nothing inside the release
-reveals that.
+is wrong in both directions at once, and the supplied identifier alone
+does not reveal that. Recovering it required matching the images against
+the source cohort, which a user of the release is not placed to do.
 
 Against the recovered identities the damage is exact. In the frozen
 seed-42 split used throughout this paper, which groups by the
@@ -1065,8 +1006,18 @@ required the 180-day date-proximity fallback, and $2$ ($0.1\%$)
 remained unresolved; these last two are the
 \texttt{diagnosis\_group=unknown} scans discussed above. That roughly
 one label in five depends on a date match rather than an exact visit
-key is a real limitation of the label chain and we prefer to state it
-than to leave it implicit. Participant identifiers are hashed under a
+key is a real limitation of the label chain, and stating it is not
+enough: we also measure what it costs. The primary arm is the worst
+case for it. Its $1{,}123$ CN-vs-AD scans divide into $841$ labelled
+through the exact visit key and $282$ ($25.1\%$) through the date
+fallback, a higher share than the whole CN-vs-AD universe's $297$ of
+$1{,}412$ ($21.0\%$, against $1{,}115$ on the exact key), because the
+converter components this arm excludes are covered by the visit key
+almost completely ($5.2\%$ date-only). The
+exact-linkage arm of \S\ref{sec:exp6_adni} therefore retrains all
+three protocols on the $841$, keeping the same $220$ participants, and
+asks whether the headline gap rests on the weaker quarter of the label
+chain. Participant identifiers are hashed under a
 secret per-release salt for the same reason as the Tier-3 manifest:
 ADNI PTIDs are low-entropy, so a published salt would make the file
 re-identifiable.
@@ -1138,12 +1089,21 @@ implementation of the released software: the training, audit, split-generation
 and analysis scripts, the orchestration and verification tooling, and the
 figure and table generators were written and revised with such assistance,
 as were drafts of this manuscript's prose. They were also used to find
-defects, one of which is worth naming because it is the kind of error this
-paper is about: the volumetric trainer computed $1 - \mathrm{AUROC}$ from a
+defects, two of which are worth naming because they are the kind of error
+this paper is about, silent and self-consistent. The volumetric trainer
+computed $1 - \mathrm{AUROC}$ from a
 descending rank sum, which would have selected the least-trained epoch of
-every volumetric run. That arm is not reported here (\S\ref{sec:limitations}),
-and the released code carries a regression test pinning the trainer's metric
-to the analysis pipeline's.
+every volumetric run. It was found and corrected before that arm was
+trained, so the volumetric results in \S\ref{sec:exp6_adni} come from
+the corrected trainer. The label-permutation control of
+\S\ref{sec:permutation_null} shuffled labels inside each partition
+rather than once over the cohort, which preserved per-partition class
+balance and, by handing a participant who straddles a boundary a
+different label on each side, made identity memorisation impossible to
+detect. Its first run returned chance under every protocol and read as a
+clean null; the result reported here is from the corrected permutation.
+Neither defect would have shown in the numbers it produced, so the
+released code carries a regression test for each.
 
 What the tools did not do is decide anything. The study design, the
 protocol definitions, the choice of cohorts and arms, the pre-specification of
@@ -1195,9 +1155,11 @@ $15$ epochs, trained from random initialisation rather than ImageNet
 weights, on z-scored volumes with no augmentation. Tier~1 additionally
 trains under CUDA mixed precision, which the other arms do not use. Every run was executed in one code state with
 deterministic cuDNN kernels and seeded data loaders, on one NVIDIA H100
-except the dose-response matrix, rerun on an NVIDIA RTX PRO 4500, and the
-volumetric arm, run on an NVIDIA RTX 2000 Ada (\S Declarations); the full configuration is in Supplementary
-Table~S1.
+except the dose-response matrix, rerun on an NVIDIA RTX PRO 4500, the
+volumetric arm, run on an NVIDIA RTX 2000 Ada, and the exact-linkage,
+structured-corruption and label-permutation arms, run on an NVIDIA RTX
+4090 (\S Declarations);
+the full configuration is in Supplementary Table~S1.
 
 \subsection{Observed provenance damage on a redistributed benchmark}
 \label{sec:exp1}
@@ -1451,8 +1413,9 @@ benchmark-comparison contexts.
 
 \paragraph{Robustness analyses}
 Four pre-specified arms test whether the headline gap depends on a
-particular methodological choice, and a fifth row reports the post-hoc
-size-balanced control of \S\ref{sec:limitations}
+particular methodological choice, a fifth row reports the post-hoc
+size-balanced control of \S\ref{sec:limitations}, and a sixth isolates
+the label-linkage question raised in \S\ref{sec:data_adni}
 (Table~\ref{tab:adni_robustness}). All four preserve the
 leaky-$>$-\SGA{} ordering in every paired-seed bootstrap resample, and
 the total gap moves by at most \AdniArmSpread{} AUROC across them. The
@@ -1463,13 +1426,34 @@ direction a leakage-removal effect would take, since there the
 component-safe constraints raised AUROC relative to subject-only
 splitting rather than lowering it. No interval excludes zero in any arm. We therefore
 report the total gap as robust and the component marginal as
-unresolved at five seeds, and we do not resolve it by adding seeds:
-\S\ref{sec:provenance_degradation} shows the margin is near-zero on
-intact cohorts by construction, so the informative axis is provenance
-loss rather than seed count.
+unresolved at five seeds, and we do not resolve it by adding seeds.
+Two results say why. \S\ref{sec:provenance_degradation} shows the
+margin is near-zero on intact cohorts by construction, so the
+informative axis is provenance loss rather than seed count; and
+\S\ref{sec:permutation_null} measures what a spurious contrast of this
+kind looks like at this seed count, finding one of $+0.094$ between two
+protocols that had nothing to learn.
 
 \input{tables/adni_robustness}
 
+The sixth row answers the label-linkage question directly. Restricting
+the cohort to the $841$ scans whose diagnosis comes from an exact visit
+key, which discards a quarter of the primary arm's scans while keeping
+all $220$ participants, gives a total gap of $+0.117$ against the
+primary arm's \AdniGapTotal{}, positive on all five seeds, and a component
+marginal of $+0.024$ whose interval again spans zero. The headline gap
+is therefore not an artefact of the date-matched labels. We put that no
+more strongly than the arm supports: dropping a quarter of the scans
+widens the interval by nearly half again, from
+\AdniGapCI{} to $[+0.072, +0.166]$, so the two point estimates
+agreeing to $0.001$ is a coincidence inside overlapping intervals rather
+than a precise replication. What the arm establishes is consistency, and
+that the date-matched quarter is not carrying the result. The arm also
+completes a sensitivity analysis that \S\ref{sec:limitations} could
+only run halfway. That one rescored the primary arm's test partition on
+its exact-key scans, which tests the labels the gap is measured
+\emph{against} while the date-matched scans stay in training; here they
+are absent from both sides, and the answer does not change.
 
 The DenseNet-121 arm additionally replicates on OASIS-1
 (\OasisDenseGap{}, \S\ref{sec:exp5_oasis}), so the inflation is
@@ -1480,8 +1464,8 @@ hierarchical resampling widens the total-gap interval on every arm, and
 we give all of them rather than only the primary one: \AdniHierCI{}
 (primary), $[+0.081, +0.208]$ (converter-inclusive), $[+0.072, +0.191]$
 (MT1 excluded), $[+0.087, +0.209]$ (DenseNet-121), $[+0.070, +0.209]$
-(size-balanced) and $[+0.145, +0.335]$ (volumetric). All six exclude
-zero. The two OASIS-1 arms are the exception and are reported with the
+(size-balanced), $[+0.145, +0.335]$ (volumetric) and $[+0.046, +0.195]$
+(exact label linkage). All seven exclude zero. The two OASIS-1 arms are the exception and are reported with the
 cross-cohort comparison in \S\ref{sec:exp5_oasis}: $[-0.033, +0.107]$ on
 ResNet-18 and $[-0.021, +0.121]$ on DenseNet-121, both spanning zero. Calibration is far worse under
 both honest protocols than under the leaky one, and not ordered
@@ -1594,17 +1578,22 @@ the two cohorts where a subject-only protocol exists to decompose it,
 ADNI and Tier~1; OASIS-1 carries no such arm. Subject to that, the
 random-split benchmark overstates AD-classification performance by a
 magnitude robust to the seed array, the converter-inclusion rule, the
-acquisition type, the CNN backbone and input dimensionality.
+acquisition type, the CNN backbone, input dimensionality and the
+strictness of the label linkage.
 
 Figure~\ref{fig:arm_forest} consolidates the headline inflation
 results across both source cohorts, the redistributed benchmark, both
-backbones and the ADNI robustness arms in a single reporting frame.
+backbones and every ADNI robustness arm in a single reporting frame.
 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=\linewidth]{fig07_arm_forest.pdf}
-\caption{Every inflation-gap arm, as point estimate and paired-seed
-bootstrap interval ($B = 10{,}000$, $n = 5$ seeds; descriptive of seed-level variability per the convention in \S\ref{sec:experiments}). The primary arm (Tier~3, ResNet-18) is drawn in black. \textbf{(a)} Total gap,
+\caption{The two cross-cohort arms and the six ADNI robustness arms, as
+point estimate and paired-seed
+bootstrap interval ($B = 10{,}000$, $n = 5$ seeds; descriptive of seed-level variability per the convention in \S\ref{sec:experiments}). The primary arm (Tier~3, ResNet-18) is drawn in black. The volumetric arm is
+reported in \S\ref{sec:exp6_adni} and not drawn here, because it
+changes architecture, input and training recipe at once and a shared
+axis would invite the comparison the text declines. \textbf{(a)} Total gap,
 $\Delta\mathrm{AUROC} = \mathrm{Protocol\ A} - \mathrm{Protocol\ C}$.
 The per-protocol AUROCs behind each arm are given in the
 corresponding subsection; the DenseNet-121 arms reproduce the gap
@@ -1623,9 +1612,103 @@ bootstrap, the more defensible inferential cross-check, gives gap
 
 % ══════════════════════════════════════════════════════════════════════════════
 
+\subsection{Patient reuse manufactures apparent discrimination}
+\label{sec:permutation_null}
+
+The gap of the previous section is real and robust, but on its own it
+cannot separate ``the leaky protocol learned the disease better'' from
+``the leaky protocol recognised its patients''. Both produce a higher
+AUROC under random splitting, and no amount of replication across arms
+distinguishes them. We separate them by removing the disease.
+
+\paragraph{Design}
+Diagnosis labels are permuted across participants and the three protocols
+are retrained at the frozen settings, five seeds, $15$ epochs. The
+permutation is applied once over the whole cohort rather than inside each
+partition, so a participant who straddles a boundary carries the same
+permuted label on both sides: within-participant label consistency
+survives, the association between anatomy and diagnosis does not. That
+detail decides what the control can answer. Permuting inside each
+partition preserves per-partition class balance exactly and hands a
+straddling participant two different labels, which forecloses identity
+memorisation by construction and drives every protocol to chance for a
+reason that has nothing to do with the split.
+
+Whether the permutation actually took effect is checked rather than
+assumed. Across the scored test rows the permuted label coincides with the
+participant's true diagnosis $48.3\%$, $55.1\%$ and $50.3\%$ of the time
+under the three protocols. That is the chance rate, and it is the
+precondition for reading anything below as patient recall: had the true
+labels survived anywhere in the pipeline, the random arm would still score
+high and the result would read as a stronger version of the same finding
+rather than as a broken one.
+
+\paragraph{Result}
+With no disease signal left to learn, the random split still reaches an
+AUROC of $0.878$ $[0.837, 0.919]$. The two honest protocols sit at chance:
+$0.521$ $[0.427, 0.614]$ under subject-only splitting and $0.427$
+$[0.320, 0.533]$ under component-safe splitting, both intervals covering
+$0.5$. The seed-paired contrast is $+0.451$ $[+0.357, +0.546]$, positive on
+all five seeds.
+
+The training curves say where it comes from. All three protocols drive the
+permuted training loss to a comparably low value, $0.068$, $0.037$ and
+$0.045$ at the final epoch, so all three memorise the training set about
+equally well. Only the random split's memorisation transfers: its final
+validation AUROC is $0.863$ against $0.453$ and $0.481$ for the honest
+protocols, on a label that carries no information about any image. This is
+the shortcut being taken, measured rather than inferred, and it is the
+evidence the probe could not supply.
+
+\paragraph{What the number is not}
+The permuted gap of $+0.451$ is not the inflation under real labels, which
+is \AdniGapTotal{}. It measures the capacity of the memorisation channel
+when nothing else is learnable. Under real labels the honest protocols
+score around $0.83$ because there is a real signal to learn, and the leaky
+protocol's score is bounded above; the channel measured here is one
+contributor to that score rather than the whole of it. We report it as
+evidence that the channel exists and is large, not as a revised effect
+size.
+
+\paragraph{A measured noise floor}
+The control also prices the paper's null result. Under permutation the
+subject-only and component-safe arms differ by $+0.094$
+$[+0.013, +0.175]$, an interval excluding zero, between two protocols that
+both have nothing to learn and are therefore both at chance. It cannot
+be a difference in what was learned, and its sign has a mechanism worth
+naming, because it is not specific to permuted labels. The trainer keeps
+the epoch with the best validation AUROC. With the disease signal
+removed, the honest arms' validation partitions carry none either, so
+that maximum is selection on noise, and the smaller the partition the
+further it overshoots: validation optimism, the best validation AUROC
+minus the test AUROC, is $+0.007$ under subject-only splitting on a
+validation partition averaging $33$ participants, and $+0.159$ under
+component-safe splitting on one averaging $22$. The leaky arm shows
+$-0.008$ on a validation partition averaging $124$ participants, because
+it holds the same patients as training: the signal it selects on is real
+memorisation, so there is nothing to overshoot.
+
+Two things follow. A contrast of $+0.094$ arises here between protocols
+with nothing to learn, an order of magnitude above the
+\AdniMarginal{} component marginal the main experiment reports
+(Table~\ref{tab:adni_robustness}), which is why we decline to read that
+marginal as an effect and decline to settle it with more seeds of the
+same kind. And a component-safe design pays for its safety in
+validation size: $22$ participants is too few to select a checkpoint on,
+with permuted labels or real ones, which is a cost of the protocol we
+had not previously quantified and which any user of it inherits. It is the scale of apparent
+protocol-to-protocol difference this design admits at five seeds, and it
+is why we decline to read the component marginal as an effect and decline
+to settle it by adding seeds of the same kind.
+
+
+
 \subsection{Is patient identity decodable, and does that explain the gap?}
 \label{sec:exp2_probe}
 
+The permutation control shows the shortcut is taken. A natural next
+question is what makes it available, and the answer is a structural
+property of the representation rather than anything about the protocol.
 A linear probe (LinearSVC) trained on frozen penultimate-layer
 features ($512$-dim) of the $15$ ADNI checkpoints of the
 converter-inclusive arm recovers participant identity far above
@@ -1652,12 +1735,15 @@ reading that saliency evidence invites: Rumala~\cite{rumala2023}
 observes that a leaky network attends to subject-identifying structure
 and takes that as the mechanism of the inflation, but identity in the
 representation is a precondition for the shortcut rather than evidence
-that it was taken. The probe uses one architecture and one probe
+that it was taken. The permutation control of
+\S\ref{sec:permutation_null} supplied that evidence by a route needing
+no saliency map, and the probe explains why the route exists: identity
+is there to be used. The probe uses one architecture and one probe
 family; a non-linear adversary in the manner of
 DeepBrainPrint~\cite{deepbrainprint2023} or
 BrainPrint~\cite{wachinger2015brainprint} would upper-bound it. The
-causal weight therefore rests on the two controlled interventions of
-\S\ref{sec:adni_dose_response} and
+causal weight therefore rests on the three controlled interventions of
+\S\ref{sec:permutation_null}, \S\ref{sec:adni_dose_response} and
 \S\ref{sec:provenance_degradation}.
 
 
@@ -1741,10 +1827,25 @@ $5.56 \pm 1.00$), so scan count tracks retention, and retention tracks
 disease course. This is an instance of the duration-dependent
 selection bias described in the data-handling
 literature~\cite{rouzrokh2022mitigating}, arriving through the
-splitter rather than through the cohort. We flag it here, report the
-distribution rather than leaving it implicit, and note in
-\S\ref{sec:limitations} what it means for the audit gate that this
-split passed every check the gate performs.
+splitter rather than through the cohort.
+
+We do not leave this as a caveat. The frozen manifests are retained
+because every number in this paper is computed on them and exact
+reproducibility is worth more than a cosmetic correction, but a
+size-balanced split was generated specifically to test whether the
+headline result depends on the defect. Visiting components in shuffled
+rather than size-descending order removes the stratification, giving
+mean component sizes of $5.15$, $5.00$ and $5.07$ scans in train,
+validation and test against $4.65$, $7.50$ and $6.11$ on the frozen
+split, and it is reported beside the primary arm rather than after it:
+the total gap is
+\SizeBalancedGap{} on the size-balanced split against \AdniGapTotal{}
+on the frozen one, with hierarchical intervals $[+0.070, +0.209]$ and
+\AdniHierCI{}. The composition defect is real, it was found by this
+project's own audit of its own splits, and the effect it was suspected
+of producing is not there. What it does mean for the audit gate, which
+passed this split on every check it performs, is taken up in
+\S\ref{sec:limitations}.
 
 The dominant practical
 recommendation is therefore straightforward and not novel, split by
@@ -1810,154 +1911,24 @@ to render them visible.
 
 \subsubsection{Cost-of-leakage as an arithmetic illustration}
 \label{sec:adni_cost_of_leakage}
-An inflation gap of \AdniGapTotal{} test AUROC is concrete only to readers who
-think in AUROC. To re-express the gap in units a clinician can weigh,
-we compute the sensitivity each protocol achieves at a fixed screening
-specificity and then convert the difference into missed-diagnosis
-counts per $1{,}000$ screened patients via the deterministic identity
-$\text{missed/1000} = 1{,}000 \cdot \text{prev} \cdot (1-\text{sens})$
-at literature-cited reference prevalences. This is an \emph{arithmetic
-translation} of the AUROC gap into prevalence-weighted units, not a
-prospective deployment claim: the underlying sensitivities come from
-the ADNI test partitions and inherit all cohort caveats listed in
-\S\ref{sec:limitations} (single 2D coronal-centre slice, no external
-clinical validation, no real-world workflow integration).
+To express the gap in units a clinician can weigh, we re-expressed the
+sensitivity difference at a fixed screening specificity of $0.90$ as
+missed-diagnosis counts per $1{,}000$ screened, under literature-cited
+prevalence anchors. Sensitivity at that specificity is $0.866 \pm 0.046$
+under Protocol~A against $0.535 \pm 0.103$ under Protocol~C, which at the
+US 75--84 population prevalence of $13.8\%$~\cite{rajan2021} is
+\MissedPerThousand{} additional missed AD cases per $1{,}000$ screened if
+the leaky benchmark is trusted.
 
-\paragraph{Operating point}
-For each (seed $\times$ protocol) on the converter-inclusive ADNI
-sensitivity arm we extract the held-out ROC curve from the persisted
-per-image test predictions and read off the sensitivity at fixed
-specificity $= 0.90$, a conventional triage-assistant anchor that
-bounds the acceptable false-positive workload at $10\%$ of screened
-negatives. We choose this anchor rather than a stricter
-($\geq 0.95$) population-screening threshold or a more permissive
-($\sim 0.80$) memory-clinic triage threshold because it is the
-middle ground at which the leaky-vs-honest disagreement is most
-visible in absolute counts; the qualitative direction of the
-cost-of-leakage gap holds at any specificity above the
-no-discrimination diagonal.
-Averaged across the five seeds, sensitivity at specificity $= 0.90$ is
-$0.866 \pm 0.046$ under Protocol~A (leaky), $0.551 \pm 0.105$ under
-Protocol~B (subject-only), and $0.535 \pm 0.103$ under Protocol~C
-(\SGA{}). Youden's J preserves the leaky-versus-honest separation
-($J = 0.785 / 0.458 / 0.533$ for Protocols A / B / C; $A-C = +0.252$)
-but \emph{inverts} the B--C order relative to the fixed-specificity
-reading: under J the component-safe protocol scores above
-subject-only. That inversion is the same one seen in the
-converter-inclusive component marginal (\S\ref{sec:exp6_adni}), and we
-flag it rather than average over it: the B--C contrast is not stable to the choice of operating point, which is itself evidence
-that the component layer's marginal is within noise on this cohort.
-Figure~\ref{fig:cost_of_leakage}(a)
-shows the corresponding ROC curves with the operating point marked.
+This is deterministic arithmetic applied to the measured sensitivities, not
+a deployment estimate. It inherits every cohort caveat in
+\S\ref{sec:limitations}: a single 2D coronal-centre slice, a research cohort
+that is not a screening population, a threshold chosen on validation, and no
+prospective evaluation. We give it because an AUROC difference is hard to
+weigh and a count is not, and we give it once. The operating-point
+derivation, the sensitivity of the result to the chosen specificity, and the
+second prevalence anchor are in Supplementary Material~S2.
 
-\paragraph{Threshold selection}
-Every operating point in this section is \emph{selected on the
-validation partition and measured on test}. This distinction is not
-cosmetic: scanning the test ROC for the threshold that maximises
-sensitivity at a target specificity
-(the natural implementation, and the one we used initially) reports the best value obtainable in
-hindsight rather than one obtainable prospectively, and would make this
-manuscript commit a version of the error it exists to measure. Choosing
-thresholds honestly lowers the reported sensitivity of \emph{both}
-protocols, but it lowers the component-safe protocol further (its
-sensitivity at $\mathrm{spec}=0.90$ falls from $0.594$ under test
-selection to $0.533$ under validation selection, against $0.874$ to
-$0.865$ for the leaky protocol), because the leaky model's test
-performance was already inflated and had less to gain from a
-retrospectively chosen cut. The corrected leaky-vs-honest gaps are
-therefore \emph{larger}, not smaller.
-
-\paragraph{Robustness to operating-point choice}
-The leaky-vs-honest sensitivity gap is uniformly positive across every
-operating point checked and monotone in the specificity anchor
-($+0.270$ at $\mathrm{spec}\!=\!0.80$; $+0.331$ at
-$\mathrm{spec}\!=\!0.90$; $+0.424$ at $\mathrm{spec}\!=\!0.95$;
-Youden-J-optimal $+0.153$ in sensitivity and $+0.252$ in J). The
-$0.90$ specificity anchor used for the cost translation is therefore
-a middle pick: the gap is smaller at looser specificities and larger
-at $0.95$, so the anchor neither maximises nor minimises the reported
-cost. The full
-ten-row operating-point table is provided as Supplementary
-Table~S2.
-
-\paragraph{Reference prevalences}
-We anchor the translation on two literature-cited prevalence values
-matched to plausible deployment scenarios for an ADNI-trained
-CN$\to$AD classifier: (i) $13.8\%$ ($95\%$ CI $13.1$--$14.5\%$)
-population AD prevalence in US adults 75--84 in 2020
-\cite{rajan2021}, the natural anchor for ADNI's median age of 76,
-and (ii) $58.9\%$ MCI-or-dementia diagnostic yield at a tertiary
-memory clinic \cite{thomas2024prompt}, anchoring the high-prevalence
-end where the model would act as triage downstream of a referral
-filter. The clinical-cost framing is established by
-\cite{jack2018niaaa,lin2013screening,wittenberg2019dementiacosts}.
-Because ADNI is a research-recruited volunteer cohort with
-enrichment for memory complaints, the $\sim 3.5\times$ underestimate
-is best read as a calibration of the AUROC gap's clinical-cost
-\emph{magnitude} rather than as a prospective deployment estimate.
-
-\paragraph{Headline arithmetic translation}
-At the screening operating point (specificity $= 0.90$), the
-arithmetic difference between the leaky benchmark's apparent
-sensitivity (\SensLeaky{}) and Protocol~C's honest sensitivity
-(\SensSafe{})
-corresponds to the missed-diagnosis shortfall summarised in
-Figure~\ref{fig:cost_of_leakage}(b). At the population-screening prevalence
-of $13.8\%$ the leaky benchmark's sensitivity arithmetically implies
-$\approx 18.5$ missed AD diagnoses per $1{,}000$ screened older
-adults; the honest sensitivity implies $\approx 64.2$, a difference of
-\MissedPerThousand{} missed cases per $1{,}000$, equivalently, a $\sim 3.5\times$
-arithmetic underestimate of missed-diagnosis volume. At the tertiary-clinic anchor of $58.9\%$, the same arithmetic underestimate
-amplifies to $\approx 195.0$ additional missed cases per $1{,}000$ ($\approx 79.0$ apparent against $\approx 274.0$ actual), because the same sensitivity shortfall is applied to a larger diseased fraction.
-
-
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.96\linewidth]{fig09_cost_of_leakage.pdf}
-\caption{Arithmetic cost-of-leakage translation on the converter-inclusive ADNI sensitivity arm. (a) Per-seed ROC curves for
-Protocol~A (leaky) and Protocol~C (component-safe \SGA{}); the dashed vertical line marks the screening operating point at specificity
-$= 0.90$ (i.e.\ false-positive rate $= 0.10$); markers show the
-per-seed mean sensitivity at that specificity. (b) Missed AD
-diagnoses per $1{,}000$ screened patients at the two literature-cited
-prevalence anchors, computed as
-$1{,}000 \cdot \text{prev} \cdot (1-\text{sens})$. Protocol~A's bars use its apparent sensitivity (\SensLeaky{}) and Protocol~C's bars its honest sensitivity (\SensSafe{}). The annotation ``$+N$ missed'' is the per-$1{,}000$
-arithmetic shortfall implied by reporting the leaky number instead of
-the honest one; }
-\label{fig:cost_of_leakage}
-\end{figure}
-
-\paragraph{Scope}
-The translation is an arithmetic re-expression of the sensitivity gap
-under a fixed specificity anchor, not a prospective deployment
-estimate: the underlying sensitivities come from the ADNI test
-partition and inherit all cohort caveats in
-\S\ref{sec:limitations}. The anchor is not load-bearing:
-Figure~\ref{fig:operating_point} sweeps it, and alternative operating
-points (Youden J, fixed-sensitivity) yield the same qualitative
-conclusion (Supplementary Table~S2). A fully calibrated decision-curve
-analysis is a deployment-time tuning concern outside the scope of
-the leakage audit itself
-\cite{niculescu2005calibration,vancalster2019calibration,guo2017calibration}.
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.74\linewidth]{fig10_operating_point.pdf}
-\caption{Sensitivity against target specificity on ADNI1, mean over
-five seeds with $\pm 1$ SD bands. The leaky protocol's advantage is
-not an artefact of the $0.90$ anchor: it holds across the sweep, and
-widens as the operating point tightens, which is the direction that
-matters for screening. Protocol~B crosses below Protocol~C near
-$0.95$, the same inversion the component marginal shows in
-Figure~\ref{fig:arm_forest}(b); the two honest protocols' bands are wide
-and overlapping throughout (seed SD $0.08$--$0.12$ against $0.03$--$0.06$
-for the leaky protocol, B widest at the looser anchors and C widest at
-$0.95$), so the component layer's apparent advantage over
-subject-only splitting is not stable to the choice of anchor.}
-\label{fig:operating_point}
-\end{figure}
-
-% ══════════════════════════════════════════════════════════════════════════════
 \subsection{Leakage as a dose: injecting test-set overlap}
 \label{sec:adni_dose_response}
 
@@ -2295,7 +2266,8 @@ under Protocol~C. That composition under-predicts what the same
 experiment measures directly, and the comparison is worth stating
 because it bounds how much weight the chain carries: the provenance arm
 itself trains at every deletion level, and its test AUROC rises from
-$0.771$ at no loss to $0.866$ under subject-wise splitting and $0.829$
+$0.771$ at no loss to \ProvSubjectAUROCTen{} under subject-wise splitting
+and \ProvSafeAUROCTen{}
 under the component-safe protocol at $10\%$ loss, that is $+0.095$ and
 $+0.059$ against the two composed figures just given. The chain is low
 by rather more than a factor of two in both protocols. Two reasons are visible: the slope is fitted on
@@ -2360,14 +2332,21 @@ corrupted result, and score residual leakage against untouched ground truth.
 probability $\lambda$, so one patient looks like two; \textsc{merge}
 relabels a random pair of participants to one pseudo-identifier, so two
 patients look like one. The last two mimic the observed Tier-1 failure modes
-and leave no field missing. Only the grouping differs between the protocols
+and leave no field missing. These operators are controlled stress tests
+of identifiable provenance failure modes; they are not estimates of the
+prevalence or the distribution of such errors in clinical repositories,
+and we draw no conclusion about how often real cohorts sit at any given
+intensity. Only the grouping differs between the protocols
 compared; both use the same class-stratified assigner, for the reason given
-above. No model is trained, because contamination is a property of the split;
-the AUROC consequence of a contamination level is what
-\S\ref{sec:adni_dose_response} measures, and the two compose.
+above. The experiment has two halves, and only the second needs a GPU.
+Contamination is a property of the split, so the leakage every cell admits
+is measured without fitting anything; the AUROC each corrupted split then
+produces is measured by training one model per protocol per seed, $120$
+models in all.
 
 \paragraph{Result}
-The three mechanisms separate cleanly, and one of them is where the component
+Table~\ref{tab:stress_structural} gives the matrix. The three mechanisms
+separate cleanly, and one of them is where the component
 layer stops being redundant. Under \textsc{drop} the graph halves the damage
 at $\lambda = 0.1$ ($16.8$ straddling participants under subject-wise
 grouping against $8.4$), falling to $31\%$ prevented at total loss, which
@@ -2389,10 +2368,195 @@ bounds the claim. The graph protects against identity \emph{fragmentation},
 not against every corruption, and a merged key damages a study in a way no
 splitter can repair.
 
+The two leakage columns disagree in one cell, and the disagreement is
+instructive rather than inconsistent. At \textsc{drop} $\lambda = 0.25$ the
+graph cuts straddling participants from $31.2$ to $19.8$ while the share of
+contaminated test scans rises from $0.364$ to $0.395$. The component layer
+builds fewer, larger groups, so a group that does straddle carries more
+scans across the boundary with it; counting participants and counting scans
+are different measurements of the same partition, and a protocol can improve
+one while losing the other. We print both columns rather than the one that
+reads better, and we compose the dose-response slope through the scan share,
+which is the conservative of the two (\S\ref{sec:adni_dose_response}).
+
+\begin{table}[!ht]
+\centering
+\small
+\caption{Residual leakage under structured provenance corruption, ADNI1
+primary arm ($220$ participants), five seeds, cell means. Straddling counts
+true participants with scans on both sides of a boundary; $c$ is the share
+of test scans whose true participant also appears in training, the quantity
+\S\ref{sec:adni_dose_response} sweeps. Both protocols are assigned by the
+same class-stratified bin-packer, so a difference between the columns is
+attributable to the grouping. \textsc{merge} admits no leakage at any
+intensity, which is why its prevented share is undefined (n/a) rather than zero:
+over-grouping destroys the participant count without placing a participant
+on both sides.}
+\label{tab:stress_structural}
+\begin{tabular}{@{}llrrrrr@{}}
+\toprule
+\textbf{Corruption} & $\lambda$ & \multicolumn{2}{c}{\textbf{Straddling}}
+ & \textbf{Prevented} & \multicolumn{2}{c}{\textbf{$c$ (test scans)}} \\
+\cmidrule(lr){3-4}\cmidrule(lr){6-7}
+ & & Prot.~B & Prot.~C & by graph & Prot.~B & Prot.~C \\
+\midrule
+\textsc{drop} & $0$ & $0.0$ & $0.0$ & n/a & $0.000$ & $0.000$ \\
+ & $0.1$ & $16.8$ & $8.4$ & $50.0\%$ & $0.337$ & $0.177$ \\
+ & $0.25$ & $31.2$ & $19.8$ & $36.5\%$ & $0.364$ & $0.395$ \\
+ & $0.5$ & $85.2$ & $67.0$ & $21.4\%$ & $0.991$ & $0.891$ \\
+ & $1$ & $182.6$ & $125.4$ & $31.3\%$ & $0.989$ & $0.979$ \\
+\addlinespace
+\textsc{split} & $0$ & $0.0$ & $0.0$ & n/a & $0.000$ & $0.000$ \\
+ & $0.1$ & $1.2$ & $0.6$ & $50.0\%$ & $0.007$ & $0.005$ \\
+ & $0.25$ & $1.6$ & $0.8$ & $50.0\%$ & $0.018$ & $0.004$ \\
+ & $0.5$ & $4.0$ & $1.0$ & $75.0\%$ & $0.076$ & $0.004$ \\
+ & $1$ & $61.6$ & $6.4$ & $89.6\%$ & $0.636$ & $0.107$ \\
+\addlinespace
+\textsc{merge} & $0$ & $0.0$ & $0.0$ & n/a & $0.000$ & $0.000$ \\
+ & $0.1$ & $0.0$ & $0.0$ & n/a & $0.000$ & $0.000$ \\
+ & $0.25$ & $0.0$ & $0.0$ & n/a & $0.000$ & $0.000$ \\
+ & $0.5$ & $0.0$ & $0.0$ & n/a & $0.000$ & $0.000$ \\
+ & $1$ & $0.0$ & $0.0$ & n/a & $0.000$ & $0.000$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!ht]
+\centering
+\small
+\caption{AUROC consequence of each corruption cell on the ADNI1 primary
+arm. Each row trains one model per protocol per seed on the \emph{same}
+corrupted manifest, so the comparison is paired: the difference column
+and its interval are over the five per-seed differences
+(paired $t$, four degrees of freedom), not over the two marginal means.
+A positive difference means the component-safe grouping scored
+\emph{lower}, that is, it declined optimism the subject-wise grouping
+accepted. The last column counts seeds in which it did.
+\textsc{merge} is an identity rather than a null result: when two
+participants share one key both protocols emit the same partition, so the
+same model is trained twice, and the exact zeros double as a determinism
+check on the pipeline.}
+\label{tab:stress_auroc}
+\begin{tabular}{@{}llrrrcr@{}}
+\toprule
+\textbf{Corruption} & $\lambda$ & \textbf{Prot.~B} & \textbf{Prot.~C}
+ & \textbf{Paired} $\Delta$ & \textbf{95\% CI} & \textbf{Seeds} \\
+\midrule
+\textsc{drop} & $0.1$ & $0.847$ & $0.814$ & $+0.034$ & $[-0.062,\, +0.129]$ & $4/5$ \\
+ & $0.25$ & $0.857$ & $0.812$ & $+0.045$ & $[+0.001,\, +0.089]$ & $4/5$ \\
+ & $0.5$ & $0.945$ & $0.902$ & $+0.043$ & $[+0.001,\, +0.084]$ & $5/5$ \\
+ & $1$ & $0.956$ & $0.959$ & $-0.004$ & $[-0.034,\, +0.027]$ & $3/5$ \\
+\addlinespace
+\textsc{split} & $0.1$ & $0.850$ & $0.836$ & $+0.014$ & $[-0.035,\, +0.064]$ & $3/5$ \\
+ & $0.25$ & $0.868$ & $0.853$ & $+0.015$ & $[-0.024,\, +0.053]$ & $4/5$ \\
+ & $0.5$ & $0.845$ & $0.806$ & $+0.038$ & $[-0.027,\, +0.104]$ & $4/5$ \\
+ & $1$ & $0.877$ & $0.852$ & $+0.025$ & $[-0.073,\, +0.124]$ & $3/5$ \\
+\addlinespace
+\textsc{merge} & $0.1$ & $0.841$ & $0.841$ & $+0.000$ & $[+0.000,\, +0.000]$ & $0/5$ \\
+ & $0.25$ & $0.806$ & $0.806$ & $+0.000$ & $[+0.000,\, +0.000]$ & $0/5$ \\
+ & $0.5$ & $0.815$ & $0.815$ & $+0.000$ & $[+0.000,\, +0.000]$ & $0/5$ \\
+ & $1$ & $0.808$ & $0.808$ & $+0.000$ & $[+0.000,\, +0.000]$ & $0/5$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{What the prevented contamination is worth}
+Preventing contamination is worth reporting only if the contamination was
+worth something, so we train one model per protocol per seed on each
+corrupted manifest and read the AUROC it produces
+(Table~\ref{tab:stress_auroc}). The direction is consistent and the
+per-cell evidence is thin, and both halves of that sentence belong in the
+record.
+
+Across the eight cells in which the two protocols emit different
+partitions, seven favour the component-safe grouping. The mean paired
+difference over those cells is $+0.026$ (SD $0.017$); a one-sided sign
+test on the cell means gives $p = 0.035$ and a signed-rank test
+$W^{+} = 35$, $p = 0.008$. Those two are summaries of one comparison and
+not independent confirmations of it, and both are descriptive rather
+than inferential: the cells share seeds and a base manifest, so they are
+not eight independent experiments. Only two cells, \textsc{drop}
+$\lambda = 0.25$ and $\lambda = 0.5$, have an interval that excludes zero,
+and both exclude it by $0.001$. Five seeds cannot resolve a per-cell effect
+of $0.02$ to $0.04$ AUROC when the paired SD runs from $0.024$ to $0.079$,
+so we claim a consistent direction and no per-cell effect size.
+
+The magnitude is also smaller than the dose-response slope predicts. At
+\textsc{split} $\lambda = 1$ the graph removes $53$ percentage points of
+test-scan contamination, from $64\%$ to $11\%$, and
+Equation~\ref{eq:dose_response} would price that at roughly $+0.066$ AUROC
+against the $+0.025$ observed. The slope is fitted where contamination is
+injected into a fixed training set; corrupting provenance perturbs both
+sides of the split at once, and the two are not interchangeable. We report
+the discrepancy rather than the more favourable of the two numbers.
+
+Two mechanisms deserve an explanation rather than a number. Under
+\textsc{drop} $\lambda = 1$ the difference inverts to $-0.004$: with every
+participant identifier gone, both protocols admit near-total
+contamination, $99\%$ of test scans under subject-wise grouping and $98\%$
+under the graph, and both saturate at $0.956$ and $0.959$. There is
+nothing left to protect, and the sign of a difference that small is
+noise, even though Table~\ref{tab:stress_structural} still credits the
+graph with $31.3\%$ of the straddling prevented in that cell: preventing leakage and being paid for it in
+AUROC are different claims, and this cell separates them. Under
+\textsc{merge} the difference is exactly $0.000$ at every intensity
+because both protocols produce the same partition, so this is an identity
+and a determinism check, not an effect. The graph buys a modest amount of
+optimism back where provenance damage is the kind it can repair, and
+nothing at all where it is not.
+
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Discussion}
 \label{sec:discussion}
 % ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Three provenance regimes}
+\label{sec:regimes}
+
+The results across this paper describe one structure, and stating it
+directly is more useful than restating the experiments. Patient-wise
+evaluation is not a property of a splitting algorithm. It is a property
+of the identity evidence the algorithm is given, and that evidence
+admits three regimes.
+
+\paragraph{Regime I: intact provenance}
+Every observation of a participant carries a correct participant key.
+Here a leakage graph and a participant grouping produce the same
+partition, because the subject rule subsumes the others, and the
+component marginal is indistinguishable from zero on all six ADNI arms
+(Table~\ref{tab:adni_robustness}). This is the design target rather than
+a shortfall: a provenance-aware splitter that disagreed with participant
+grouping where participant identity is complete and correct would be
+wrong. Most curated research cohorts sit here, which is why the standard
+advice works and why nothing in this paper argues against it.
+
+\paragraph{Regime II: degraded provenance with surviving redundancy}
+The participant key is incomplete, fragmented or merged, but some other
+relation, a session, a series, an acquisition date, still joins
+observations of one participant. Here the two groupings separate, and
+the separation is what the graph is for: under identifier deletion it
+prevents $49\%$ of the leakage participant grouping admits at $10\%$
+loss, and when one participant is dealt into two keys it prevents $90\%$
+(\S\ref{sec:provenance_stress}). This is the regime the paper is about,
+and the one the literature has not measured.
+
+\paragraph{Regime III: destroyed provenance}
+No surviving relation connects two observations of the same participant.
+Tier~1 is the observed instance: the redistribution removed the session
+and series identifiers along with the participant one, so the component
+layer recovers nothing the participant key lost, and a split that
+respects the release's own identifier still leaves $70\%$ of test images
+sharing a participant with training. This is an information limit, not a
+software limitation. No audit can reconstruct identity from no evidence,
+and we make no claim to. What an audit can do here is report that the
+evidence is absent, which is precisely what a benchmark's own metadata
+cannot do and what the three blocking checks, passing on a manifest
+built from a broken key, demonstrate.
+
+The practical consequence is that the question to ask of a dataset is
+not whether the split was patient-wise. It is which regime the dataset
+is in, and that is answerable before training from the identifiers
+alone.
 
 \begin{table}[!ht]
 \centering
@@ -2416,7 +2580,7 @@ Session Overlap & 0\% (\checkmark Pass) \\
 Connected Component Overlap & 0\% (\checkmark Pass) \\
 \midrule
 \multicolumn{2}{l}{\textbf{Reported, non-blocking}} \\
-Label join & $22\%$ of labels by $180$-day date proximity (\S\ref{sec:data_adni}) \\
+Label join & $25.1\%$ of this arm's labels by $180$-day date proximity; the gap is unchanged on the exact-key subset (\S\ref{sec:data_adni}) \\
 Site--label association & Cram\'{e}r's $V = 0.54$ in test (Supplementary Table~S7) \\
 Component-size balance & Warning: partitions differ in scans per participant (\S\ref{sec:exp3_degrad}) \\
 \midrule
@@ -2483,7 +2647,14 @@ readers. First, structural MRI is not a standalone diagnostic tool for
 AD; in clinical practice it informs the dementia workup by excluding
 structural mimics, by demonstrating atrophy patterns consistent with
 neurodegeneration, and by supporting clinical and biomarker-based
-diagnosis. A deep learning model evaluated on single slices labelled by a
+diagnosis within a research framework that defines the disease
+biologically rather than by imaging
+alone~\cite{jack2018niaaa}. Nor is population screening for cognitive
+impairment itself an established benefit~\cite{lin2013screening}, which
+is a further reason the operating-point translation in
+\S\ref{sec:adni_cost_of_leakage} is an arithmetic re-expression and
+not an argument for deployment, whatever the societal cost of dementia
+makes such a tool look worth~\cite{wittenberg2019dementiacosts}. A deep learning model evaluated on single slices labelled by a
 clinical rating cannot claim to diagnose Alzheimer's disease; it can
 only claim to classify images by that rating in a controlled benchmark
 setting, and \SGA{} makes this distinction explicit through its
@@ -2510,7 +2681,7 @@ pipelines are independent of training.
 \label{sec:limitations}
 
 \begin{itemize}
-    \item \textbf{The component layer is equivalent to subject
+          \item \textbf{The component layer is equivalent to subject
           grouping on intact cohorts, and validated beyond it only
           under synthetic provenance loss.} On the two source cohorts every
           connected component contains exactly one participant
@@ -2519,10 +2690,12 @@ pipelines are independent of training.
           ADNI pairs, but each joins a pair \texttt{same\_subject} had
           already joined. The marginal over Protocol~B is accordingly small and unstable:
           \AdniMarginal{} \AdniMarginalCI{} on the primary arm, and
-          $\leq 0$ in three of four configurations, including a sign
-          inversion on the converter-inclusive arm
+          ranging from $-0.026$ to $+0.026$ across the six arms, with a
+          sign inversion on the converter-inclusive one
           (Table~\ref{tab:adni_robustness}). No interval excludes zero in any of
-          them, and we claim no AUROC benefit on intact cohorts.
+          them, the one measured no-signal contrast of this kind is
+          $+0.094$ (\S\ref{sec:permutation_null}), and we claim no
+          AUROC benefit on intact cohorts.
           \S\ref{sec:provenance_degradation} does establish a benefit,
           but on a regime we imposed rather than observed: it deletes
           identifiers uniformly at random from a cohort with complete
@@ -2544,8 +2717,7 @@ pipelines are independent of training.
           recall $0.246$ at $d \leq 4$); it ships report-only because no
           threshold we measured is both safe and useful
           (\S\ref{sec:leakage_graph}).
-
-    \item \textbf{Every finding is a property of a 2D
+          \item \textbf{Every finding is a property of a 2D
           coronal-centre-slice representation.} The inflation gap, the
           dose-response slope, the provenance curve, the subgroup
           disparity and the clinical translation are all measured on
@@ -2570,15 +2742,16 @@ pipelines are independent of training.
           Multiple-instance aggregation over per-slice predictions and
           transformer backbones remain open, and reuse the same frozen
           manifests.
-
-    \item \textbf{Label and identifier provenance differs by tier.}
+          \item \textbf{Label and identifier provenance differs by tier.}
           Tier-1 labels are CDR, but its participant identities are
           recovered by content matching rather than supplied, and we
           release the matching script against OASIS-1 rather than the
           mapping itself. Because all $200$ Tier-1 participants are
           also in Tier~2, the two tiers are not independent
           replications of each other. On ADNI, $22\%$ of labels ($21\%$ within the CN/AD
-          subset) are assigned through a $180$-day date-proximity join rather than
+          subset, and $25.1\%$ within the primary arm, which excludes the
+          converter components the visit key covers best) are assigned
+          through a $180$-day date-proximity join rather than
           an exact visit key (\S\ref{sec:data_adni}), and $28$
           magnetization-transfer T1 acquisitions ($17$ in the CN/AD
           universe) are non-MPRAGE; a pre-specified arm dropping them
@@ -2587,9 +2760,13 @@ pipelines are independent of training.
           test scans whose label comes from an exact visit key gives a
           gap of \AdniGapExactKey{}; that tests the labels the gap is
           scored against, not the ones it was trained on, since the
-          date-proximity scans remain in the training partition.
-
-    \item \textbf{The intervals are descriptive, not inferential.}
+          date-proximity scans remain in the training partition. The
+          exact-linkage arm closes that half by retraining on the $841$
+          exact-key scans alone (Table~\ref{tab:adni_robustness}), and
+          the total gap is unchanged, so neither the labels the models
+          learned from nor the labels they were scored against carry
+          the result.
+          \item \textbf{The intervals are descriptive, not inferential.}
           Five seeds support paired-seed bootstrap intervals that
           propagate between-seed variation only. The hierarchical
           subject\,$\times$\,seed bootstrap, which also propagates
@@ -2615,8 +2792,7 @@ pipelines are independent of training.
           protocols so much as redistribute it. Any single interval here should be read
           descriptively rather than as inference over a hypothetical
           larger seed population.
-
-    \item \textbf{The secondary analyses support less than they
+          \item \textbf{The secondary analyses support less than they
           appear to.} The identity probe uses one architecture and one
           probe family and reports a value that does not differ between
           leaky and honest protocols; it establishes that identity is
@@ -2633,65 +2809,62 @@ pipelines are independent of training.
           we present it as a same-direction check rather than an
           independent confirmation, and we do not claim the slope
           generalises.
+          \item \textbf{Disjointness is necessary but not sufficient, and our own gate
+          demonstrates the gap.} The frozen ADNI splits pass every check
+          the audit performs, zero subject, session and component
+          overlap, while being stratified by component size
+          (\S\ref{sec:exp3_degrad}). A split can be provably
+          leakage-free and still be a poor split, and the gate as
+          specified could not tell the difference. We regard this as the
+          most useful negative result about the framework here, because
+          the framework's own output produced it. The released audit now
+          reports the component-size distribution per partition and
+          warns when partitions are not drawn from comparable
+          participants; against the frozen manifests it fires
+          immediately. It warns rather than blocks, deliberately: the
+          manifests are frozen and every result rests on them. The
+          size-balanced regeneration reported beside the headline shows
+          the gap survives the correction. The same audit surfaces a
+          second composition defect we did not fix: on the
+          converter-inclusive arm the validation partition carries
+          $20.7\%$ AD images against $41.3\%$ in training and $37.5\%$
+          in test, in every seed, and the operating-point and
+          cost-of-leakage thresholds are selected on that partition.
+          The released audit now separates the two kinds of finding:
+          partition disjointness is the only blocking check, and
+          component-size and class-mix imbalance are reported as
+          advisory warnings beside the verdict rather than folded into
+          it. Promoting them to blocking is the first item of future
+          work, and would retroactively fail the manifests this paper
+          reports on, which is why it has not been done here.
 
-    \item \textbf{Disjointness is necessary but not sufficient, and
-          our own gate demonstrates the gap.} The frozen ADNI splits
-          this paper reports on pass every check the audit performs
-(zero subject, session and component overlap across partitions)
-while being severely stratified by component
-          size, with training components spanning $4$--$6$ scans and
-          validation components $7$--$9$
-          (\S\ref{sec:exp3_degrad}). A split can therefore be
-          provably leakage-free and still be a poor split, and the
-          gate as specified cannot tell the difference. We regard this
-          as the most useful negative result about the framework in
-          the paper, because it was produced by the framework's own
-          output rather than argued in the abstract: a compositional check,
-comparing group-size, class and covariate distributions across partitions
-rather than only their intersection, belongs in the audit and was not in it.
-          We have since added one. The released audit now reports the
-          component-size distribution per partition and warns when the
-          partitions are not drawn from comparable participants; run
-          against the frozen manifests it fires immediately, flagging
-          that validation components average $7.50$ images against
-          $4.65$ in training and that the two ranges do not overlap.
-          It is reported rather than blocking, deliberately: the
-          manifests are frozen and every result here rests on them, so
-          making the check a hard failure retroactively would
-          invalidate the artefacts it is meant to describe. A caller
-          generating new splits should treat the warning as a reason
-          to regenerate. We did so as a control: regenerating the
-          splits with components visited in shuffled rather than
-          size-descending order removes the stratification (mean
-          component size $5.15$, $5.00$ and $5.07$ scans in train,
-          validation and test) and gives a gap of \SizeBalancedGap{}
-          against \AdniGapTotal{}. The same audit surfaces a second
-          composition defect we did not fix, because the manifests are
-          frozen: on the converter-inclusive arm the validation
-          partition carries $20.7\%$ AD images against $41.3\%$ in
-          training and $37.5\%$ in test, in every seed. Thresholds for
-          the operating-point and cost-of-leakage analyses are selected
-          on that partition, so those two analyses inherit a validation
-          sample whose class mix is not the test sample's. Promoting
-          the check to a blocking criterion is the first item of future
-          work.
+          The protocol also pays for its safety in validation size.
+          Holding whole components together leaves the component-safe
+          validation partition with about $22$ participants, against
+          $33$ under subject-only splitting and $124$ under a random
+          split, which makes checkpoint selection noisy: with the
+          disease signal permuted away, the best validation AUROC
+          exceeds the test AUROC by $+0.159$ under component-safe
+          splitting against $+0.007$ under subject-only. That is the
+          no-signal worst case. On the runs this paper reports, where
+          validation carries real signal, selection optimism is
+          $+0.026$, $+0.030$ and $-0.026$ under the three protocols,
+          every interval spans zero, and the spread is $0.055$ -- small,
+          not ordered in the direction the objection requires, and
+          negative for the component-safe arm. A fixed-epoch replication
+          would settle it more directly and we did not run one. A
+          practitioner adopting component-safe splitting on a cohort
+          this size should nonetheless expect checkpoint selection to be
+          noisy.
 
-    \item \textbf{The audit gate certifies partition disjointness,
-          nothing more.} A pass does not imply site- or
-          scanner-independent generalisation: the site--label
-          association we report (Cram\'{e}r's $V \approx 0.36$ in train
-          rising to $\approx 0.54$ in test) persists inside
-          component-safe splits, and is a residual shortcut channel
-          the audit exposes but does not remove. Harmonisation
-(ComBat-family methods~\cite{johnson2007combat,fortin2017combat,bashyam2022deepharmony},
-site-stratified splitting, leave-site-out evaluation) is complementary and outside this manuscript. Four of the
-          audit's advertised criteria are reported rather than
-          enforced in this release (Supplementary Table~S6). The
-          implementation covers structural MRI only, and its
-          near-duplicate comparison is $\mathcal{O}(N^2)$, which is
-          tractable at the scale studied here but would need
-          locality-sensitive indexing beyond $10^5$ images.
-\end{itemize}
+          The gate certifies partition disjointness and nothing more. A
+          pass does not imply site- or scanner-independent
+          generalisation: the site--label association in
+          Supplementary~S7 survives the component-safe split, which is
+          the central caveat of this work. Patient identity is one
+          shortcut channel among several, and closing it leaves site,
+          scanner, protocol, acquisition date and demographic structure
+          open.\end{itemize}
 
 
 % ══════════════════════════════════════════════════════════════════════════════
@@ -2703,12 +2876,17 @@ about data provenance and measured both links of that dependency.
 Random image-level evaluation overstates ADNI1 AUROC by \AdniGapTotal{}
 on the primary arm (paired-seed interval \AdniGapCI{} at $n=5$,
 descriptive), and the gap survives every pre-specified variation of
-cohort, backbone, converter rule, acquisition type and input
-dimensionality (Figure~\ref{fig:arm_forest}; the volumetric arm in
+cohort, backbone, converter rule, acquisition type, input
+dimensionality and label-linkage strictness
+(Figure~\ref{fig:arm_forest}; the volumetric arm in
 \S\ref{sec:exp6_adni}, where the gap is \VolGapTotal{} against
 \AdniGapTotal{} in 2D, under a different training recipe).
 
-Two controlled interventions locate the mechanism. Injecting
+Three controlled interventions locate the mechanism. Permuting
+diagnosis labels across participants removes the disease signal
+entirely and leaves the random split at $0.878$ AUROC while both
+patient-aware protocols sit at chance, which is the shortcut being
+taken rather than inferred. Injecting
 contaminated test scans while holding the training set fixed gives
 $+\DoseSlope{}$
 AUROC per unit overlap. Deleting subject identifiers at controlled
@@ -2726,7 +2904,7 @@ count. A linear probe confirms that patient identity is
 decodable far above chance, across sessions as well as within them,
 but that quantity is unchanged between leaky and honest protocols and
 therefore establishes decodability rather than causation; the causal
-weight rests on the two interventions.
+weight rests on the three interventions.
 
 The field-level implication is that AD MRI benchmark results should be
 read as claims about an evaluation protocol, not only about a model
@@ -2739,14 +2917,18 @@ pre-training GO/NO-GO audit following
 Algorithm~\ref{alg:splitguard}, and a benchmark report card.
 
 \section*{Acknowledgements}
-Every training run reported here was executed in one code state,
-with the software environment of each node recorded in the released run
-logs (approximately \GpuHours{}~GPU-hours in total). Most arms
+Every training run reported here was executed in one code state
+(approximately \GpuHours{}~GPU-hours in total). The software environment of
+the node that ran the final arms is released in full; the equivalent records
+for the earlier nodes were not retained. Most arms
 ran on a single cloud-hosted NVIDIA H100 instance; the $50$-run
 dose-response matrix was rerun in that same code state on an NVIDIA RTX
-PRO 4500 instance and the $15$-run volumetric arm on an NVIDIA RTX 2000
-Ada instance, so those arms and the ones they are compared with differ
-in hardware but not in code. We report the slope as a descriptive
+PRO 4500 instance, the $15$-run volumetric arm on an NVIDIA RTX 2000
+Ada instance, and the $15$-run exact-label-linkage arm together with the
+$120$-run structured-corruption matrix, with the $15$-run
+label-permutation control, on an NVIDIA RTX 4090 instance, so those
+arms and the ones they are compared with differ in hardware but not in
+code. We report the slope as a descriptive
 calibration constant and not as a transferable coefficient, which is
 how it is read throughout. Data used in preparation of this article
 were obtained from the Alzheimer's Disease Neuroimaging Initiative
@@ -2868,7 +3050,14 @@ component and the aggregation refuses a component whose label is not
 uniform rather than choosing one for it. Key stretching rather than a plain digest is required here: ADNI PTIDs
 are drawn from a space of roughly $10^{7}$ candidates, so a
 single-round hash of one is invertible by enumeration in under a
-second, and the salt cannot be published for the same reason. A
+second, and the salt cannot be published for the same reason. The exact-linkage arm's manifests and the
+$120$ corrupted manifests of \S\ref{sec:provenance_stress} are withheld
+under the same agreement, and need not be released: both are deterministic
+functions of the primary manifest, regenerated by
+\texttt{make\_adni\_splitguard\_split.py \texttt{-}\texttt{-}label-confidence
+clinical\_table} and by
+\texttt{run\_provenance\_stress\_test.py \texttt{-}\texttt{-}emit-splits}
+from a reader's own ADNI download. A
 downstream auditor can therefore verify component sizes, class
 balance, and cross-partition contamination on Tier 3 without obtaining
 the underlying ADNI data, and without the release itself
@@ -2885,11 +3074,13 @@ released for that tier.
 
 \paragraph{Reproducibility boundary of the reported runs}
 Every AUROC in this manuscript comes from
-\texttt{scripts/gpu\_program.py} in a single code state, on the two
+\texttt{scripts/gpu\_program.py} in a single code state, on the
 GPUs named in the Acknowledgements,
 with seeded samplers, per-worker augmentation seeding and deterministic
-cuDNN kernels; the environment (driver, CUDA, cuDNN and every package
-version) is recorded with the run. Each run persists its per-image test predictions.
+cuDNN kernels. The driver, CUDA version and full package list of the final
+node are released as \texttt{runs\_gpu/gpu\_environment.txt}, frozen by
+\texttt{scripts/gpu\_setup.sh} before training rather than reconstructed
+afterwards, and \texttt{requirements.txt} is read off that record. Each run persists its per-image test predictions.
 \texttt{scripts/gpu\_postprocess.py} derives the headline AUROCs,
 intervals, controls and result tables from those predictions and
 writes them into generated files the manuscript reads, so those

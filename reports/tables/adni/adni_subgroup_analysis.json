@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-10-01T07:14:40+00:00",
+  "created_at": "2026-10-02T18:07:19+00:00",
   "runs_root": "runs/adni_with_converters",
   "manifest": "data/manifests/adni/adni_manifest.csv",
   "age_median_for_stratification": 76.0,

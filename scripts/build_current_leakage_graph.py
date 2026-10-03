@@ -72,6 +72,24 @@ class UnionFind:
             self.rank[root_left] += 1
 
 
+# Values that mean "this field is absent", not "this is the identifier".
+MISSING_TOKENS = {"", "na", "n/a", "none", "null", "unknown", "nan", "-", "?"}
+
+
+def normalise_identifier(value: object) -> str | None:
+    """Return the identifier, or None when the field is effectively absent.
+
+    Grouping is identity evidence. A blank, a placeholder or a literal
+    "unknown" is the absence of evidence, and treating absence as a shared key
+    is how a provenance-aware splitter would manufacture the very failure this
+    paper measures.
+    """
+    if value is None:
+        return None
+    text = str(value).strip()
+    return None if text.lower() in MISSING_TOKENS else text
+
+
 def stable_token(text: str, length: int = 12) -> str:
     return hashlib.sha1(text.encode("utf-8")).hexdigest()[:length]
 
@@ -80,32 +98,32 @@ def read_manifest(path: Path) -> list[Record]:
     with path.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
 
-    required = {
-        "image_id",
-        "path",
-        "relative_path",
-        "raw_class_label",
-        "binary_label",
-        "subject_id",
-        "subject_id_confidence",
-        "subject_parse_status",
-        "file_sha256",
-    }
-    missing = required.difference(rows[0].keys() if rows else set())
+    # Only the row key is required, which is what the README promises for a
+    # bring-your-own-cohort manifest. Every other column is optional and
+    # defaults to empty, and an absent column simply switches its edge family
+    # off: no subject_id means no same_subject edges, no file_sha256 means no
+    # exact-duplicate edges. Demanding ten columns while advertising one was a
+    # contract the implementation did not honour, and a user whose manifest
+    # carries a participant key under a different name should get a clear
+    # error about image_id, not a list of columns the README never mentioned.
+    missing = {"image_id"}.difference(rows[0].keys() if rows else set())
     if missing:
-        raise ValueError(f"Manifest is missing required columns: {sorted(missing)}")
+        raise ValueError(
+            "Manifest is missing the required column 'image_id'. Every other "
+            "column is optional; see the column table in the README for which "
+            "edge family each one enables.")
 
     return [
         Record(
             image_id=row["image_id"],
-            path=resolve_data_path(row),
-            relative_path=row["relative_path"],
-            raw_class_label=row["raw_class_label"],
-            binary_label=row["binary_label"],
-            subject_id=row["subject_id"],
-            subject_id_confidence=row["subject_id_confidence"],
-            subject_parse_status=row["subject_parse_status"],
-            file_sha256=row["file_sha256"],
+            path=resolve_data_path(row) if row.get("relative_path") or row.get("path") else "",
+            relative_path=row.get("relative_path", ""),
+            raw_class_label=row.get("raw_class_label", ""),
+            binary_label=row.get("binary_label", ""),
+            subject_id=row.get("subject_id", ""),
+            subject_id_confidence=row.get("subject_id_confidence", ""),
+            subject_parse_status=row.get("subject_parse_status", ""),
+            file_sha256=row.get("file_sha256", ""),
         )
         for row in rows
     ]
@@ -154,9 +172,21 @@ def build_blocking_components(
     subject_groups: dict[str, list[Record]] = defaultdict(list)
     sha_groups: dict[str, list[Record]] = defaultdict(list)
 
+    # Group only on identifiers that are actually present. Two records whose
+    # subject_id is "" are not two scans of one patient; they are two scans
+    # whose patient is unknown, and joining them invents a participant. The
+    # same applies to a missing hash. This changes no published number -- the
+    # Tier-1 manifest has no missing identifiers -- but the README invites
+    # other cohorts, and on one with partial metadata the unguarded version
+    # would merge every unlabelled scan into a single component and then
+    # report, correctly and uselessly, that the split is safe.
     for record in records:
-        subject_groups[record.subject_id].append(record)
-        sha_groups[record.file_sha256].append(record)
+        subject = normalise_identifier(record.subject_id)
+        if subject is not None:
+            subject_groups[subject].append(record)
+        digest = normalise_identifier(record.file_sha256)
+        if digest is not None:
+            sha_groups[digest].append(record)
 
     subject_edges = 0
     for group in subject_groups.values():

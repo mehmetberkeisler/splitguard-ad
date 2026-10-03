@@ -25,17 +25,27 @@ from the second command of each kind onwards.
 | `tier1_truth` | Tier 1 under random, filename grouping and true participants | 15 |
 | `adni_primary`, `adni_converters`, `adni_no_mt1`, `adni_densenet121` | the headline gap and its robustness arms | 60 |
 | `tier2_oasis1` | OASIS-1 replication, both backbones | 20 |
-| `adni_null` | label-permutation null | 15 |
+| `adni_null` | label-permutation positive control | 15 |
 | `adni_size_balanced` | gap under a size-balanced component assignment | 15 |
 | `identity_probe` | identity decodability, per image and per session | 2 probes |
 | `adni_provenance` | protection under identifier deletion | 50 |
 | `adni_3d` | the gap on 128³ volumes, not 2D slices | 15 |
 | `adni_dose_response` | AUROC per unit injected overlap | 50 |
+| `adni_exact_linkage` | the gap on exact-visit-key labels only | 15 |
+| `adni_stress` | AUROC under each structured-corruption cell | 120 |
 
-At $0.69/h (Secure Cloud RTX 4090) the conservative projection for all of it
-is about **$5.3** including the volumetric arm, inside a $10 budget with a
-$1.50 reserve for start-up, setup, upload and download. `--list` prints the
-current projection; timings are re-measured on the node as the run proceeds.
+What it actually cost, summed across the four nodes these stages ran on, is
+**14.8 GPU-hours** (`runs_gpu/gpu_ledger.json`), which at $0.69/h is about
+**$10** if you run all of it on one RTX 4090. The volumetric arm is two thirds
+of that on its own (see section 5), so budget it separately and leave it out
+if you only need the 2D results: everything else fits inside $4. `--list`
+prints the current projection before anything runs, and timings are
+re-measured on the node as the run proceeds.
+
+The ledger counts only the node it was written on, so carry it across nodes by
+hand: add the `billed_seconds` together and concatenate the
+`gpu_program_log.jsonl` files, or `\GpuHours{}` reports one node's slice as the
+whole total.
 
 ## 2. On your machine, before renting anything
 
@@ -103,30 +113,35 @@ ls -lh gpu_results.tar.gz
 ```
 
 Download `gpu_results.tar.gz` (predictions, metrics, logs, summaries; no
-weights), then, still on the pod:
+weights) and check it unpacks on your machine. Only then, on the pod, delete
+the checkout and the bundle outright rather than pruning inside it: the run
+tree holds per-image predictions keyed by ADNI image identifiers, which are as
+much ADNI-derived data as the slices are.
 
 ```bash
-rm -rf data Alzheimer_MRI_4_classes_dataset oasis1 runs_gpu/*/*/*/best_state.pt \
-       runs/checkpoints /workspace/gpu_bundle_*.tar
+rm -rf ~/splitguard /workspace/gpu_bundle_*.tar
+find / -xdev \( -iname "*adni*" -o -iname "*splitguard*" -o -iname "gpu_bundle*" \) 2>/dev/null
 ```
 
-and terminate the pod, which releases its disk. Both steps are required by the
-Data Use Agreement: deleting the archive is not enough if the pod's volume
-survives.
+The `find` must print nothing. Then terminate the pod, which releases its
+disk. Both steps are required by the Data Use Agreement: deleting the archive
+is not enough if the pod's volume survives.
 
-## 5. The one stage this release does not report
+## 5. The stages that needed their own node
 
-The dose-response matrix is no longer an exception: it was rerun in the
+Every stage this programme can run is now reported in the manuscript. Five of
+them did not produce their reported result on the original H100: the
+dose-response matrix, the volumetric arm, the exact-linkage arm, the
+structured-corruption matrix, and `adni_null`, whose first run was superseded
+when its permutation was corrected. The cost of that is three further hardware
+backends, which the Declarations state.
+
+The dose-response matrix was the first: it was rerun in the
 published code state (50 trainings, 18 minutes billed at `--workers 10` on an
 RTX PRO 4500, $0.21). What that rerun cost the manuscript is a second hardware
-backend, which the Declarations now state. Carry the ledger across nodes by
-hand when you do this: `runs_gpu/gpu_ledger.json` counts only the node it was
-written on, and `\GpuHours{}` is read straight out of it, so a rerun on a
-fresh node silently replaces the total with its own slice unless you add the
-two `billed_seconds` together and concatenate the two `gpu_program_log.jsonl`
-files.
+backend, which the Declarations now state.
 
-**The volumetric arm** (15 trainings) is the outstanding one, and it is far
+**The volumetric arm** (15 trainings) was the expensive one, far
 more expensive than an earlier estimate in this file claimed. Measured on an
 RTX PRO 4500 (32 GB) at `--batch-size 4`, one 3D ResNet-18 step on a $128^3$
 volume costs:
@@ -156,11 +171,19 @@ AUROC that falls as the training loss falls is the signature of a metric
 orientation bug, which is how the one this trainer used to have was found.
 
 When the results come back, `scripts/rebuild_after_gpu.sh` fills
-`\VolGapTotal` and `\VolGapCI`. Neither macro is used in the manuscript yet,
-so nothing renders as `??` while the arm is outstanding; reporting it means
-rewriting the Limitations paragraph that currently calls it the
-highest-priority follow-on, and adding the arm to the hardware sentence in the
-Declarations.
+`\VolGapTotal` and `\VolGapCI`, both of which the manuscript now uses.
+
+**The exact-linkage arm** (15 trainings) and **the structured-corruption
+matrix** (120 trainings) ran together on an RTX 4090, as did the re-run of
+`adni_null` after its permutation was corrected. The corruption matrix has two
+halves and only one needs a GPU: `run_provenance_stress_test.py --emit-splits`
+measures the contamination each cell admits on a CPU in seconds and writes the
+120 corrupted manifests, the stage trains one model per manifest, and
+`analyze_provenance_stress_auroc.py` folds the trained half back in as a
+seed-paired difference. Run that last script, and
+`analyze_permutation_null.py`, after promoting the runs or the manuscript's
+numbers will be checked against a half-filled artefact;
+`rebuild_after_gpu.sh` does both for you.
 
 ## 6. Back on your machine
 

@@ -28,10 +28,12 @@ same class-stratified assigner, for the reason documented at length in
 ``subject_only_split``. Mixing the assignment algorithm into the comparison
 was worth about half the apparent effect when it happened before.
 
-No model is trained. Contamination is a property of the split, not of a fitted
-model, so this entire matrix runs on a CPU in seconds. The AUROC consequence of
-a given contamination level is what the dose-response experiment measures, and
-the two compose.
+This script trains nothing. Contamination is a property of the split, not of a
+fitted model, so this entire matrix runs on a CPU in seconds. The AUROC each
+corrupted split then produces is a separate question: ``--emit-splits`` writes
+the corrupted manifests out, the ``adni_stress`` GPU stage trains one model per
+cell on them, and ``analyze_provenance_stress_auroc.py`` folds the result back
+into this artefact as a seed-paired difference.
 
 Usage
 -----
