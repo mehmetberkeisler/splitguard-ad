@@ -1,0 +1,46 @@
+{
+  "description": "Evaluated train and test composition across the injection settings",
+  "trainer_filter": "diagnosis_group in (CN, AD) and diagnosis_group == component_label",
+  "by_setting": {
+    "0.0": {
+      "n_seeds": 5,
+      "evaluated_train_mean": 1041.4,
+      "evaluated_test_mean": 203.2,
+      "evaluated_test_ad_share_mean": 0.4766
+    },
+    "0.25": {
+      "n_seeds": 5,
+      "evaluated_train_mean": 977.4,
+      "evaluated_test_mean": 218.2,
+      "evaluated_test_ad_share_mean": 0.4987
+    },
+    "0.50": {
+      "n_seeds": 5,
+      "evaluated_train_mean": 912.4,
+      "evaluated_test_mean": 231,
+      "evaluated_test_ad_share_mean": 0.5134
+    },
+    "0.75": {
+      "n_seeds": 5,
+      "evaluated_train_mean": 847.4,
+      "evaluated_test_mean": 244,
+      "evaluated_test_ad_share_mean": 0.5287
+    },
+    "1.0": {
+      "n_seeds": 5,
+      "evaluated_train_mean": 783.4,
+      "evaluated_test_mean": 258,
+      "evaluated_test_ad_share_mean": 0.5426
+    }
+  },
+  "endpoints": {
+    "evaluated_train_first": 1041.4,
+    "evaluated_train_last": 783.4,
+    "evaluated_train_share_removed": 0.2477,
+    "evaluated_test_first": 203.2,
+    "evaluated_test_last": 258,
+    "evaluated_test_ad_share_first": 0.4766,
+    "evaluated_test_ad_share_last": 0.5426
+  },
+  "note": "The training set is not held fixed across the dose axis, and the evaluated test set grows and shifts its class mix. The fitted slope is descriptive of this substitution procedure."
+}

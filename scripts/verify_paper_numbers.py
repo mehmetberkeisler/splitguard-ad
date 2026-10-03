@@ -118,6 +118,13 @@ class Checker:
         candidates = [fmt(float(value), places)]
         # Accept the value with or without a leading +, and comma-grouped ints.
         candidates.append(candidates[0].lstrip("0") if candidates[0].startswith("0.") else candidates[0])
+        # The comment above promised comma grouping and the code did not do it,
+        # so a four-digit count written the way LaTeX writes it, 1{,}041, could
+        # not be found however correct it was. Offer both groupings.
+        if places == 0 and abs(float(value)) >= 1000:
+            plain = candidates[0].lstrip("+")
+            grouped = f"{int(round(float(value))):,}"
+            candidates.extend([grouped, grouped.replace(",", "{,}"), plain])
         if alt:
             candidates.extend(alt)
         for cand in candidates:
@@ -268,6 +275,28 @@ def main() -> int:
         c.check("hierarchical gap (point)", g.get("point_estimate", g.get("point")), 3, origin=str(p))
         c.check("hierarchical CI lo", g.get("ci_lo"), 3, origin=str(p))
         c.check("hierarchical CI hi", g.get("ci_hi"), 3, origin=str(p))
+
+    # ── Dose-response composition ───────────────────────────────────────
+    # The arm was described for several drafts as injecting contamination into
+    # a fixed training set. It does not: inject_leakage_split.py moves each
+    # substituted scan out of training. These checks hold the corrected
+    # description to the measurement, so the claim cannot drift back.
+    p = TABLES / "adni_dose_response_composition.json"
+    d = load(p)
+    if d:
+        e = d["endpoints"]
+        c.check("dose evaluated train at p=0", e.get("evaluated_train_first"), 0, origin=str(p))
+        c.check("dose evaluated train at p=1", e.get("evaluated_train_last"), 0, origin=str(p))
+        c.check("dose evaluated test at p=0", e.get("evaluated_test_first"), 0, origin=str(p))
+        c.check("dose evaluated test at p=1", e.get("evaluated_test_last"), 0, origin=str(p))
+        share = e.get("evaluated_train_share_removed")
+        if share is not None:
+            c.check("dose share of training removed", 100 * share, 1, origin=str(p))
+        for key, label in (("evaluated_test_ad_share_first", "dose test AD share at p=0"),
+                           ("evaluated_test_ad_share_last", "dose test AD share at p=1")):
+            v = e.get(key)
+            if v is not None:
+                c.check(label, 100 * v, 1, origin=str(p))
 
     # ── Dose-response ───────────────────────────────────────────────────
     p = TABLES / "adni_dose_response.json"
@@ -822,6 +851,29 @@ def main() -> int:
         # Claim strength, retired on external review. These were missed by a
         # grep twice because LaTeX wraps them across lines; check_absent
         # collapses whitespace, which is the only reliable way to hold them.
+        # The factual error an external adversarial review caught on 2026-10-03
+        # and the code confirmed: the injector removes each substituted scan
+        # from training, so the arm never held the training set fixed. These
+        # five phrasings asserted that it did, one of them in the abstract.
+        ("fixed-training claim (abstract form)", "overlap into a fixed training set",
+         "substituting training scans into the test set",
+         "inject_leakage_split.py removes each substituted scan from training"),
+        ("fixed-training claim (methods form)", "while the training set is held fixed",
+         "which also removes those scans from training",
+         "the training partition shrinks by 24.8% across the dose axis"),
+        ("fixed-training claim (discussion form)", "with the training set held fixed",
+         "by substitution, while thinning the training set",
+         "the training partition shrinks by 24.8% across the dose axis"),
+        ("fixed-training claim (corruption form)", "injected into a fixed training set",
+         "substituted in and the training set thins as a result",
+         "the training partition shrinks by 24.8% across the dose axis"),
+        ("fixed-training claim (conclusions form)", "while holding the training set fixed",
+         "substituting contaminated scans into the test partition",
+         "the training partition shrinks by 24.8% across the dose axis"),
+        # The evaluated test count was quoted from seed 0 alone while every
+        # neighbouring figure is a five-seed mean.
+        ("dose evaluated test count (seed 0 only)", "grows from $207$ rows",
+         "grows from $203$ rows", "replaced by the five-seed mean"),
         ("single-cause framing", "The primary cause is", "One important cause is",
          "external review: domain shift, selection bias and site shift are also causes"),
         ("identity as the only channel", "the channel that matters",

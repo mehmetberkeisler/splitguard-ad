@@ -119,8 +119,8 @@
 structural MRI routinely report near-perfect benchmark performance that
 does not survive patient-independent evaluation. Splitting by patient
 assumes the provenance defining patient identity is complete and correct,
-an assumption redistribution and metadata loss routinely violate. We ask
-how patient-independent evaluation behaves when it degrades. On ADNI1
+which redistribution and metadata loss routinely violate. We ask how
+patient-independent evaluation behaves when it degrades. On ADNI1
 ($220$ cognitively normal and AD participants, $1{,}123$ scans, one 2D
 coronal-centre slice per scan), a random-split area under the receiver
 operating characteristic curve (AUROC) of \AdniRandomAUROC{} falls to
@@ -130,15 +130,15 @@ under DenseNet-121. Three controlled experiments separate the links.
 Permuting diagnosis labels across participants breaks the systematic
 participant-level association between diagnosis and anatomy, yet random
 splitting still reaches $0.878$ AUROC while both patient-aware protocols
-sit at chance: the apparent skill is patient recall. Injecting test-set
-overlap into a fixed training set raises AUROC by $+\DoseSlope{}$ per unit
-of contaminated test scans here. Deleting participant identifiers shows
+sit at chance: the apparent skill is patient recall. Substituting training scans
+into the test set raises AUROC by $+\DoseSlope{}$ per unit nominal overlap,
+descriptive of that procedure, not a causal price. Deleting participant identifiers shows
 that a leakage graph prevents $49\%$ of the leakage subject-wise splitting
 admits at $10\%$ loss. One case is observed, not simulated: by content
-matching, a widely used public 2D AD benchmark is a redistribution of
-$200$ OASIS-1 participants whose identifiers became a filename index that
-merges and splits them, and grouping by it still leaves $70\%$ of test
-images sharing a participant with training. Patient independence depends
+matching, a widely used public 2D AD benchmark redistributes $200$ OASIS-1
+participants whose identifiers became a filename index that merges and
+splits them, and grouping by it still leaves $70\%$ of test images sharing
+a participant with training. Patient independence depends
 on both the splitting procedure and the integrity of the provenance
 defining patient identity. Manifests, audit code and the rebuild pipeline
 are released under Apache-2.0.
@@ -257,8 +257,8 @@ integrity is varied by deleting participant identifiers at controlled
 rates, and by corrupting them in the two ways redistribution actually
 corrupts them: dealing one participant across several keys, and merging
 several under one. Test-set contamination is varied separately, by
-injecting a measured share of training participants into the test
-partition while the training set is held fixed. A participant-label
+substituting a measured share of test scans with other scans of
+training participants, which also removes those scans from training. A participant-label
 permutation serves as the positive control: with the association between
 anatomy and diagnosis destroyed, any discrimination a protocol retains
 is patient recall and nothing else. One case is observed rather than
@@ -1958,14 +1958,30 @@ rows) is held fixed at every overlap level by stratified substitution.
 The partition the model is \emph{evaluated} on is not held fixed, and
 this qualifies the calibration: the binary pipeline drops MCI scans,
 substitution displaces them, and the evaluated CN/AD subset therefore
-grows from $207$ rows at $p=0$ to $258$ at $p=1$, with the AD share
-rising from $46\%$ to $54\%$. The dose axis is thus partly confounded
-with test composition, so the slope should be read as the response to
-contamination \emph{and} the modest enrichment that accompanies it,
-not to contamination alone. We report it rather than correct it
+grows from $203$ rows at $p=0$ to $258$ at $p=1$, with the AD share
+rising from $47.7\%$ to $54.3\%$ (five-seed means; the $p=0$ count runs
+from $197$ to $207$ across seeds).
+
+The training partition is not held fixed either, and this is the more
+consequential of the two. Each substituted scan is moved out of training,
+so evaluated training rows fall from $1{,}041$ at $p=0$ to $783$ at
+$p=1$, $24.8\%$ of them, as the dose rises. The donor
+\emph{participant} remains in training, which is why donors are drawn only
+from the multi-visit subset, so the identity leakage the arm is built to
+create is genuine; what the arm does not do is hold the training set
+constant while adding it.
+
+The dose axis is therefore confounded with both test composition and
+training size, and the two plausibly act in opposite directions: thinning
+the training set should depress AUROC at high $p$, while the class
+enrichment above has no clear sign. The slope is consequently descriptive
+of this substitution procedure as a whole, and is not a causal price per
+unit of realised leakage. Both quantities are measured by
+\texttt{scripts/analyze\_dose\_response\_composition.py} and reported in
+\texttt{reports/tables/adni/adni\_dose\_response\_composition.json}. We report it rather than correct it
 because the two cannot be separated without changing the injection
-mechanism, and because the direction of the confound inflates nothing
-the paper relies on: the slope is used only as a floor
+mechanism, and because the two cannot be separated without changing the
+mechanism: the slope is used only as a floor
 (\S\ref{sec:adni_cost_of_leakage}). Otherwise this is biometric-identity
 leakage alone: no slice or near-duplicate is shared between train and
 test, only the patient. We run the full $5\text{ seeds} \times 5\text{ overlaps}$
@@ -2096,9 +2112,9 @@ Equation~\ref{eq:dose_response} converts a measured test-subject
 contamination fraction
 (which the pre-training audit already reports) into expected AUROC inflation. It should be read as a lower bound
 on the gap rather than as an estimate of it, for a reason that follows
-from how it was fitted: the injection varies test-subject overlap with
-the training set held fixed, so it prices the participant-identity
-channel and no other. A naive split on a real cohort additionally leaks
+from how it was fitted: the injection varies test-subject overlap by
+substitution, so it prices the participant-identity channel and no other,
+while thinning the training set as it does so. A naive split on a real cohort additionally leaks
 through slices of one volume, near-duplicates and re-acquisitions, none
 of which the slope sees.
 
@@ -2271,8 +2287,9 @@ and \ProvSafeAUROCTen{}
 under the component-safe protocol at $10\%$ loss, that is $+0.095$ and
 $+0.059$ against the two composed figures just given. The chain is low
 by rather more than a factor of two in both protocols. Two reasons are visible: the slope is fitted on
-a cohort whose contamination is varied with the training set held
-fixed, whereas deleting identifiers perturbs both sides, and the slope
+a cohort whose contamination is varied by substitution, which thins
+training as it adds overlap, whereas deleting identifiers perturbs both
+sides differently, and the slope
 and the shares come from different arms of one code state
 (\S Declarations). We therefore read the composition as an order of
 magnitude and a lower bound, never as a coefficient, and we report the
@@ -2486,8 +2503,8 @@ The magnitude is also smaller than the dose-response slope predicts. At
 test-scan contamination, from $64\%$ to $11\%$, and
 Equation~\ref{eq:dose_response} would price that at roughly $+0.066$ AUROC
 against the $+0.025$ observed. The slope is fitted where contamination is
-injected into a fixed training set; corrupting provenance perturbs both
-sides of the split at once, and the two are not interchangeable. We report
+substituted in and the training set thins as a result; corrupting
+provenance perturbs both sides of the split at once, and the two are not interchangeable. We report
 the discrepancy rather than the more favourable of the two numbers.
 
 Two mechanisms deserve an explanation rather than a number. Under
@@ -2886,10 +2903,10 @@ Three controlled interventions locate the mechanism. Permuting
 diagnosis labels across participants removes the disease signal
 entirely and leaves the random split at $0.878$ AUROC while both
 patient-aware protocols sit at chance, which is the shortcut being
-taken rather than inferred. Injecting
-contaminated test scans while holding the training set fixed gives
+taken rather than inferred. Substituting
+contaminated scans into the test partition gives
 $+\DoseSlope{}$
-AUROC per unit overlap. Deleting subject identifiers at controlled
+AUROC per unit nominal overlap, descriptive of that procedure. Deleting subject identifiers at controlled
 rates shows how much leakage each protocol admits as provenance
 decays, with $49\%$ of it prevented by the leakage graph at $10\%$
 identifier loss and subject-wise splitting returning $36\%$ of test

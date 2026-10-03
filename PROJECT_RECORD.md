@@ -1,6 +1,6 @@
 # SplitGuard-AD — project record
 
-Generated 2026-10-03 15:30 UTC by `scripts/generate_project_record.py`, which reads every value below from the artefact that produced it. Re-run it after any rebuild and the record follows. No number here is typed by hand.
+Generated 2026-10-03 16:46 UTC by `scripts/generate_project_record.py`, which reads every value below from the artefact that produced it. Re-run it after any rebuild and the record follows. No number here is typed by hand.
 
 This is the single reference for what the project measured, what it holds on disk, and how to check any of it. For the readable account of what it all means, see `PROJECT_EXPLAINER.md`; for the argument as submitted, the manuscript.
 
@@ -60,7 +60,7 @@ Source: `reports/tables/adni/adni_permutation_null.json`
 
 ### 4.2 Contamination dose-response
 
-Injecting a measured share of training participants into the test partition while the training set is held fixed.
+Injecting a measured share of training participants into the test partition by substitution, which also removes those scans from training and thins it by 24.8% across the dose axis.
 
 | Architecture | Slope per unit contamination | 95% CI | R² | Seeds |
 | --- | --- | --- | --- | --- |
@@ -149,12 +149,12 @@ The primary arm is the worst case, because the converter components it excludes 
 
 | Location | Holds |
 | --- | --- |
-| `reports/tables/adni/` | 31 JSON artefacts, one per analysis, plus per-arm CSVs |
+| `reports/tables/adni/` | 32 JSON artefacts, one per analysis, plus per-arm CSVs |
 | `reports/tables/` | 31 cross-cohort artefacts |
 | `reports/audits/` | 30 per-cohort audit summaries and reports |
 | `release/` | three-tier redistributable manifests and `RELEASE_MANIFEST.json` |
 | `paper/` | manuscript and supplement sources and PDFs, 12 figures, generated tables |
-| `scripts/` | 68 Python scripts |
+| `scripts/` | 69 Python scripts |
 | `tests/` | 7 test modules |
 
 Withheld by the ADNI data-use agreement, regenerable by a reader with their own access: `data/` (imaging and manifests), `runs/` and `runs_gpu/` (weights and per-image predictions), the per-scan linkage audit rows, the Tier-1 to OASIS participant mapping, and the Tier-3 PBKDF2 salt, which lives outside the repository entirely.
@@ -166,7 +166,7 @@ Withheld by the ADNI data-use agreement, regenerable by a reader with their own 
 | `build_*.py` | 9 | manifest and leakage-graph builders, one per cohort |
 | `make_*.py` | 3 | frozen component-safe split generators |
 | `run_*.py` | 8 | experiment runners: inflation gap, permutation null, dose response, provenance degradation and corruption, biometric probes |
-| `analyze_*.py` | 5 | second-pass analyses that fold a trained result back into its artefact |
+| `analyze_*.py` | 6 | second-pass analyses that fold a trained result back into its artefact |
 | `bootstrap_*.py` | 1 | paired-seed bootstrap |
 | `hierarchical_*.py` | 1 | subject x seed hierarchical bootstrap |
 | `generate_*.py` | 11 | figure and table generators |
@@ -182,8 +182,8 @@ Withheld by the ADNI data-use agreement, regenerable by a reader with their own 
 
 | Gate | Status | Result |
 | --- | --- | --- |
-| `verify_paper_numbers.py` | pass | All 521 checks passed: every source value appears in the manuscript. |
-| `validate_submission.py` | pass | All submission requirements met. |
+| `verify_paper_numbers.py` | pass | All 534 checks passed: every source value appears in the manuscript. |
+| `validate_submission.py` | FAIL | 253 words |
 | `unittest discover` | pass | OK |
 
 The suite is checked by mutation rather than by its own green light: breaking union-find, the identifier grouping, the component label rule, each corruption operator, the seeded tie-break and the permutation design produces seven mutants, and the suite fails on all seven (`python3 scripts/generate_project_record.py` does not run this; see `PROJECT_EXPLAINER.md` §6).

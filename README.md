@@ -109,8 +109,11 @@ python3 scripts/design_experiment.py --manifest my_cohort.csv
 
 The cost figure is a floor rather than a forecast. It prices the
 participant-identity channel through the dose-response calibration, which was
-fitted by varying test-subject overlap with the training set held fixed, so
-slice-level and near-duplicate leakage are not in it. Against the two cohorts
+fitted by substituting training participants' scans into the test set, so
+slice-level and near-duplicate leakage are not in it. That substitution also
+moves each scan out of training, which thins it by 24.8% across the dose axis,
+so the slope describes the procedure as a whole rather than a causal price per
+unit of leakage. Against the two cohorts
 where the total gap was measured it behaves accordingly: +0.125 predicted
 against +0.142 measured on the converter-inclusive ADNI1 arm the calibration
 was fitted on, and against +0.233 on the Tier-1 benchmark, where adjacent

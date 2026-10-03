@@ -10,13 +10,30 @@ from slice-level/near-duplicate leakage, mirroring the mechanism the WP6
 biometric probe identified.
 
 Design properties (verified at the end of every run):
-  * Test set size is preserved at the input test size.
-  * Class balance (CN vs AD) is preserved on the test set.
+  * Manifest test row count is preserved at the input test size.
+  * Component-label balance (CN vs AD) is preserved on the test rows.
   * At p=0 the output is byte-identical to the input split.
   * At p=1.0 every test subject is also in train (≈ Protocol A overlap).
   * Subject IDs used as overlap donors are sampled only from multi-visit
     train subjects, so the substituted scan is a distinct MRI session for
-    the same subject — pure identity transfer, not duplication.
+    the same subject: pure identity transfer, not duplication.
+
+Two things this procedure does NOT hold constant, both measured by
+scripts/analyze_dose_response_composition.py and reported in the manuscript:
+
+  * The training set. An injected scan is removed from train below, so
+    evaluated training rows fall from 1,041 to 783 across the dose axis,
+    24.8% of them. The donor *subject* stays in train, which is why donors
+    need two or more scans, so the identity leakage is real; the training set
+    is simply not fixed.
+  * The evaluated test set. The two properties above are stated over
+    component_label, while the binary trainer filters on visit-level
+    diagnosis_group and requires it to equal component_label. Evaluated test
+    rows therefore rise from 203 to 258 and the AD share from 47.7% to 54.3%.
+
+A fitted slope over this axis is descriptive of the substitution procedure. It
+is not a causal price per unit of realised leakage, and the manuscript must not
+describe it as one.
 
 CLI
 ---

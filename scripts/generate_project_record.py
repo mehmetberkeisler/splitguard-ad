@@ -245,7 +245,8 @@ def main() -> int:
         A("")
         fits = dose.get("fits") or dose
         A("Injecting a measured share of training participants into the test "
-          "partition while the training set is held fixed.")
+          "partition by substitution, which also removes those scans from "
+          "training and thins it by 24.8% across the dose axis.")
         A("")
         mixed = load(ADNI / "adni_dose_response_mixed_effects.json") or {}
         A("| Architecture | Slope per unit contamination | 95% CI | R² | Seeds |")

@@ -86,12 +86,23 @@ random split just makes an easier test set." With it, that reading is closed.
 
 ### 3.3 The dose: **+0.125** AUROC per unit of contamination
 
-Holding the training set fixed and injecting a measured share of training
-participants into the test set raises AUROC roughly linearly. More leakage,
-more optimism.
+Substituting a measured share of test scans with other scans of training
+participants raises AUROC roughly linearly. More leakage, more optimism.
 
-**Important caveat the paper now states plainly:** this is not a universal
-constant. DenseNet-121 gives a different slope on the same data. It is an
+**The correction that matters here.** For several drafts this said "holding the
+training set fixed", and that was wrong. `inject_leakage_split.py:177` moves
+each substituted scan *out* of training, so evaluated training rows fall from
+1,041 to 783 across the dose axis, 24.8% of them. The donor participant stays
+in training, which is why donors need two or more scans, so the leakage is
+real; the training set simply is not fixed. The evaluated test set also grows,
+203 to 258 rows, with the AD share going 47.7% to 54.3%. An external
+adversarial review caught this on 2026-10-03 and the code confirmed it. The
+slope is therefore descriptive of the substitution procedure, not a causal
+price per unit of leakage, and five places in the manuscript that said
+otherwise, including the abstract, were corrected.
+
+**Second caveat, already stated:** the slope is not a universal constant.
+DenseNet-121 gives a different slope on the same data. It is an
 experiment-specific calibration, and the manuscript says so in those words.
 
 ### 3.4 It happens for real: the Tier-1 case
