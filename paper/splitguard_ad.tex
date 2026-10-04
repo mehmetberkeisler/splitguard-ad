@@ -21,6 +21,19 @@
 % table file, including the two that scripts/generate_adni_paper_tables.py
 % writes, so regenerating them keeps the appearance uniform.
 \setlength{\tabcolsep}{4pt}
+% Full-width floats in a two-column layout queue behind one another, which is
+% what pushes a caption a page or two past its first citation. Raising the
+% fraction of a page that may be given to floats lets more than one land per
+% page and keeps captions near the text that cites them.
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\dbltopfraction}{0.9}
+\renewcommand{\bottomfraction}{0.7}
+\renewcommand{\floatpagefraction}{0.75}
+\renewcommand{\dblfloatpagefraction}{0.75}
+\renewcommand{\textfraction}{0.08}
+\setcounter{topnumber}{3}
+\setcounter{dbltopnumber}{3}
+\setcounter{totalnumber}{5}
 % \pb is a zero-width break opportunity for long paths. \texttt offers none, so
 % in a two-column measure a path like reports/tables/adni/<file>.json runs into
 % the margin. It prints nothing and changes no character of the path, which
@@ -194,16 +207,11 @@ finds a $19$-point accuracy gradient between studies judged at low and
 at high risk of leakage~\cite{diagnostics2025}. These reports,
 however, rarely survive patient-independent evaluations. One important
 cause is \emph{patient-identity leakage} across train and test
-partitions, which arises in AD MRI through several distinct
-channels (visualised in Figure~\ref{fig:leakage_modes}):
-(i) multiple 2D slices from the same 3D volume distributed across
-splits (within-volume slice leakage); (ii) different visits from the
-same patient's longitudinal record distributed across splits
-(longitudinal same-subject leakage); (iii) near-duplicate or
-augmentation-derived images placed on opposite sides of the split
-(near-duplicate leakage); and (iv) rescans or re-acquisitions of
-the same session split across partitions (session/re-acquisition
-leakage). Because AD MRI research routinely uses longitudinal
+partitions. It arises in AD MRI through four channels
+(Figure~\ref{fig:leakage_modes}): slices of one 3D volume distributed across
+partitions; different visits from one longitudinal record; near-duplicate or
+augmentation-derived images on opposite sides of a split; and rescans of the
+same session. Because AD MRI research routinely uses longitudinal
 cohorts with multiple visits per patient (ADNI: median $5$
 scans/subject) as well as slice-based 2D representations, each of
 these channels is a live risk in practice. Under any of them, the
@@ -211,14 +219,13 @@ trained model recognises images from patients it has already
 analysed rather than generalising to new
 patients~\cite{wen2020,yagis2021,diagnostics2025}.
 
-That leakage inflates reported performance is established and does not
-need re-demonstrating: slice-wise against subject-wise splitting on
-four cohorts~\cite{yagis2021}, a review of the AD
-convolutional-network literature recommending subject-level
-partitioning~\cite{wen2020}, five distinct leakage forms manipulated in
-connectome models across four datasets~\cite{rosenblatt2024}, and a
-$19$-point accuracy gradient between studies judged at low and high
-risk of leakage in a scoping review of $44$~\cite{diagnostics2025}.
+That leakage inflates reported performance is established. The evidence
+includes slice-wise against subject-wise splitting on four
+cohorts~\cite{yagis2021}, a review recommending subject-level
+partitioning~\cite{wen2020}, five leakage forms manipulated in connectome
+models~\cite{rosenblatt2024}, and a $19$-point accuracy gradient between
+studies at low and high risk of leakage in a scoping review of
+$44$~\cite{diagnostics2025}.
 
 Why \emph{patient identity} is a particularly important shortcut channel
 in longitudinal structural MRI is equally well established. Shortcut learning~\cite{geirhos2020shortcut} exploits
@@ -300,22 +307,19 @@ grouping, and we report that equivalence as a result rather than
 defending it as a feature.
 
 The observation that random image-level splits inflate AD MRI scores
-is not new by itself. Wen \etal~\cite{wen2020} and Yagis
-\etal~\cite{yagis2021} quantified the inflation on individual datasets;
-Rumala~\cite{rumala2023} showed on longitudinal brain MRI that
-cross-validation folds which do not separate subjects inflate 3D CNN
-estimates, and used saliency maps to argue qualitatively that the
-network attends to subject identity; Ghiasi \etal~\cite{ghiasi2026}
-established a leakage-free longitudinal dementia benchmark by
-withholding the label-defining clinical score and splitting
-group-aware, reporting the inflated and clean conditions as an
-on/off pair; general-purpose subject-aware splitting tools such as
-DataSAIL~\cite{datasail2025} exist for biomedical data; and
-biometric-identity work on MRI representations
-(DeepBrainPrint~\cite{deepbrainprint2023}, BrainPrint
-\cite{wachinger2015brainprint}, face-recognition from
-MRI~\cite{schwarz2019face}) has established that structural MRI leaks
-subject identity at re-identification accuracies far above chance.
+is not new by itself. Wen \etal~\cite{wen2020} and Yagis \etal~\cite{yagis2021} quantified the
+inflation on individual datasets. Rumala~\cite{rumala2023} showed on
+longitudinal brain MRI that folds which do not separate subjects inflate 3D
+CNN estimates, and used saliency maps to argue that the network attends to
+subject identity. Ghiasi \etal~\cite{ghiasi2026} established a leakage-free
+longitudinal dementia benchmark by withholding the label-defining clinical
+score and splitting group-aware, reporting the inflated and clean conditions
+as an on/off pair. Subject-aware splitting tools such as
+DataSAIL~\cite{datasail2025} are available for biomedical data. Separately,
+biometric work on MRI
+representations~\cite{deepbrainprint2023,wachinger2015brainprint,schwarz2019face}
+has established that structural MRI
+leaks subject identity at re-identification accuracies far above chance.
 Across all of it, leakage is treated as a binary hazard: either the
 split respects patients or it does not, and the remedy is to group by
 subject. That framing presumes what it needs, a subject identifier
@@ -693,21 +697,20 @@ in terms of leakage permissiveness; the three-point degradation analysis
 in \S\ref{sec:exp3_degrad} traces the contribution of each layer.
 
 \subsubsection{Pre-training audit}
-Prior to model training, \SGA{} produces a structured audit report
-verifying: (i)~zero component overlap across splits; (ii)~label
-distribution per split; (iii)~source/site/demographic association
-with label, reported as a per-axis Cram\'{e}r's $V$ between the audited
-covariate (site code extracted from ADNI \texttt{PTID}, scanner
-field strength, sex) and the binary CN/AD label, computed
-per partition (a complementary axis to scanner-effect work such as
-Glocker~\etal~\cite{glocker2019scanner} and to harmonisation methods
-in the ComBat lineage~\cite{johnson2007combat,fortin2017combat,pomponio2020lifespan};
-\SGA{} surfaces the confound but does not attempt to remove it,
-because the leakage gap this paper measures is dominated by the
-subject-identity channel that harmonisation does not fix
-post-hoc). The clinical claim-boundary statement that appears in the
-benchmark report card (\S\ref{sec:discussion}) is authored rather than
-emitted by the audit, which reports no such field.
+Before training, \SGA{} emits a structured audit report with three parts:
+(i) component overlap across partitions; (ii) label distribution per
+partition; and (iii) association between label and each audited covariate,
+given as Cram\'{e}r's $V$ per partition. The covariates are site code
+(extracted from the ADNI \texttt{PTID}), scanner field strength and sex.
+
+This last part is complementary to scanner-effect work~\cite{glocker2019scanner}
+and to harmonisation in the ComBat
+lineage~\cite{johnson2007combat,fortin2017combat,pomponio2020lifespan}.
+\SGA{} surfaces such confounds but does not remove them, because the gap
+measured here is dominated by the subject-identity channel, which
+post-hoc harmonisation does not address. The clinical claim-boundary
+statement in the report card (\S\ref{sec:discussion}) is authored, not
+emitted by the audit.
 The audit report issues a binary GO / NO-GO decision for training
 according to the formal criteria in Supplementary Table~S6.
 
@@ -738,15 +741,12 @@ Two source cohorts carry the measurements. The
 is the paper's \emph{headline} cohort: all headline numerical claims
 in the abstract, the cost-of-leakage analysis, the subgroup analysis,
 and the dose-response stress test derive from it.
-\textbf{OASIS-1} (\S\ref{sec:data_oasis}) is the metadata-rich
-replication cohort, where true participant identifiers are
-authoritative; it is operationally external to ADNI (different
-recruiting site at Washington University, different scanner and
-acquisition protocols, different recruitment era), so the
-direction-preservation we report between ADNI and OASIS-1 functions
-as a partial cross-site generalisation check even though we do not
-describe it as ``external validation'' in the strict regulatory
-sense. The third tier is not a third cohort. The \textbf{Kaggle
+\textbf{OASIS-1} (\S\ref{sec:data_oasis}) is the replication cohort, where
+participant identifiers are authoritative. It is operationally external to
+ADNI: a different recruiting site, scanners, acquisition protocols and
+recruitment era. The direction-preservation we report between the two
+cohorts is therefore a partial cross-site generalisation check, not
+external validation in the regulatory sense. The third tier is not a third cohort. The \textbf{Kaggle
 public JPEG benchmark} (\S\ref{sec:data_kaggle}) is, as we show by
 content matching, a redistribution of OASIS-1 itself whose
 participant identifiers have been replaced by a filename index that
@@ -1027,12 +1027,11 @@ remained unresolved; these last two are the
 one label in five depends on a date match rather than an exact visit
 key is a real limitation of the label chain, and stating it is not
 enough: we also measure what it costs. The primary arm is the worst
-case for it. Its $1{,}123$ CN-vs-AD scans divide into $841$ labelled
-through the exact visit key and $282$ ($25.1\%$) through the date
-fallback, a higher share than the whole CN-vs-AD universe's $297$ of
-$1{,}412$ ($21.0\%$, against $1{,}115$ on the exact key), because the
-converter components this arm excludes are covered by the visit key
-almost completely ($5.2\%$ date-only). The
+case for it. Of its $1{,}123$ CN-vs-AD scans, $841$ are labelled through the exact
+visit key and $282$ ($25.1\%$) through the date fallback. That share
+exceeds the whole CN-vs-AD universe's $297$ of $1{,}412$ ($21.0\%$, against
+$1{,}115$ on the exact key), because the converter components this arm
+excludes are almost fully covered by the visit key ($5.2\%$ date-only). The
 exact-linkage arm of \S\ref{sec:exp6_adni} therefore retrains all
 three protocols on the $841$, keeping the same $220$ participants, and
 asks whether the headline gap rests on the weaker quarter of the label
@@ -1157,13 +1156,13 @@ group by. Protocol~A shuffles images at random. Protocol~B$'$ groups by
 the filename key, the only identifier the release carries and therefore
 the strongest protocol an audit run from inside the release can
 implement. Protocol~C$'$ groups by the participant identity recovered in
-\S\ref{sec:data_kaggle}. Everything else is held fixed:
-ResNet-18~\cite{he2016} with ImageNet pre-trained weights, learning rate
-$3 \times 10^{-4}$, weight decay $10^{-2}$, batch size $32$, $30$ epochs,
-random horizontal flip and $\pm 7^\circ$ rotation, AdamW ($\beta_1 = 0.9$,
-$\beta_2 = 0.999$, $\epsilon = 10^{-8}$, AMSGrad disabled) with cosine
-annealing, class-frequency-weighted BCE loss, and the seed array
-$\{42, 0, 1, 2, 3\}$.
+\S\ref{sec:data_kaggle}. Everything else is held fixed. The backbone is
+ResNet-18~\cite{he2016} with ImageNet pre-trained weights, trained for $30$
+epochs at batch size $32$ with random horizontal flip and $\pm 7^\circ$
+rotation. The optimiser is AdamW ($\beta_1 = 0.9$, $\beta_2 = 0.999$,
+$\epsilon = 10^{-8}$, AMSGrad disabled) at learning rate
+$3 \times 10^{-4}$ and weight decay $10^{-2}$, with cosine annealing and a
+class-frequency-weighted BCE loss. The seed array is $\{42, 0, 1, 2, 3\}$.
 
 \paragraph{Leakage verification}
 Under Protocol~A, $195$ of $219$ test-set filename keys ($89.0\%$) also
@@ -1297,11 +1296,10 @@ surface \emph{a priori} (script:
 JSON: \texttt{reports/\pb tables/\pb oasis1\_subject\_level\_summary.json}).
 Across the labelled subset ($n=235$ subjects with binary
 NonDemented/Demented labels; a further $181$ subjects are dropped for
-missing CDR at the labelling stage) OASIS-1 has $5$ coronal slices
-per session (median $=$ mean $=5$; range $5$--$5$), $\sim 1.05$
-sessions per subject on average (only $20$ subjects, $4.8\%$ of the
-416 imaged subjects, carry a repeat session), and a total of
-$2{,}180$ slices spread across $436$ sessions. Per-subject image
+missing CDR at the labelling stage) OASIS-1 has $5$ coronal slices per
+session and $2{,}180$ slices across $436$ sessions. Sessions per subject
+average $1.05$: only $20$ subjects, $4.8\%$ of the $416$ imaged, carry a
+repeat session. Per-subject image
 counts are in fact comparable between the two cohorts (OASIS-1
 $\approx 5.2$ slices per subject; ADNI1 primary arm $\approx 5.1$
 scans per subject at one coronal-centre slice per scan,
@@ -1341,16 +1339,14 @@ cohort.
 We repeat the leaky-versus-\SGA{} comparison on the ADNI cohort
 introduced in \S\ref{sec:data_adni}, using the same ResNet-18 family
 and coronal-centre-slice representation as
-\S\ref{sec:exp5_oasis}. Three split protocols are compared on the
-same $220$-participant CN-vs-AD manifest ($1{,}125$ rows, of which
-$1{,}123$ are diagnosis-resolved; partition sizes differ
-slightly by protocol: $169/169/165$ test scans for Protocols~A, B
-and~C respectively, because the component-safe subset-sum assignment cannot
-hit the target size exactly): Protocol~A randomly splits
-images 70/15/15 (the leaky protocol); Protocol~B partitions by subject
-70/15/15 without applying the leakage-graph component, series, or
-near-duplicate constraints; and
-Protocol~C uses the frozen \SGA{} component-safe split. Each protocol
+\S\ref{sec:exp5_oasis}. Three split protocols are compared on the same $220$-participant CN-vs-AD
+manifest of $1{,}125$ rows, of which $1{,}123$ are diagnosis-resolved.
+Protocol~A splits images at random 70/15/15 and is the leaky protocol.
+Protocol~B partitions by subject 70/15/15, without the leakage-graph
+component, series or near-duplicate constraints. Protocol~C uses the frozen
+\SGA{} component-safe split. Test partitions hold $169$, $169$ and $165$
+scans respectively, because the component-safe subset-sum assignment cannot
+hit the target size exactly. Each protocol
 is run for five seeds, 15 epochs each, with AdamW at
 $\mathrm{lr}=10^{-4}$ and a class-balanced BCE-with-logits objective.
 
@@ -1820,15 +1816,13 @@ We do not leave this as a caveat. The frozen manifests are retained
 because every number in this paper is computed on them and exact
 reproducibility is worth more than a cosmetic correction, but a
 size-balanced split was generated specifically to test whether the
-headline result depends on the defect. Visiting components in shuffled
-rather than size-descending order removes the stratification, giving
-mean component sizes of $5.15$, $5.00$ and $5.07$ scans in train,
-validation and test against $4.65$, $7.50$ and $6.11$ on the frozen
-split, and it is reported beside the primary arm rather than after it:
-the total gap is
-\SizeBalancedGap{} on the size-balanced split against \AdniGapTotal{}
-on the frozen one, with hierarchical intervals $[+0.070, +0.209]$ and
-\AdniHierCI{}. The composition defect is real, it was found by this
+headline result depends on the defect. Visiting components in shuffled rather than size-descending order removes
+the stratification. Mean component sizes become $5.15$, $5.00$ and $5.07$
+scans in train, validation and test, against $4.65$, $7.50$ and $6.11$ on
+the frozen split. The total gap is \SizeBalancedGap{} on the size-balanced
+split against \AdniGapTotal{} on the frozen one, with hierarchical intervals
+$[+0.070, +0.209]$ and \AdniHierCI{}. We report it beside the primary arm
+rather than after it. The composition defect is real, it was found by this
 project's own audit of its own splits, and the effect it was suspected
 of producing is not there. What it does mean for the audit gate, which
 passed this split on every check it performs, is taken up in
@@ -1942,12 +1936,12 @@ $0.75$, converging to equality only at $p = 1$), which is why every
 composition below is done in scan units. Class
 balance of the \emph{injected partition} (118~CN $/$ 140~AD over $258$
 rows) is held fixed at every overlap level by stratified substitution.
-The partition the model is \emph{evaluated} on is not held fixed, and
-this qualifies the calibration: the binary pipeline drops MCI scans,
-substitution displaces them, and the evaluated CN/AD subset therefore
-grows from $203$ rows at $p=0$ to $258$ at $p=1$, with the AD share
-rising from $47.7\%$ to $54.3\%$ (five-seed means; the $p=0$ count runs
-from $197$ to $207$ across seeds).
+The partition the model is \emph{evaluated} on is not held fixed either,
+and this qualifies the calibration. The binary pipeline drops MCI scans and
+substitution displaces them, so the evaluated CN/AD subset grows from $203$
+rows at $p=0$ to $258$ at $p=1$, with the AD share rising from $47.7\%$ to
+$54.3\%$. These are five-seed means; the $p=0$ count runs from $197$ to
+$207$ across seeds.
 
 The training partition is not held fixed either, and this is the more
 consequential of the two. Each substituted scan is moved out of training,
@@ -2216,10 +2210,9 @@ directly, without routing the question through a trained model. The two
 protocols are indistinguishable at zero loss
 (the equivalence reported in \S\ref{sec:leakage_graph}, here the origin
 of a curve rather than a dead end) and separate immediately thereafter. \textbf{(b)} The share of that leakage
-the leakage graph prevents. Both protocols are assigned by the same
-class-stratified bin-packer, so the difference is attributable to the grouping
-and not to the assignment step; under a mismatched assigner the $10\%$ figure
-reads $78\%$ rather than $49\%$. The benefit peaks in the regime where
+the leakage graph prevents. Both protocols use the same assigner, so the
+difference is attributable to the grouping; under a mismatched assigner the
+$10\%$ figure reads $78\%$. The benefit peaks in the regime where
 redistributed benchmarks sit and decays once too few identifiers survive for
 any rule to bind on.}
 \label{fig:provenance_degradation}
@@ -2390,9 +2383,8 @@ which is the conservative of the two (\S\ref{sec:adni_dose_response}).
 primary arm ($220$ participants), five seeds, cell means. Straddling counts
 true participants with scans on both sides of a boundary; $c$ is the share
 of test scans whose true participant also appears in training, the quantity
-\S\ref{sec:adni_dose_response} sweeps. Both protocols are assigned by the
-same class-stratified bin-packer, so a difference between the columns is
-attributable to the grouping. \textsc{merge} admits no leakage at any
+\S\ref{sec:adni_dose_response} sweeps. Both protocols use the same assigner, so a column
+difference is attributable to the grouping. \textsc{merge} admits no leakage at any
 intensity, which is why its prevented share is undefined (n/a) rather than zero:
 over-grouping destroys the participant count without placing a participant
 on both sides.}
