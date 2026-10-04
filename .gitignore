@@ -201,6 +201,10 @@ reports/tables/adni/adni_inventory.csv
 !reports/tables/tier1_hierarchical.json
 !reports/tables/oasis1_hierarchical.json
 !reports/tables/oasis1_densenet121_hierarchical.json
+# Cited by name in the manuscript (\S subject-level aggregation), so it has
+# to ship or the citation is false. Pure aggregate counts from a public
+# cohort: no identifiers, no paths, no clinical fields per participant.
+!reports/tables/oasis1_subject_level_summary.json
 
 # Keep two canonical methodology docs in the public release; exclude
 # everything else under docs/ (internal planning, reviewer-feedback,

@@ -1,0 +1,50 @@
+{
+  "slice_manifest_stats": {
+    "n_subjects_with_slices": 416,
+    "n_sessions": 436,
+    "n_slices": 2180,
+    "slices_per_subject": {
+      "min": 5,
+      "max": 10,
+      "median": 5.0,
+      "mean": 5.24
+    },
+    "slices_per_session": {
+      "min": 5,
+      "max": 5,
+      "median": 5.0,
+      "mean": 5.0
+    },
+    "sessions_per_subject": {
+      "min": 1,
+      "max": 2,
+      "median": 1.0,
+      "mean": 1.048
+    },
+    "subjects_with_repeat_session": 20,
+    "repeat_session_ratio": 0.0481,
+    "label_distribution_subject_level": {
+      "NonDemented": 135,
+      "Demented": 100,
+      "label_missing": 181
+    },
+    "label_distribution_session_level": {
+      "NonDemented": 135,
+      "Demented": 100,
+      "label_missing": 201
+    }
+  },
+  "volume_manifest_stats": {
+    "n_volume_rows": 436,
+    "n_subjects_in_volume_manifest": 416,
+    "n_sessions_in_volume_manifest": 436,
+    "cdr_distribution": {
+      "0": 135,
+      "0.5": 70,
+      "": 201,
+      "1": 28,
+      "2": 2
+    }
+  },
+  "multiseed_predictions_reference": {}
+}
