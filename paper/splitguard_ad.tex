@@ -2,11 +2,10 @@
 % SplitGuard-AD manuscript. Numbers that come from the GPU programme are
 % generated into tables/gpu_numbers.tex by scripts/gpu_postprocess.py.
 % ───────────────────────────────────────────────────────────────────────────
-% Two-column Springer Nature layout in Times New Roman. `iicol` is the class's
-% own two-column option, so this stays inside the JIIM template rather than
-% borrowing another publisher's. newtx supplies Times for text and maths
-% together, which keeps equations in the same face as the prose.
-\documentclass[pdflatex,sn-vancouver-num,iicol]{sn-jnl}
+% Single-column Springer Nature layout in Times New Roman. newtx supplies Times
+% for text and maths together, which keeps equations in the same face as the
+% prose. The class's two-column option (iicol) was tried and reverted.
+\documentclass[pdflatex,sn-vancouver-num]{sn-jnl}
 
 % Packages
 \usepackage[utf8]{inputenc}
@@ -17,30 +16,26 @@
 \usepackage{newtxtext,newtxmath}
 \usepackage{graphicx}
 \usepackage{booktabs}
-% Two-column tables. Column spacing is global; the size is declared in each
-% table file, including the two that scripts/generate_adni_paper_tables.py
-% writes, so regenerating them keeps the appearance uniform.
-\setlength{\tabcolsep}{4pt}
-% Full-width floats in a two-column layout queue behind one another, which is
-% what pushes a caption a page or two past its first citation. Raising the
-% fraction of a page that may be given to floats lets more than one land per
-% page and keeps captions near the text that cites them.
+% Tables are set at the body size and at the default column spacing: every one
+% of them fits the measure. Only the row height is loosened, for legibility in
+% the denser numeric tables.
+\renewcommand{\arraystretch}{1.08}
+
+% Raising the fraction of a page that may be given to floats lets more than one
+% land per page, which keeps captions near the text that cites them instead of
+% queueing them onto later pages.
 \renewcommand{\topfraction}{0.9}
-\renewcommand{\dbltopfraction}{0.9}
 \renewcommand{\bottomfraction}{0.7}
 \renewcommand{\floatpagefraction}{0.75}
-\renewcommand{\dblfloatpagefraction}{0.75}
 \renewcommand{\textfraction}{0.08}
 \setcounter{topnumber}{3}
-\setcounter{dbltopnumber}{3}
 \setcounter{totalnumber}{5}
-% \pb is a zero-width break opportunity for long paths. \texttt offers none, so
-% in a two-column measure a path like reports/tables/adni/<file>.json runs into
-% the margin. It prints nothing and changes no character of the path, which
-% matters: tests/test_repo_hygiene.py checks that every path the manuscript
-% names is actually shipped, and it strips \pb before matching.
+
+% \pb is a zero-width break opportunity for long paths, which \texttt does not
+% otherwise offer. It prints nothing and changes no character of the path,
+% which matters: tests/test_repo_hygiene.py checks that every path the
+% manuscript names is actually shipped, and strips \pb before matching.
 \newcommand{\pb}{\discretionary{}{}{}}
-\renewcommand{\arraystretch}{1.08}
 \usepackage{array}   % >{...} column modifiers, for ragged narrow columns
 \usepackage{multirow}
 \usepackage{xcolor}
@@ -373,7 +368,7 @@ multi-visit research cohorts) and are not separately enumerated in
 general-purpose taxonomies such as Kapoor and
 Narayanan~\cite{kapoor2023leakage}.
 
-\begin{table*}[!tb]
+\begin{table}[!tb]
 \centering
 \caption{Leakage and shortcut taxonomy for Alzheimer's MRI deep learning.
          Risk levels are indicative for a redistributed public 2D benchmark
@@ -396,7 +391,7 @@ Demographic shortcut& Low--Mod  & Age/sex imbalance correlated with label. \\
 Clinical-label shortcut& Low   & Advanced atrophy makes task trivially easy. \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 Subject, session, longitudinal, and slice leakage all violate the same
 clinical independence assumption: a test case should represent a new
@@ -438,7 +433,7 @@ separates them is what happens when those identifiers are not intact:
 and finds that Protocol~C prevents $49\%$ of the residual patient
 leakage Protocol~B admits once a tenth of the identifiers are gone.
 
-\begin{figure*}[!tb]
+\begin{figure}[!tb]
 \centering
 \includegraphics[width=\linewidth]{fig01_leakage_taxonomy.pdf}
 \caption{Four leakage modes in slice-based AD MRI benchmarks, and the
@@ -464,7 +459,7 @@ with re-acquisition or augmentation structure that subject identity
 does not already capture; we name this as the primary
 validation gap in \S\ref{sec:limitations}.}
 \label{fig:leakage_modes}
-\end{figure*}
+\end{figure}
 
 % ══════════════════════════════════════════════════════════════════════════════
 \global\skipbarriertrue
@@ -475,7 +470,7 @@ validation gap in \S\ref{sec:limitations}.}
 \SGA{} is an open-source reference implementation and audit pipeline, not a general-purpose library: it comprises five sequential
 modules (Figure~\ref{fig:pipeline}).
 
-\begin{figure*}[!tb]
+\begin{figure}[!tb]
 \centering
 \resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[
@@ -506,7 +501,7 @@ modules (Figure~\ref{fig:pipeline}).
          Modules are executed sequentially; each produces a versioned
          artefact consumed by the next.}
 \label{fig:pipeline}
-\end{figure*}
+\end{figure}
 
 \subsubsection{Metadata registry}
 Each image is assigned a row in a manifest with fields including
@@ -811,7 +806,7 @@ participant the model was trained on. Table~\ref{tab:tier1_rules}
 repeats that measurement for every grouping rule the release
 supports.
 
-\begin{table*}[!tb]
+\begin{table}[!tb]
 \centering
 \footnotesize
 \caption{Every grouping rule the Tier-1 release supports, measured
@@ -838,7 +833,7 @@ Near-duplicate $d \leq 8$ alone     & 999 & 1{,}770 & $99.5\%$ $[99.0, 100]$  & 
 Recovered participant               & 200 & 32      & $0\%$                   & $0 / 29.0$ \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 \paragraph{Near-duplicate structure, read against ground truth}
 No exact SHA-256 duplicates exist. The near-duplicate detector (dHash
@@ -921,7 +916,7 @@ sensitivity arm (\S\ref{sec:exp6_adni}).
 
 \input{tables/adni_demographics}
 
-\begin{figure*}[!tb]
+\begin{figure}[!tb]
 \centering
 \begin{tikzpicture}[
     node distance=4pt,
@@ -985,7 +980,7 @@ from the CN-vs-AD task by construction, and 289 CN/AD scans
 excluded from the primary arm and re-included in the sensitivity arm
 (\S\ref{sec:exp6_adni}).}
 \label{fig:adni_dataflow}
-\end{figure*}
+\end{figure}
 
 Diagnosis labels are taken from the ADNI diagnostic summary table
 (\texttt{DXSUM\_PDXCONV\_ADNIALL}) under a phase-aware visit-level
@@ -1210,7 +1205,7 @@ down. The distinction matters because the contamination is what a
 practitioner can check and the AUROC consequence is what they would
 have to take on faith.
 
-\begin{figure*}[!tb]
+\begin{figure}[!tb]
 \centering
 \begin{subfigure}[t]{0.85\linewidth}
   \centering
@@ -1231,7 +1226,7 @@ have to take on faith.
          side-by-side so that the in-figure tick labels and bar
          annotations remain legible at print size.}
 \label{fig:tier1_overview}
-\end{figure*}
+\end{figure}
 
 \paragraph{What the three test sets are not}
 A random split spreads a participant's $32$ slices over all three
@@ -1252,7 +1247,7 @@ a disease feature; Protocol~B$'$ tracks it at a lower level, still
 lifted by the participants its key failed to group; Protocol~C$'$
 converges lowest and slowest.
 
-\begin{figure*}[!tb]
+\begin{figure}[!tb]
 \centering
 \includegraphics[width=0.85\linewidth]{fig05_learning_curves.pdf}
 \caption{Validation AUROC per epoch at seed $= 42$ for Protocol~A
@@ -1261,7 +1256,7 @@ converges lowest and slowest.
          distance between the first and last curves is the inflation the
          release's own identifier cannot remove.}
 \label{fig:learning_curves}
-\end{figure*}
+\end{figure}
 
 \paragraph{Tier-1 takeaway}
 Tier~1 is not an independent cohort and we no longer treat it as one: it
@@ -1519,7 +1514,7 @@ the component-safe construction is named as future work in
 \S\ref{sec:limitations}.
 
 
-\begin{figure*}[!tb]
+\begin{figure}[!tb]
 \centering
 \includegraphics[width=0.95\linewidth]{fig06_cross_cohort_inflation.pdf}
 \caption{Direction-preserved inflation gap on the two source cohorts
@@ -1537,7 +1532,7 @@ replications are reported in \S\ref{sec:exp5_oasis} (OASIS-1) and
 \S\ref{sec:exp6_adni} (ADNI); Tier~1 was run on ResNet-18 only; the figure shows
 ResNet-18 for visual parity with the rest of the paper.}
 \label{fig:cross_cohort}
-\end{figure*}
+\end{figure}
 
 Figure~\ref{fig:cross_cohort} places the ADNI gap in context under
 one reporting convention, paired-seed bootstrap intervals at
@@ -1568,7 +1563,7 @@ Figure~\ref{fig:arm_forest} consolidates the headline inflation
 results across both source cohorts, the redistributed benchmark, both
 backbones and every ADNI robustness arm in a single reporting frame.
 
-\begin{figure*}[!tb]
+\begin{figure}[!tb]
 \centering
 \includegraphics[width=\linewidth]{fig07_arm_forest.pdf}
 \caption{The two cross-cohort arms and the six ADNI robustness arms, as
@@ -1591,7 +1586,7 @@ on the same runs. The ADNI hierarchical (subject\,$\times$\,seed)
 bootstrap, the more defensible inferential cross-check, gives gap
 \AdniHierGap{}, CI \AdniHierCI{}, direction preserved.}
 \label{fig:arm_forest}
-\end{figure*}
+\end{figure}
 
 % ══════════════════════════════════════════════════════════════════════════════
 
@@ -1736,7 +1731,7 @@ The probe answers \emph{whether} identity is encoded; the degradation
 curve answers \emph{how much} of the inflation each grouping removes
 (Figure~\ref{fig:degradation}).
 
-\begin{figure*}[!tb]
+\begin{figure}[!tb]
 \centering
 \includegraphics[width=0.82\linewidth]{fig08_degradation_curve.pdf}
 \caption{Three-point degradation on Tier~1. Each step changes only
@@ -1746,7 +1741,7 @@ curve answers \emph{how much} of the inflation each grouping removes
          release can achieve; the second is what its lost provenance
          hides.}
 \label{fig:degradation}
-\end{figure*}
+\end{figure}
 
 
 The A$\to$B$'$ step is $\Delta$AUROC $=$ \TierOneGapFilename{} and
@@ -2041,7 +2036,7 @@ Supplementary Material~S4. Density-choice
 qualifications and finer-grid trade-offs are discussed in
 \S\ref{sec:limitations}.
 
-\begin{figure*}[!tb]
+\begin{figure}[!tb]
 \centering
 \includegraphics[width=0.98\linewidth]{fig11_dose_response.pdf}
 \caption{ADNI leakage dose-response on the converter-inclusive
@@ -2059,7 +2054,7 @@ architecture-specific calibration point on this ADNI universe and this
 2D-slice representation, not a claim that the slope generalises to
 other cohorts or 3D representations.}
 \label{fig:dose_response}
-\end{figure*}
+\end{figure}
 
 \paragraph{Interpretation}
 The dose-response is approximately linear over the entire $[0,1]$
@@ -2173,7 +2168,7 @@ admits without routing the question through a trained model, and it is
 therefore free of the seed-variance and test-set-size caveats that
 qualify the AUROC comparisons elsewhere in this paper.
 
-\begin{table*}[!tb]
+\begin{table}[!tb]
 \centering
 \small
 \caption{Provenance degradation on the ADNI1 primary arm ($220$
@@ -2198,9 +2193,9 @@ $50\%$  & $77.0 \pm 5.0$  & $53.6 \pm 6.6$  & $0.980$ & $0.807$ \\
 $100\%$ & $182.6 \pm 7.2$ & $125.4 \pm 1.3$ & $0.993$ & $0.990$ \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
-\begin{figure*}[!tb]
+\begin{figure}[!tb]
 \centering
 \includegraphics[width=\linewidth]{fig12_provenance_degradation.pdf}
 \caption{Provenance degradation on the ADNI1 primary arm, five seeds,
@@ -2216,7 +2211,7 @@ $10\%$ figure reads $78\%$. The benefit peaks in the regime where
 redistributed benchmarks sit and decays once too few identifiers survive for
 any rule to bind on.}
 \label{fig:provenance_degradation}
-\end{figure*}
+\end{figure}
 
 \paragraph{Result}
 Figure~\ref{fig:provenance_degradation} and
@@ -2376,7 +2371,7 @@ one while losing the other. We print both columns rather than the one that
 reads better, and we compose the dose-response slope through the scan share,
 which is the conservative of the two (\S\ref{sec:adni_dose_response}).
 
-\begin{table*}[!tb]
+\begin{table}[!tb]
 \centering
 \small
 \caption{Residual leakage under structured provenance corruption, ADNI1
@@ -2415,9 +2410,9 @@ on both sides.}
  & $1$ & $0.0$ & $0.0$ & n/a & $0.000$ & $0.000$ \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
-\begin{table*}[!tb]
+\begin{table}[!tb]
 \centering
 \small
 \caption{AUROC consequence of each corruption cell on the ADNI1 primary
@@ -2454,7 +2449,7 @@ check on the pipeline.}
  & $1$ & $0.808$ & $0.808$ & $+0.000$ & $[+0.000,\, +0.000]$ & $0/5$ \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 \paragraph{What the prevented contamination is worth}
 Preventing contamination is worth reporting only if the contamination was
@@ -2554,7 +2549,7 @@ not whether the split was patient-wise. It is which regime the dataset
 is in, and that is answerable before training from the identifiers
 alone.
 
-\begin{table*}[!tb]
+\begin{table}[!tb]
 \centering
 \caption{\SGA{} benchmark report card for the ADNI1 primary-arm
 ResNet-18 model under the component-safe split (Protocol~C), seed means
@@ -2595,7 +2590,7 @@ NPV @ 58.9\% (memory clinic)               & \CardNPVClinic \\
 \multicolumn{2}{l}{\small Computed from sensitivity/specificity above; predictive values are} \\
 \multicolumn{2}{l}{\small prevalence-dependent and tracked at the same two anchors as \S\ref{sec:adni_cost_of_leakage}.} \\
 \end{tabular}
-\end{table*}
+\end{table}
 
 To illustrate the reporting format that \SGA{} produces alongside its
 splits, Table~\ref{tab:report_card} gives a benchmark report card for
