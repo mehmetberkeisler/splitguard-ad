@@ -927,9 +927,19 @@ def main() -> int:
     # attribution for two months after each was superseded.
     abstract = ROOT / "paper" / "SplitGuard-AD_GraphicalAbstract.pdf"
     if abstract.is_file():
+        import shutil as _sh
         import subprocess as _sp
-        proc = _sp.run(["pdftotext", str(abstract), "-"], capture_output=True, text=True)
-        if proc.returncode == 0:
+        if _sh.which("pdftotext") is None:
+            # Record it rather than crash, and rather than pass quietly. A
+            # reviewer without poppler installed should not get a traceback,
+            # and must not get a green result for a check that never ran.
+            MISSING.append(f"{abstract} (pdftotext unavailable, "
+                           f"graphical-abstract check not run)")
+            proc = None
+        else:
+            proc = _sp.run(["pdftotext", str(abstract), "-"],
+                           capture_output=True, text=True)
+        if proc is not None and proc.returncode == 0:
             shipped = proc.stdout
             for stale, why in (("0.949", "leaky AUROC, now 0.947"),
                                ("0.819", "component-safe AUROC, now 0.829"),

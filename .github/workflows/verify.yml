@@ -36,6 +36,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      # poppler-utils supplies pdftotext. The number verifier reads the
+      # graphical abstract with it, because that PDF is hand-made, ships with
+      # the submission, and nothing regenerates it when a number moves: it
+      # carried five superseded values for two months. The check is worth an
+      # apt line, and the verifier reports the artefact as unverified rather
+      # than passing quietly if the binary is missing.
+      - name: Install pdftotext
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
+
       - name: Install the package itself (core has no dependencies)
         run: pip install -e .
 
