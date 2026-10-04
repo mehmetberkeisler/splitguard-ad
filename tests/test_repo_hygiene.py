@@ -264,7 +264,10 @@ class DependencyFilesAgreeTests(unittest.TestCase):
         came from. If pyproject pinned, `pip install -e .` would silently
         become a reproduction attempt.
         """
-        import tomllib
+        try:
+            import tomllib
+        except ImportError:  # tomllib is 3.11+; the package floor is 3.10
+            self.skipTest("tomllib needs Python 3.11; the package supports 3.10")
         path = ROOT / "pyproject.toml"
         if not path.is_file():
             self.skipTest("no pyproject.toml in this checkout")
