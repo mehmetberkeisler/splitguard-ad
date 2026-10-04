@@ -17,6 +17,19 @@
 #
 #     pip install --index-url https://download.pytorch.org/whl/cu128 \
 #         torch==2.8.0 torchvision==0.23.0
+#
+# MONAI must be installed with --no-deps, and this is a property of the recorded
+# environment rather than a convenience. monai 1.5.0 declares torch<2.7.0, while
+# the node ran it against torch 2.8.0: scripts/gpu_setup.sh installs it with
+# --no-deps onto the image's existing CUDA torch, so pip never saw the
+# constraint. Installing this file as a whole therefore fails to resolve, and
+# the honest reproduction is the same two-step the node used:
+#
+#     grep -v '^monai==' requirements-lock.txt > /tmp/lock.txt
+#     pip install -r /tmp/lock.txt
+#     pip install --no-deps monai==1.5.0
+#
+# MONAI is used only for its 3D ResNet-18 definition in the volumetric arm.
 
 torch==2.8.0
 torchvision==0.23.0

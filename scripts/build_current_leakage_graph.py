@@ -11,7 +11,6 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
-from PIL import Image
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

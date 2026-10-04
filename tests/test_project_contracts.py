@@ -152,6 +152,16 @@ class ProjectContractTests(unittest.TestCase):
         # checkpoint was the least-trained epoch. An orientation flip is silent
         # in a metric whose plausible range covers its own complement, so it has
         # to be pinned down by test rather than by reading the number.
+        # train_adni_3d.py exits at import when numpy and torch are absent,
+        # which is right for a command-line trainer and wrong as a suite
+        # failure: the rest of these contracts hold on a bare interpreter and
+        # should still be checked there.
+        try:
+            import numpy  # noqa: F401
+            import torch  # noqa: F401
+        except ImportError as exc:
+            self.skipTest(f"the volumetric trainer needs numpy and torch: {exc}")
+
         trainer = load_module(ROOT / "scripts" / "train_adni_3d.py")
         reference = load_module(ROOT / "scripts" / "gpu_postprocess.py")
 

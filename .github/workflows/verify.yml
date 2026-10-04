@@ -88,7 +88,13 @@ jobs:
           pip install --upgrade pip
           pip install --index-url https://download.pytorch.org/whl/cpu \
               torch==2.8.0 torchvision==0.23.0
-          pip install -r requirements-lock.txt
+          # monai 1.5.0 declares torch<2.7.0 while the node ran it against
+          # torch 2.8.0, because gpu_setup.sh installs it with --no-deps onto
+          # the image's CUDA torch. Installing the lock file as a whole cannot
+          # resolve; reproducing the node means reproducing that step.
+          grep -v '^monai==' requirements-lock.txt > /tmp/lock-no-monai.txt
+          pip install -r /tmp/lock-no-monai.txt
+          pip install --no-deps monai==1.5.0
           pip install -e .
 
       - name: Check the environment matches the pins
