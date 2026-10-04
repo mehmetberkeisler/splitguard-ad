@@ -44,6 +44,11 @@ import json
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from splitguard_ad.graph import normalise_identifier  # noqa: E402
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -87,10 +92,20 @@ class UnionFind:
 
 
 def group_by(rows: list[dict[str, str]], key: str) -> dict[str, list[str]]:
+    """Group image ids by an identifier, skipping rows where it is absent.
+
+    This used to guard only the empty string and the literal "unknown", which
+    covers the two sentinels this cohort happens to use. The generic builder
+    recognises a wider set, and having two different rules for the same
+    question is how one of them ends up wrong. Both now call
+    ``normalise_identifier``. On the shipped ADNI manifest this changes
+    nothing, because none of its identifier columns contains any of the extra
+    tokens, and the regenerated components are byte-identical.
+    """
     out: dict[str, list[str]] = defaultdict(list)
     for row in rows:
-        value = (row.get(key) or "").strip()
-        if value and value != "unknown":
+        value = normalise_identifier(row.get(key))
+        if value is not None:
             out[value].append(row["image_id"])
     return out
 
@@ -145,8 +160,8 @@ def build_graph(
     # reason, as 246 of its values are shared across participants.)
     session_groups: dict[str, list[str]] = defaultdict(list)
     for row in rows:
-        session = (row.get("session_id") or "").strip()
-        if session and session != "unknown":
+        session = normalise_identifier(row.get("session_id"))
+        if session is not None:
             session_groups[session].append(row["image_id"])
     for ids in session_groups.values():
         if len(ids) < 2:
@@ -170,9 +185,9 @@ def build_graph(
     # same_acq_date (subject-scoped)
     acq_groups: dict[tuple[str, str], list[str]] = defaultdict(list)
     for row in rows:
-        subject = (row.get("subject_id") or "").strip()
-        acq_date = (row.get("acq_date") or "").strip()
-        if subject and subject != "unknown" and acq_date:
+        subject = normalise_identifier(row.get("subject_id"))
+        acq_date = normalise_identifier(row.get("acq_date"))
+        if subject is not None and acq_date is not None:
             acq_groups[(subject, acq_date)].append(row["image_id"])
     for ids in acq_groups.values():
         if len(ids) < 2:

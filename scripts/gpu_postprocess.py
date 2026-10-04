@@ -41,6 +41,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from splitguard_ad.metrics import auroc  # noqa: E402
 from _paths import display_path  # noqa: E402
 PY = sys.executable
 ADNI_PROTOCOLS = ["random", "subject_only", "component_safe"]
@@ -63,25 +66,6 @@ ARMS = {
 }
 
 
-def auroc(pairs: list[tuple[int, float]]) -> float:
-    """Rank-based AUROC over (label, score) pairs; nan if one class is absent."""
-    pos = [s for t, s in pairs if t == 1]
-    neg = [s for t, s in pairs if t == 0]
-    if not pos or not neg:
-        return float("nan")
-    order = sorted(range(len(pairs)), key=lambda i: pairs[i][1])
-    ranks = [0.0] * len(pairs)
-    i = 0
-    while i < len(order):
-        j = i
-        while j + 1 < len(order) and pairs[order[j + 1]][1] == pairs[order[i]][1]:
-            j += 1
-        shared = (i + j) / 2 + 1
-        for k in range(i, j + 1):
-            ranks[order[k]] = shared
-        i = j + 1
-    rank_sum = sum(r for r, (t, _) in zip(ranks, pairs) if t == 1)
-    return (rank_sum - len(pos) * (len(pos) + 1) / 2) / (len(pos) * len(neg))
 
 
 def read_predictions(path: Path) -> list[dict[str, str]]:

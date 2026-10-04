@@ -7,7 +7,6 @@ import unittest
 from collections import Counter, defaultdict
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -171,7 +170,7 @@ class ProjectContractTests(unittest.TestCase):
                 continue
             scores = [round(rng.random(), 2) for _ in range(n)]      # deliberate ties
             self.assertAlmostEqual(trainer.auroc(y, scores),
-                                   reference.auroc(list(zip(y, scores))), places=12)
+                                   reference.auroc(list(zip(y, scores, strict=True))), places=12)
 
     def test_label_permutation_keeps_one_label_per_participant_across_partitions(self):
         # The null control permuted labels inside each partition, which gave a
@@ -193,7 +192,7 @@ class ProjectContractTests(unittest.TestCase):
         for seed in range(20):
             permuted = null.permute_splits(splits, random.Random(seed))
             if any(a["diagnosis_group"] != b["diagnosis_group"]
-                   for a, b in zip(rows, permuted["train"] + permuted["val"])):
+                   for a, b in zip(rows, permuted["train"] + permuted["val"], strict=True)):
                 moved += 1
             labels = defaultdict(set)
             for phase_rows in permuted.values():

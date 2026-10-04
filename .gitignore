@@ -209,6 +209,7 @@ docs/*
 !docs/ADNI_LABEL_ONTOLOGY.md
 !docs/DATA_ACCESS.md
 !docs/GPU_RUNBOOK.md
+!docs/MANIFEST_SPEC.md
 docs/reviews/
 
 # AIHealth conference-submission tooling is not part of the framework.
@@ -220,3 +221,9 @@ scripts/render_aihealth_camera_ready_pdf.py
 MASTER_PLAN.md
 SPLITGUARD_AD_SCOPE.md
 download.zip
+
+# Build output from `pip install -e .`
+*.egg-info/
+build/
+dist/
+.ruff_cache/

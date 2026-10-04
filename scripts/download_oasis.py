@@ -127,9 +127,14 @@ def open_session(user: str, pw: str, timeout: float = 20.0,
 
 
 def close_session(sess: requests.Session):
+    """Best-effort logout. The session is being discarded either way.
+
+    Narrowed from Exception so that a programming error here is not mistaken
+    for an unreachable server.
+    """
     try:
         sess.delete(f"{XNAT_BASE}/data/JSESSION", timeout=10)
-    except Exception:
+    except requests.RequestException:
         pass
 
 

@@ -1,0 +1,30 @@
+# Exact reproduction of the published numbers.
+#
+# This is the environment recorded on the GPU node before training
+# (runs_gpu/gpu_environment.txt), not a set of versions anyone chose. Install
+# it when you intend to reproduce a manuscript number, retrain an arm, or
+# regenerate a released figure.
+#
+# For ordinary use of the package, install the package instead:
+#
+#     pip install -e .            # core, standard library only
+#     pip install -e '.[all]'     # plus graph, training and figure extras
+#
+# scripts/check_environment.py compares a live interpreter against this set and
+# exits non-zero on any mismatch. The node installed the CUDA 12.8 wheels, whose
+# versions carry a +cu128 local suffix; the pins name the upstream versions so
+# this file also installs on a CPU-only machine. To match the node exactly:
+#
+#     pip install --index-url https://download.pytorch.org/whl/cu128 \
+#         torch==2.8.0 torchvision==0.23.0
+
+torch==2.8.0
+torchvision==0.23.0
+scikit-learn==1.9.1
+numpy==2.1.2
+scipy==1.18.1
+monai==1.5.0
+nibabel==5.3.3
+Pillow==11.0.0
+openpyxl==3.1.5
+matplotlib==3.11.2

@@ -52,6 +52,12 @@ from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
 
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from splitguard_ad.release.privacy import (  # noqa: E402
+    PBKDF2_DKLEN, PBKDF2_ITERATIONS, hash_subject_id)
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -61,8 +67,6 @@ DEFAULT_AUDIT = REPO_ROOT / "data" / "splits" / "adni_hashed_manifest_seed42.aud
 
 # PBKDF2 work factor. Chosen so that a full sweep of the ~10^7 ADNI PTID
 # space costs on the order of CPU-weeks rather than seconds.
-PBKDF2_ITERATIONS = 600_000
-PBKDF2_DKLEN = 32
 
 # There is deliberately NO default salt. A committed default would be
 # published with the code and would make every released hash invertible
@@ -92,26 +96,6 @@ DROPPED_FIELDS = {
 }
 
 
-@lru_cache(maxsize=None)
-def hash_subject_id(subject_id: str, salt: str) -> str:
-    """PBKDF2-HMAC-SHA256 of the subject_id under a secret per-release salt.
-
-    Key stretching is load-bearing, not decorative: ADNI PTIDs occupy a
-    ~10^7 space, so a single-round digest would be enumerable in seconds.
-
-    The derivation is deterministic, so it is memoised: releasing five seeds of
-    the same cohort otherwise re-derives each of the 220 participants five
-    times at 600,000 iterations apiece, which costs minutes and changes
-    nothing. The cache lives for one process and never touches disk.
-    """
-    derived = hashlib.pbkdf2_hmac(
-        "sha256",
-        subject_id.encode("utf-8"),
-        salt.encode("utf-8"),
-        PBKDF2_ITERATIONS,
-        dklen=PBKDF2_DKLEN,
-    )
-    return derived.hex()
 
 
 def read_split(path: Path) -> list[dict[str, str]]:

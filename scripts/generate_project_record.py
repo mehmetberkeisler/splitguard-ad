@@ -17,6 +17,8 @@ Usage
 
 from __future__ import annotations
 
+import warnings
+
 import csv
 import json
 import subprocess
@@ -30,9 +32,20 @@ OUT = ROOT / "PROJECT_RECORD.md"
 
 
 def load(path: Path):
+    """Artefact contents, or None when it is not present.
+
+    An absent artefact is the normal case: this record is generated from
+    whatever the current run produced. A malformed one is not, and returning
+    None for both would silently drop a section from the record that the
+    artefact was meant to fill.
+    """
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    except FileNotFoundError:
+        return None
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
+        warnings.warn(f"{path} exists but could not be read: "
+                      f"{type(exc).__name__}: {exc}", RuntimeWarning, stacklevel=2)
         return None
 
 

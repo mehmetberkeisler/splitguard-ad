@@ -1,15 +1,15 @@
-# The three verification gates, on every push and pull request.
+# Two jobs, because they answer two different questions.
 #
-# No dependency installation step: the gates and the whole test suite import
-# nothing outside the standard library, by design. Everything that needs torch
-# or sklearn is a training script, and training is not reproducible in CI, so
-# what CI can check it checks completely rather than partially.
+# `gates` proves the verification layer works: tests, every manuscript number
+# against its artefact, and the submission requirements. It installs nothing,
+# because the gates and the whole test suite import only the standard library.
+# That is a property worth keeping, so this job would fail if it were lost.
 #
-# scripts/check_environment.py is deliberately absent. It compares the running
-# interpreter against the environment the published numbers came from, which a
-# runner does not have and is not meant to have. It belongs on a machine that
-# is about to retrain an arm or regenerate a figure, and scripts/
-# rebuild_after_gpu.sh runs it there as a preflight.
+# `scientific-stack` proves the training runtime actually imports under the
+# pinned environment. Without it, CI can be green on a machine where every
+# training script dies at its first metric call, which is the failure this
+# project hit: an installed scikit-learn older than the pin against a newer
+# numpy leaves sklearn.metrics unimportable, and no gate above imports it.
 
 name: verify
 
@@ -23,24 +23,93 @@ permissions:
   contents: read
 
 jobs:
-  verify:
+  gates:
+    name: gates (stdlib only)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install the package itself (core has no dependencies)
+        run: pip install -e .
+
       - name: Tests
-        run: python3 -m unittest discover -s tests -v
+        run: python -m unittest discover -s tests -v
 
       - name: Every number against its artefact
-        run: python3 scripts/verify_paper_numbers.py
+        run: python scripts/verify_paper_numbers.py
 
       - name: Submission requirements
-        run: python3 scripts/validate_submission.py
+        run: python scripts/validate_submission.py
+
+      - name: The core really does run on a bare interpreter
+        run: |
+          python - <<'PY'
+          # Measure what importing the package ADDS. An absolute scan would
+          # also catch namespace packages the interpreter injects at startup
+          # (anaconda contributes google, sphinxcontrib, zope), which the
+          # package never imports, and the check would fail for a bogus reason.
+          import sys
+          sys.path.insert(0, "src")
+          before = set(sys.modules)
+          import splitguard_ad  # noqa: F401
+          added = {m.split(".")[0] for m in set(sys.modules) - before}
+          third_party = sorted(m for m in added
+                               if m != "splitguard_ad"
+                               and not m.startswith("_")
+                               and m not in sys.stdlib_module_names)
+          assert not third_party, f"importing the core pulled in {third_party}"
+          print("splitguard_ad imports with no third-party dependency")
+          PY
+
+  scientific-stack:
+    name: scientific stack (pinned)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache wheels
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-lock-${{ hashFiles('requirements-lock.txt') }}
+
+      - name: Install the exact environment the published numbers came from
+        run: |
+          pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu \
+              torch==2.8.0 torchvision==0.23.0
+          pip install -r requirements-lock.txt
+          pip install -e .
+
+      - name: Check the environment matches the pins
+        run: python scripts/check_environment.py
+
+      - name: Import smoke test
+        run: |
+          python - <<'PY'
+          import torch, torchvision, sklearn, scipy, monai, nibabel, matplotlib
+          # sklearn.metrics is the one that breaks under a numpy ABI mismatch,
+          # and importing the package alone does not touch it.
+          from sklearn.metrics import roc_auc_score
+          print("scientific stack imports successfully")
+          PY
+
+      - name: Training entry points reach their argument parsers
+        run: |
+          for s in train_adni_baseline run_adni_inflation_gap run_biometric_probe_adni train_adni_3d; do
+            python "scripts/$s.py" --help > /dev/null || exit 1
+          done
+          echo "training entry points import and parse"
+
+      - name: Synthetic end-to-end pipeline, no cohort data required
+        run: python -m unittest tests.test_end_to_end_synthetic -v

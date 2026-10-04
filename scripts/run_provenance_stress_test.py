@@ -56,6 +56,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from splitguard_ad.corruption import (  # noqa: E402
+    MECHANISMS, corrupt_drop, corrupt_merge, corrupt_split)
 
 from run_provenance_degradation import (  # noqa: E402
     TRUE_SUBJECT,
@@ -71,73 +75,14 @@ SEEDS = [0, 1, 2, 3, 4]
 BINARY = {"CN", "AD"}
 
 
-def _tag(rows: list[dict[str, str]]) -> list[dict[str, str]]:
-    """Copy rows and record untouched ground truth before any corruption."""
-    out = []
-    for row in rows:
-        new = dict(row)
-        new[TRUE_SUBJECT] = row["subject_id"]
-        out.append(new)
-    return out
 
 
-def corrupt_drop(rows, intensity, rng):
-    """Each scan independently loses its subject identifier."""
-    out = _tag(rows)
-    for row in out:
-        if rng.random() < intensity:
-            row["subject_id"] = "unknown"
-    return out
 
 
-def corrupt_split(rows, intensity, rng):
-    """One participant is dealt into two pseudo-identifiers.
-
-    The scans keep an identifier, so nothing looks missing; a subject-wise
-    splitter simply believes there are two patients where there is one. This is
-    the failure the Tier-1 filename key exhibits for 179 of its 200
-    participants.
-    """
-    out = _tag(rows)
-    by_subject = defaultdict(list)
-    for row in out:
-        by_subject[row[TRUE_SUBJECT]].append(row)
-    for subject, subject_rows in by_subject.items():
-        if len(subject_rows) < 2 or rng.random() >= intensity:
-            continue
-        shuffled = subject_rows[:]
-        rng.shuffle(shuffled)
-        cut = max(1, len(shuffled) // 2)
-        for row in shuffled[:cut]:
-            row["subject_id"] = f"{subject}__a"
-        for row in shuffled[cut:]:
-            row["subject_id"] = f"{subject}__b"
-    return out
 
 
-def corrupt_merge(rows, intensity, rng):
-    """Two participants are relabelled to one pseudo-identifier.
-
-    Again nothing is missing. A subject-wise splitter over-groups, which is
-    conservative for leakage but destroys the participant count; the leakage
-    graph inherits the same wrong key, so this mechanism is expected to hurt
-    both protocols equally. Reporting a mechanism where the graph does not help
-    is the point of running three.
-    """
-    out = _tag(rows)
-    subjects = sorted({row[TRUE_SUBJECT] for row in out})
-    rng.shuffle(subjects)
-    merged: dict[str, str] = {}
-    for left, right in zip(subjects[0::2], subjects[1::2]):
-        if rng.random() < intensity:
-            merged[left] = merged[right] = f"{left}+{right}"
-    for row in out:
-        if row[TRUE_SUBJECT] in merged:
-            row["subject_id"] = merged[row[TRUE_SUBJECT]]
-    return out
 
 
-MECHANISMS = {"drop": corrupt_drop, "split": corrupt_split, "merge": corrupt_merge}
 
 
 def main() -> int:

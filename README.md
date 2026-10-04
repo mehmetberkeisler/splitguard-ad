@@ -83,18 +83,94 @@ not repeat them, so it cannot go stale.
 
 ## Quick start
 
-The framework targets Python 3.10+. PyTorch with the MPS or CUDA backend
-is recommended.
+Python 3.10 to 3.13.
 
 ```bash
 git clone https://github.com/mehmetberkeisler/splitguard-ad
 cd splitguard-ad
-pip install -r requirements.txt
+pip install -e .
 ```
+
+That is the whole installation for the framework and for checking every number
+in the paper. **The core imports only the standard library**, which is why a
+reviewer needs no scientific stack to verify the manuscript, and CI asserts it
+stays that way.
+
+Add what you actually need:
+
+```bash
+pip install -e '.[graph]'      # near-duplicate detection, manifest building
+pip install -e '.[train]'      # torch, sklearn, MONAI
+pip install -e '.[figures]'    # matplotlib
+pip install -e '.[all]'        # all of the above
+```
+
+For exact reproduction of a published number, install the recorded environment
+instead of the ranges:
+
+```bash
+pip install -r requirements-lock.txt
+```
+
+Those are the versions frozen on the GPU node before training, not versions
+anyone chose. `scripts/check_environment.py` compares a live interpreter
+against them.
+
+### One command to check everything
+
+```bash
+python -m splitguard_ad.verify
+```
+
+```
+SplitGuard-AD verification
+--------------------------
+Tests:                PASS
+Paper values:         PASS
+Submission structure: PASS
+Environment:          PASS
+
+OVERALL STATUS: PASS
+```
+
+### The command line
+
+```bash
+splitguard design --manifest my_cohort.csv   # which provenance regime am I in?
+splitguard graph  --manifest my_cohort.csv   # leakage graph and components
+splitguard split  --manifest my_cohort.csv --components components.csv
+splitguard audit  --split my_split.csv
+splitguard verify
+```
+
+Each subcommand passes your arguments to the script that implements that stage,
+so `splitguard graph --help` is that script's own help.
+
+### As a library
+
+```python
+from splitguard_ad import UnionFind, normalise_identifier, assign_splits
+from splitguard_ad import AuditReport, Finding, Level
+```
+
+`src/splitguard_ad/` holds the reusable core: the leakage graph, the splitter,
+the metrics, the corruption operators, the audit taxonomy and the release
+hashing. The scripts in `scripts/` import it, so there is one implementation
+and not two. Every function there was moved out of the analysis scripts
+verbatim rather than retyped, and the move was accepted only once regenerating
+the Tier-1 and ADNI leakage components and the Tier-1 split produced
+byte-identical files.
+
+`docs/MANIFEST_SPEC.md` is the manifest contract: required and optional
+columns, what each optional column buys you, and the missing-value semantics
+that stop a literal `unknown` from merging every unlabelled scan into one
+fictional participant.
 
 Data is not redistributed; see `docs/DATA_ACCESS.md` for how to obtain
 each tier from its original provider under that provider's licence
-terms.
+terms. `SECURITY_AND_PRIVACY.md` sets out what may be released, what must
+never be, and what the checks actually verify; `RELEASE_CHECKLIST.md` is the
+procedure for preparing a public release.
 
 ### Deciding how to evaluate, before you split
 

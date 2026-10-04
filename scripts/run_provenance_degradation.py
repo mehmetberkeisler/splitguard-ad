@@ -72,6 +72,9 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from splitguard_ad.metrics import TRUE_SUBJECT, residual_subject_leakage  # noqa: E402
 
 from build_adni_leakage_graph import build_graph  # noqa: E402
 from make_adni_splitguard_split import (  # noqa: E402
@@ -86,7 +89,6 @@ DEFAULT_SUMMARY = (
     PROJECT_ROOT / "reports" / "tables" / "adni" / "adni_provenance_degradation.json"
 )
 
-TRUE_SUBJECT = "_true_subject_id"
 
 
 def degrade(
@@ -180,54 +182,6 @@ def component_safe_split(rows: list[dict[str, str]], seed: int) -> dict[str, str
     }
 
 
-def residual_subject_leakage(
-    rows: list[dict[str, str]], assignment: dict[str, str]
-) -> dict[str, float]:
-    """Score the leakage this assignment admits, against the untouched ground truth.
-
-    Two quantities, and the distinction between them matters.
-
-    ``n_subjects_straddling_partitions`` counts every true patient with scans
-    on both sides of any boundary. It is the natural measure of how well a
-    protocol held, and it is what the degradation curve is read from.
-
-    ``test_train_subject_overlap`` is narrower: the fraction of test-partition
-    patients who also appear in training.
-
-    ``test_scan_contamination`` is the fraction of test *scans* whose patient
-    appears in training. This is the quantity the leakage dose-response
-    sweeps, which injects a share of test scans rather than a share of test
-    patients, so it is the one to compose the two curves through. The patient
-    share is always the larger of the two, because one contaminated patient
-    can carry a single scan, and composing through it would overstate the
-    optimism that provenance loss buys.
-    """
-    phases: dict[str, set[str]] = defaultdict(set)
-    for row in rows:
-        phases[row[TRUE_SUBJECT]].add(assignment[row["image_id"]])
-    straddling = {s for s, p in phases.items() if len(p) > 1}
-    leaked_images = sum(1 for r in rows if r[TRUE_SUBJECT] in straddling)
-
-    train_subjects = {s for s, p in phases.items() if "train" in p}
-    test_subjects = {s for s, p in phases.items() if "test" in p}
-    overlap = test_subjects & train_subjects
-    test_rows = [r for r in rows if assignment[r["image_id"]] == "test"]
-    contaminated_scans = sum(1 for r in test_rows if r[TRUE_SUBJECT] in overlap)
-
-    return {
-        "n_true_subjects": len(phases),
-        "n_subjects_straddling_partitions": len(straddling),
-        "n_images_in_straddling_subjects": leaked_images,
-        "n_test_subjects": len(test_subjects),
-        "n_test_subjects_also_in_train": len(overlap),
-        "test_train_subject_overlap": (
-            round(len(overlap) / len(test_subjects), 4) if test_subjects else 0.0
-        ),
-        "n_test_scans": len(test_rows),
-        "test_scan_contamination": (
-            round(contaminated_scans / len(test_rows), 4) if test_rows else 0.0
-        ),
-    }
 
 
 def to_splits(

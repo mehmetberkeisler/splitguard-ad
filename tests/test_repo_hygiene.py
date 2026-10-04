@@ -20,7 +20,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 RECORD = ROOT / "runs_gpu" / "gpu_environment.txt"
@@ -148,6 +147,11 @@ class PinsMatchTheRecordedEnvironmentTests(unittest.TestCase):
     def test_requirements_agrees_with_the_record(self):
         self.assert_agrees(ROOT / "requirements.txt")
 
+    def test_the_lock_file_agrees_with_the_record(self):
+        # requirements-lock.txt is what a reviewer installs to reproduce a
+        # published number, so it is the file that must not drift.
+        self.assert_agrees(ROOT / "requirements-lock.txt")
+
     def test_gpu_requirements_agrees_with_the_record(self):
         # This file drives the venv fallback in gpu_setup.sh. If it drifts from
         # the record, the fallback silently builds a different stack than the
@@ -190,6 +194,38 @@ class DependencyFilesAgreeTests(unittest.TestCase):
         clashes = [f"{k}: requirements {req[k]} vs environment.yml {env[k]}"
                    for k in sorted(req) if public(req[k]) != public(env[k])]
         self.assertEqual(clashes, [], "the two dependency files disagree on a version")
+
+    def test_the_lock_file_and_requirements_are_the_same_set(self):
+        req = parse_pins(ROOT / "requirements.txt")
+        lock = parse_pins(ROOT / "requirements-lock.txt")
+        if not lock:
+            self.skipTest("no requirements-lock.txt in this checkout")
+        self.assertEqual(sorted(lock), sorted(req),
+                         "the lock file and requirements.txt list different packages")
+        clashes = [f"{k}: requirements {req[k]} vs lock {lock[k]}"
+                   for k in sorted(req) if public(req[k]) != public(lock[k])]
+        self.assertEqual(clashes, [], "the lock file and requirements.txt disagree")
+
+    def test_the_package_declares_ranges_not_pins(self):
+        """pyproject must not pin, or installing it would fight the lock file.
+
+        The two files answer different questions: the ranges are what the
+        package needs to run, the lock is the environment the published numbers
+        came from. If pyproject pinned, `pip install -e .` would silently
+        become a reproduction attempt.
+        """
+        import tomllib
+        path = ROOT / "pyproject.toml"
+        if not path.is_file():
+            self.skipTest("no pyproject.toml in this checkout")
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+        project = data["project"]
+        self.assertEqual(project["dependencies"], [],
+                         "the core must stay dependency-free")
+        pinned = [d for group in project.get("optional-dependencies", {}).values()
+                  for d in group if "==" in d]
+        self.assertEqual(pinned, [],
+                         "an extra pins a version; ranges belong here and pins in the lock file")
 
     def test_gpu_requirements_does_not_contradict_requirements(self):
         req = parse_pins(ROOT / "requirements.txt")

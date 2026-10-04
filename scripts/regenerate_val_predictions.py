@@ -108,7 +108,10 @@ def regenerate_one(
     loader = trainer.make_loader(rows, eval_tf, batch_size, False, device, seed=0)
 
     model = trainer.make_model(pretrained=False).to(device)
-    payload = torch.load(checkpoint, map_location=device)
+    # Written by train_adni_baseline.py: a state_dict plus a seed and a label.
+    # Stating weights_only keeps the restricted unpickler in force under a
+    # torch older than 2.6, where it was not the default.
+    payload = torch.load(checkpoint, map_location=device, weights_only=True)
     state = payload.get("state", payload)
     model.load_state_dict(state)
 

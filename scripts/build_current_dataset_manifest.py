@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import argparse
 import csv
 import hashlib
@@ -117,7 +119,13 @@ def image_size(path: Path) -> tuple[str, str]:
     try:
         with Image.open(path) as img:
             return str(img.width), str(img.height)
-    except Exception:
+    except (OSError, ValueError) as exc:
+        # A blank size in the manifest is indistinguishable from an image that
+        # genuinely has none, so an unreadable file must say so rather than
+        # pass quietly. OSError covers Pillow's UnidentifiedImageError and any
+        # truncated read; anything else is a bug and should propagate.
+        warnings.warn(f"could not read image size for {path}: "
+                      f"{type(exc).__name__}: {exc}", RuntimeWarning, stacklevel=2)
         return "", ""
 
 

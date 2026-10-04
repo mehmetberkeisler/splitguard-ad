@@ -110,7 +110,8 @@ def build_3d_resnet18(pretrained: bool = False, pretrained_path: str | None = No
         widen_factor=1.0,
     )
     if pretrained and pretrained_path:
-        state = torch.load(pretrained_path, map_location="cpu")
+        # A MONAI pretrained bundle: tensors and primitives only.
+        state = torch.load(pretrained_path, map_location="cpu", weights_only=True)
         model.load_state_dict(state.get("state_dict", state), strict=False)
     return model
 
@@ -284,7 +285,9 @@ def main() -> int:
             sched.step()
 
     # Load best checkpoint and evaluate on test set
-    ckpt = torch.load(args.output_dir / "best_state.pt", map_location=device)
+    # Written a few lines above: state_dict, epoch, val_auroc.
+    ckpt = torch.load(args.output_dir / "best_state.pt", map_location=device,
+                      weights_only=True)
     model.load_state_dict(ckpt["state_dict"])
     test_loss, test_y_true, test_y_score = epoch_run(model, test_loader, device, criterion, None)
     test_auroc = auroc(test_y_true, test_y_score)

@@ -17,7 +17,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -76,7 +75,9 @@ class UnionFindTests(unittest.TestCase):
         # reparented a node onto the wrong root would still return quickly.
         uf = GRAPH.UnionFind()
         chain = [f"n{i}" for i in range(50)]
-        for a, b in zip(chain, chain[1:]):
+        # Deliberately unequal lengths: this walks adjacent pairs, so
+        # strict=True would be wrong rather than stricter.
+        for a, b in zip(chain, chain[1:]):  # noqa: B905
             uf.union(a, b)
 
         root = uf.find(chain[0])
@@ -249,7 +250,7 @@ class MissingIdentifierTests(unittest.TestCase):
 
     def test_records_with_absent_subjects_do_not_form_a_component(self):
         rec = GENERIC.Record
-        fields = {f: "" for f in rec.__dataclass_fields__}
+        fields = dict.fromkeys(rec.__dataclass_fields__, "")
         def make(image_id, subject, sha):
             return rec(**{**fields, "image_id": image_id,
                           "subject_id": subject, "file_sha256": sha})

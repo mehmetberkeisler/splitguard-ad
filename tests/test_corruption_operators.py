@@ -10,13 +10,12 @@ each run looked internally consistent. The last of those was a real defect
 here, caught before its numbers were trusted.
 """
 
-import importlib.util
 import ast
+import importlib.util
 import random
 import sys
 import unittest
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -193,7 +192,7 @@ class ReproducibilityTests(unittest.TestCase):
         # hash() would give a different matrix on every invocation while each
         # run looked internally consistent. Pin the derived value itself.
         import hashlib
-        stream = "split|0.5|3".encode("utf-8")
+        stream = b"split|0.5|3"
         seed = int(hashlib.sha256(stream).hexdigest()[:16], 16)
         # Pinned literal: this is the value a fresh interpreter must derive for
         # that cell. str.__hash__ would give a different one per process.

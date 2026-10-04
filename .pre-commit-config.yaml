@@ -1,0 +1,49 @@
+# Static checks catch a different class of defect than the test suite does.
+# The suite verifies behaviour; these catch an unused import, a shadowed name,
+# a mutable default, or a comparison that is always true.
+#
+#     pip install -e '.[dev]'
+#     pre-commit install
+#     pre-commit run --all-files
+#
+# Configuration for ruff and black lives in pyproject.toml so that running
+# either tool directly gives the same result as running it through here.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      # Scoped to the package and the tests, which are clean. The analysis
+      # scripts carry pre-existing findings and produce the published numbers;
+      # see the note in pyproject.toml. `ruff check scripts` still reports them.
+      - id: ruff
+        args: [--fix]
+        files: ^(src|tests)/
+      - id: ruff-format
+        # Checked rather than applied: reformatting a 900-line analysis script
+        # in the same commit as a one-line fix makes the diff unreviewable.
+        args: [--check]
+        files: ^(src|tests)/
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(paper|release|reports)/
+      - id: end-of-file-fixer
+        exclude: ^(paper|release|reports)/
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+      - id: check-merge-conflict
+      # The release boundary, as a commit hook rather than only a test.
+      - id: detect-private-key
+
+  - repo: local
+    hooks:
+      - id: no-cohort-participant-ids
+        name: no real cohort participant identifier in a staged file
+        entry: python scripts/check_no_cohort_ids.py
+        language: system
+        pass_filenames: true

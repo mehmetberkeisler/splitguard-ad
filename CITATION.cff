@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: "If you use this software or its findings, please cite the manuscript below."
+title: "SplitGuard-AD: provenance-aware splitting and patient-leakage auditing for medical imaging cohorts"
+abstract: >-
+  Patient-wise splitting is only as reliable as the identifier that defines a
+  patient. SplitGuard-AD builds a leakage graph from whatever identity evidence
+  a cohort still carries, treats its connected components as indivisible, and
+  audits a split before training rather than after.
+type: software
+version: 1.0.0
+license: Apache-2.0
+repository-code: "https://github.com/mehmetberkeisler/SplitGuard-AD"
+keywords:
+  - patient-identity leakage
+  - data provenance
+  - evaluation protocol
+  - medical imaging
+  - reproducibility
+  - Alzheimer's disease
+authors:
+  - family-names: "Isler"
+    given-names: "Mehmet Berke"
+    email: "mehmetberkeisler@gmail.com"
+  - family-names: "Ilter"
+    given-names: "Irem"
+  - family-names: "Ozdemir"
+    given-names: "Mehmet Kemal"
+preferred-citation:
+  type: article
+  title: >-
+    Patient Leakage Under Degraded Data Provenance in Alzheimer's Disease MRI
+    Deep Learning: Controlled Experiments and the SplitGuard-AD Audit
+  authors:
+    - family-names: "Isler"
+      given-names: "Mehmet Berke"
+    - family-names: "Ilter"
+      given-names: "Irem"
+    - family-names: "Ozdemir"
+      given-names: "Mehmet Kemal"
+  year: 2026
+  # Journal, volume, pages and DOI are filled in on acceptance. The Zenodo DOI
+  # for the software release goes in `identifiers` below once minted.

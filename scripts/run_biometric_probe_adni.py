@@ -68,7 +68,12 @@ def make_model_frozen(ckpt_path: Path, dev, arch: str = "resnet18"):
         feature_attr = "features"  # pool the final feature map manually
     else:
         raise ValueError(f"unsupported arch {arch!r}")
-    ckpt = torch.load(ckpt_path, map_location=dev, weights_only=False)
+    # weights_only was explicitly False here, which opts out of the restricted
+    # unpickler for no benefit: the payload is train_adni_baseline.py's
+    # {"state": state_dict, "seed": int, "label": str}, all of which the safe
+    # loader accepts. A checkpoint from an untrusted source could otherwise
+    # execute arbitrary code on load.
+    ckpt = torch.load(ckpt_path, map_location=dev, weights_only=True)
     m.load_state_dict(ckpt["state"])
     m.eval()
     return m.to(dev), feature_attr

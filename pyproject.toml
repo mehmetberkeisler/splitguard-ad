@@ -1,0 +1,102 @@
+# Packaging, plus the configuration for the static tools.
+#
+# Two dependency sets exist on purpose and must not be merged. The ranges below
+# are what the package needs to run. requirements.txt and requirements-lock.txt
+# are the exact environment the published numbers came from, read off the
+# package list frozen on the GPU node before training. Installing the ranges
+# gets you a working SplitGuard; installing the lock reproduces the manuscript.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "splitguard-ad"
+version = "1.0.0"
+description = "Provenance-aware splitting and patient-leakage auditing for medical imaging cohorts"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10,<3.14"
+authors = [
+    { name = "Mehmet Berke Isler", email = "mehmetberkeisler@gmail.com" },
+    { name = "Irem Ilter" },
+    { name = "Mehmet Kemal Ozdemir" },
+]
+keywords = ["patient leakage", "data provenance", "evaluation protocol",
+            "medical imaging", "reproducibility", "alzheimer"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+
+# The core needs nothing outside the standard library. That is deliberate: the
+# leakage graph, the splitter, the audit taxonomy, the metrics and the three
+# verification gates all run on a bare interpreter, so a reviewer can check
+# every published number without installing a scientific stack.
+dependencies = []
+
+[project.optional-dependencies]
+# Near-duplicate detection reads images; manifest building reads spreadsheets.
+graph = ["Pillow>=10.0", "openpyxl>=3.1"]
+# Training and the analyses that need array maths.
+train = [
+    "torch>=2.5",
+    "torchvision>=0.20",
+    "scikit-learn>=1.6",
+    "numpy>=2.0",
+    "scipy>=1.12",
+    "nibabel>=5.3",
+    "monai>=1.4",
+]
+figures = ["matplotlib>=3.9"]
+dev = ["ruff>=0.6", "black>=24.8", "pre-commit>=3.8"]
+all = ["splitguard-ad[graph,train,figures]"]
+
+[project.urls]
+Repository = "https://github.com/mehmetberkeisler/SplitGuard-AD"
+
+[project.scripts]
+splitguard = "splitguard_ad.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["paper", "release", "reports"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+# E501 is handled by black's line length rather than enforced twice. The
+# scripts legitimately mutate sys.path before importing the package, which is
+# E402, and that is bootstrapping rather than style.
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# The scripts bootstrap sys.path before importing the package, which is E402;
+# that is bootstrapping, not style.
+"scripts/*" = ["E402"]
+"tests/*" = ["E402"]
+
+# What is gated, and what is only reported.
+#
+# `ruff check src tests` is clean and the pre-commit hook enforces it. The
+# scripts carry roughly 370 findings, nearly all of them E701/E702 (several
+# statements on one line) and import order in analysis code that produced every
+# published number. Reformatting them before submission would put a large
+# untested diff through the exact path the manuscript depends on, for no change
+# in behaviour, so they are reported rather than enforced:
+#
+#     ruff check scripts            # see them
+#     ruff check src tests          # what must stay clean
+#
+# New scripts are expected to be clean. The existing ones are a deliberate
+# exception with an end date, not a standard.
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+extend-exclude = "/(paper|release|reports)/"
