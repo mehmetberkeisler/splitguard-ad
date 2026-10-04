@@ -122,6 +122,56 @@ class NoDanglingScriptReferencesTests(unittest.TestCase):
                          "released files naming a script that does not exist")
 
 
+class ManuscriptCitationsResolveTests(unittest.TestCase):
+    """Every repository path the manuscript names must actually ship.
+
+    A reader who follows a \\texttt{...} path in the paper to the release and
+    finds nothing there has caught the paper in a false statement about its own
+    artefacts. This was real: the subject-level aggregation paragraph pointed at
+    reports/tables/oasis1_subject_level_summary.json, which was gitignored.
+
+    The file existed on disk, which is why no earlier check noticed. The test
+    compares against what git would ship, not against the working tree.
+    """
+
+    PATH_RE = re.compile(r"^[\w./-]+\.(py|sh|csv|json|txt|tex|md|yml)$")
+
+    def cited_paths(self) -> set[str]:
+        paths = set()
+        for name in ("splitguard_ad.tex", "SplitGuard-AD_Supplementary_Material.tex"):
+            doc = ROOT / "paper" / name
+            if not doc.is_file():
+                continue
+            text = doc.read_text(encoding="utf-8", errors="ignore")
+            for literal in re.findall(r"\\texttt\{([^}]*?)\}", text):
+                # LaTeX escapes underscores and percent signs in \texttt.
+                candidate = literal.replace("\\_", "_").replace("\\%", "%").strip()
+                if "/" in candidate and self.PATH_RE.match(candidate):
+                    paths.add(candidate)
+        return paths
+
+    def test_every_path_the_manuscript_names_is_shipped(self):
+        cited = self.cited_paths()
+        if not cited:
+            self.skipTest("no manuscript sources in this checkout")
+        out = subprocess.run(["git", "ls-files", "-c", "-o", "--exclude-standard"],
+                             cwd=ROOT, capture_output=True, text=True)
+        if out.returncode != 0:
+            self.skipTest("not a git checkout")
+        shipped = set(out.stdout.split())
+        missing = sorted(p for p in cited if p not in shipped)
+        self.assertEqual(missing, [],
+                         "the manuscript names a path the release does not contain")
+
+    def test_the_check_actually_found_some_paths(self):
+        """Guard against the regex silently matching nothing."""
+        cited = self.cited_paths()
+        if not (ROOT / "paper" / "splitguard_ad.tex").is_file():
+            self.skipTest("no manuscript sources in this checkout")
+        self.assertGreater(len(cited), 5,
+                           "the citation scan found almost nothing, so it proves nothing")
+
+
 class PinsMatchTheRecordedEnvironmentTests(unittest.TestCase):
     """The pin files must describe the environment the results came from."""
 
