@@ -119,11 +119,19 @@ def main() -> int:
     for label, pattern in REQUIRED_STATEMENTS.items():
         r.check(f"declaration: {label}", bool(re.search(pattern, text)),
                 "required on submission")
-    # The journal asks for LLM use in the Methods, not only in the Declarations.
-    methods = text.split(r"\section{Results}")[0]
-    r.check("LLM use documented in the Methods section",
-            "large-language-model" in methods.lower() or "large language model" in methods.lower(),
-            "the journal requires this in Methods")
+    # Generative-AI use is disclosed in the Declarations, which is where
+    # Springer's author instructions place it. An earlier draft also carried a
+    # Methods subsection saying the same thing at length; it was removed as a
+    # duplicate, so the Declarations statement is now the only one and has to
+    # be substantive rather than a heading.
+    decl = text.split(r"\section*{Declarations}")[-1]
+    ai = re.search(r"\\paragraph\*?\{Use of generative AI\}(.*?)(?=\\paragraph|\\section|\Z)",
+                   decl, re.S)
+    body = (ai.group(1) if ai else "")
+    r.check("generative-AI use declared",
+            bool(ai) and len(body.split()) >= 40
+            and ("large-language-model" in body.lower() or "large language model" in body.lower()),
+            "a substantive statement is required, not a heading")
 
     # ── Bibliography ────────────────────────────────────────────────────
     cited = {k.strip() for m in re.finditer(r"\\cite[tp]?\{([^}]*)\}", text)

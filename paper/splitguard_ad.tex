@@ -2,13 +2,32 @@
 % SplitGuard-AD manuscript. Numbers that come from the GPU programme are
 % generated into tables/gpu_numbers.tex by scripts/gpu_postprocess.py.
 % ───────────────────────────────────────────────────────────────────────────
-\documentclass[pdflatex,sn-vancouver-num]{sn-jnl}
+% Two-column Springer Nature layout in Times New Roman. `iicol` is the class's
+% own two-column option, so this stays inside the JIIM template rather than
+% borrowing another publisher's. newtx supplies Times for text and maths
+% together, which keeps equations in the same face as the prose.
+\documentclass[pdflatex,sn-vancouver-num,iicol]{sn-jnl}
 
 % Packages
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath,amssymb}
+% newtx must follow amssymb, and \Bbbk is defined by both; letting it go here
+% is the documented way to load them together.
+\let\Bbbk\relax
+\usepackage{newtxtext,newtxmath}
 \usepackage{graphicx}
 \usepackage{booktabs}
+% Two-column tables. Column spacing is global; the size is declared in each
+% table file, including the two that scripts/generate_adni_paper_tables.py
+% writes, so regenerating them keeps the appearance uniform.
+\setlength{\tabcolsep}{4pt}
+% \pb is a zero-width break opportunity for long paths. \texttt offers none, so
+% in a two-column measure a path like reports/tables/adni/<file>.json runs into
+% the margin. It prints nothing and changes no character of the path, which
+% matters: tests/test_repo_hygiene.py checks that every path the manuscript
+% names is actually shipped, and it strips \pb before matching.
+\newcommand{\pb}{\discretionary{}{}{}}
+\renewcommand{\arraystretch}{1.08}
 \usepackage{array}   % >{...} column modifiers, for ragged narrow columns
 \usepackage{multirow}
 \usepackage{xcolor}
@@ -350,7 +369,7 @@ multi-visit research cohorts) and are not separately enumerated in
 general-purpose taxonomies such as Kapoor and
 Narayanan~\cite{kapoor2023leakage}.
 
-\begin{table}[!ht]
+\begin{table*}[!tb]
 \centering
 \caption{Leakage and shortcut taxonomy for Alzheimer's MRI deep learning.
          Risk levels are indicative for a redistributed public 2D benchmark
@@ -373,7 +392,7 @@ Demographic shortcut& Low--Mod  & Age/sex imbalance correlated with label. \\
 Clinical-label shortcut& Low   & Advanced atrophy makes task trivially easy. \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 Subject, session, longitudinal, and slice leakage all violate the same
 clinical independence assumption: a test case should represent a new
@@ -415,7 +434,7 @@ separates them is what happens when those identifiers are not intact:
 and finds that Protocol~C prevents $49\%$ of the residual patient
 leakage Protocol~B admits once a tenth of the identifiers are gone.
 
-\begin{figure}[!ht]
+\begin{figure*}[!tb]
 \centering
 \includegraphics[width=\linewidth]{fig01_leakage_taxonomy.pdf}
 \caption{Four leakage modes in slice-based AD MRI benchmarks, and the
@@ -441,7 +460,7 @@ with re-acquisition or augmentation structure that subject identity
 does not already capture; we name this as the primary
 validation gap in \S\ref{sec:limitations}.}
 \label{fig:leakage_modes}
-\end{figure}
+\end{figure*}
 
 % ══════════════════════════════════════════════════════════════════════════════
 \global\skipbarriertrue
@@ -452,7 +471,7 @@ validation gap in \S\ref{sec:limitations}.}
 \SGA{} is an open-source reference implementation and audit pipeline, not a general-purpose library: it comprises five sequential
 modules (Figure~\ref{fig:pipeline}).
 
-\begin{figure}[!ht]
+\begin{figure*}[!tb]
 \centering
 \resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[
@@ -483,7 +502,7 @@ modules (Figure~\ref{fig:pipeline}).
          Modules are executed sequentially; each produces a versioned
          artefact consumed by the next.}
 \label{fig:pipeline}
-\end{figure}
+\end{figure*}
 
 \subsubsection{Metadata registry}
 Each image is assigned a row in a manifest with fields including
@@ -699,7 +718,7 @@ After training, \SGA{} evaluates trained model representations with a
 linear probe: probe accuracy above chance indicates residual shortcut
 encoding. In this release only the \emph{subject-identity} probe is
 implemented and reported (\S\ref{sec:exp2_probe},
-\texttt{scripts/run\_biometric\_probe\_adni.py}), because
+\texttt{scripts/\pb run\_biometric\_probe\_adni.py}), because
 subject identity is the channel the component-safe split is designed
 to close. Probes for dataset source, site/scanner, and demographic
 attributes follow the same construction and are the natural extension
@@ -755,7 +774,7 @@ We recovered the origin by content. Every image was matched against
 axial slices of all $436$ OASIS-1 cross-sectional volumes in their
 processed, atlas-registered, masked form
 (\texttt{T88\_111/*\_masked\_gfc};
-\texttt{scripts/audit\_tier1\_ground\_truth.py}). All $6{,}400$
+\texttt{scripts/\pb audit\_tier1\_ground\_truth.py}). All $6{,}400$
 images match unambiguously: the lowest correlation between an image
 and its matched slice is $0.9996$, while the highest correlation any
 image reaches with a slice of a \emph{different} participant is
@@ -792,7 +811,7 @@ participant the model was trained on. Table~\ref{tab:tier1_rules}
 repeats that measurement for every grouping rule the release
 supports.
 
-\begin{table}[!ht]
+\begin{table*}[!tb]
 \centering
 \footnotesize
 \caption{Every grouping rule the Tier-1 release supports, measured
@@ -819,7 +838,7 @@ Near-duplicate $d \leq 8$ alone     & 999 & 1{,}770 & $99.5\%$ $[99.0, 100]$  & 
 Recovered participant               & 200 & 32      & $0\%$                   & $0 / 29.0$ \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 \paragraph{Near-duplicate structure, read against ground truth}
 No exact SHA-256 duplicates exist. The near-duplicate detector (dHash
@@ -865,7 +884,7 @@ The clinical spreadsheet contains 436 session rows from 416 unique
 subjects, including 20 MR2 reliability sessions.
 For each session, \SGA{} selectively extracts one processed masked T88
 MPRAGE Analyze pair
-(\texttt{PROCESSED/MPRAGE/T88\_111/*\_masked\_gfc.img/.hdr}) without
+(\texttt{PROCESSED/\pb MPRAGE/\pb T88\_111/\pb *\_masked\_gfc.img/\pb .hdr}) without
 fully expanding the raw archives.
 
 CDR is used as the primary clinical label: CDR \(=0\) is mapped to
@@ -902,7 +921,7 @@ sensitivity arm (\S\ref{sec:exp6_adni}).
 
 \input{tables/adni_demographics}
 
-\begin{figure}[!ht]
+\begin{figure*}[!tb]
 \centering
 \begin{tikzpicture}[
     node distance=4pt,
@@ -966,7 +985,7 @@ from the CN-vs-AD task by construction, and 289 CN/AD scans
 excluded from the primary arm and re-included in the sensitivity arm
 (\S\ref{sec:exp6_adni}).}
 \label{fig:adni_dataflow}
-\end{figure}
+\end{figure*}
 
 Diagnosis labels are taken from the ADNI diagnostic summary table
 (\texttt{DXSUM\_PDXCONV\_ADNIALL}) under a phase-aware visit-level
@@ -993,7 +1012,7 @@ the primary CN-vs-AD task).
 \paragraph{Linkage-integrity audit}
 Because every ADNI label in this study rests on this join, we
 account for it per scan in \texttt{adni\_linkage\_audit.csv}
-(\texttt{scripts/build\_linkage\_audit.py}; schema in Supplementary
+(\texttt{scripts/\pb build\_linkage\_audit.py}; schema in Supplementary
 Material~S5). The table is an ADNI-derived Tier-3 artefact and is
 therefore not redistributed with the release; the LONI data-use
 agreement permits only hashed derivatives, which a reader with ADNI
@@ -1061,9 +1080,9 @@ diagnosis throughout, so a converting participant contributes CN scans
 as CN and AD scans as AD within one component. The total inflation
 gap in the sensitivity arm (\AdniConvGap{}) is \emph{larger} than in
 the primary arm (\AdniGapTotal{}), so the exclusion does not drive the
-headline result (Table~\ref{tab:adni_robustness}).
+headline result.
 Removing these $289$ scans leaves $1{,}123$ CN/AD scans. The frozen
-frozen split manifests carry $1{,}125$ rows, because two scans whose
+split manifests carry $1{,}125$ rows, because two scans whose
 visit-level diagnosis did not resolve
 (\texttt{diagnosis\_group=unknown}, \S\ref{sec:data_adni}) are kept in
 the manifest and flagged there rather than deleted from it. They are
@@ -1079,42 +1098,6 @@ silently, because a manifest row count and an evaluated scan count are
 different quantities and conflating them is how a cohort size drifts. Figure~\ref{fig:adni_dataflow} summarises the
 end-to-end pipeline from the 10 LONI IDA archive zips through the
 slice-cached manifest to the per-seed splits.
-
-\subsection{Use of large-language-model tools}
-\label{sec:llm_use}
-The journal asks that any use of a large language model (LLM) be
-documented in the Methods, so we state it here rather than only in the
-Declarations. LLM-based coding assistants were used throughout the
-implementation of the released software: the training, audit, split-generation
-and analysis scripts, the orchestration and verification tooling, and the
-figure and table generators were written and revised with such assistance,
-as were drafts of this manuscript's prose. They were also used to find
-defects, two of which are worth naming because they are the kind of error
-this paper is about, silent and self-consistent. The volumetric trainer
-computed $1 - \mathrm{AUROC}$ from a
-descending rank sum, which would have selected the least-trained epoch of
-every volumetric run. It was found and corrected before that arm was
-trained, so the volumetric results in \S\ref{sec:exp6_adni} come from
-the corrected trainer. The label-permutation control of
-\S\ref{sec:permutation_null} shuffled labels inside each partition
-rather than once over the cohort, which preserved per-partition class
-balance and, by handing a participant who straddles a boundary a
-different label on each side, made identity memorisation impossible to
-detect. Its first run returned chance under every protocol and read as a
-clean null; the result reported here is from the corrected permutation.
-Neither defect would have shown in the numbers it produced, so the
-released code carries a regression test for each.
-
-What the tools did not do is decide anything. The study design, the
-protocol definitions, the choice of cohorts and arms, the pre-specification of
-the robustness arms, and the interpretation of every result are the authors'.
-No number in this manuscript was produced or altered by an LLM: every
-reported quantity is computed by the released scripts from the released
-manifests, and \texttt{scripts/verify\_paper\_numbers.py} re-checks each of
-them against the artefact it comes from, so a value that an LLM had
-introduced into the text would fail that check rather than survive it. No
-text, data or citation was accepted without author verification, and the
-authors take full responsibility for the content of this publication.
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Results}
@@ -1153,7 +1136,11 @@ The volumetric arm departs from that recipe in three ways that matter
 for reading it: a 3D ResNet-18 on $128^3$ volumes at batch size $4$ for
 $15$ epochs, trained from random initialisation rather than ImageNet
 weights, on z-scored volumes with no augmentation. Tier~1 additionally
-trains under CUDA mixed precision, which the other arms do not use. Every run was executed in one code state with
+trains under CUDA mixed precision, which the other arms do not use. An early
+version of the volumetric trainer computed $1-\mathrm{AUROC}$ from a
+descending rank sum, which would have selected the least-trained epoch of every
+run; it was corrected before this arm was trained, and the released code carries
+a regression test for it. Every run was executed in one code state with
 deterministic cuDNN kernels and seeded data loaders, on one NVIDIA H100
 except the dose-response matrix, rerun on an NVIDIA RTX PRO 4500, the
 volumetric arm, run on an NVIDIA RTX 2000 Ada, and the exact-linkage,
@@ -1224,7 +1211,7 @@ down. The distinction matters because the contamination is what a
 practitioner can check and the AUROC consequence is what they would
 have to take on faith.
 
-\begin{figure}[!htbp]
+\begin{figure*}[!tb]
 \centering
 \begin{subfigure}[t]{0.85\linewidth}
   \centering
@@ -1245,7 +1232,7 @@ have to take on faith.
          side-by-side so that the in-figure tick labels and bar
          annotations remain legible at print size.}
 \label{fig:tier1_overview}
-\end{figure}
+\end{figure*}
 
 \paragraph{What the three test sets are not}
 A random split spreads a participant's $32$ slices over all three
@@ -1266,7 +1253,7 @@ a disease feature; Protocol~B$'$ tracks it at a lower level, still
 lifted by the participants its key failed to group; Protocol~C$'$
 converges lowest and slowest.
 
-\begin{figure}[!ht]
+\begin{figure*}[!tb]
 \centering
 \includegraphics[width=0.85\linewidth]{fig05_learning_curves.pdf}
 \caption{Validation AUROC per epoch at seed $= 42$ for Protocol~A
@@ -1275,7 +1262,7 @@ converges lowest and slowest.
          distance between the first and last curves is the inflation the
          release's own identifier cannot remove.}
 \label{fig:learning_curves}
-\end{figure}
+\end{figure*}
 
 \paragraph{Tier-1 takeaway}
 Tier~1 is not an independent cohort and we no longer treat it as one: it
@@ -1306,8 +1293,8 @@ training (mean test-subject contamination
 Before we report the AUROC numbers, we surface the structural
 properties of the OASIS-1 slice manifest that bound the leakage
 surface \emph{a priori} (script:
-\texttt{scripts/oasis\_subject\_level\_summary.py};
-JSON: \texttt{reports/tables/oasis1\_subject\_level\_summary.json}).
+\texttt{scripts/\pb oasis\_subject\_level\_summary.py};
+JSON: \texttt{reports/\pb tables/\pb oasis1\_subject\_level\_summary.json}).
 Across the labelled subset ($n=235$ subjects with binary
 NonDemented/Demented labels; a further $181$ subjects are dropped for
 missing CDR at the labelling stage) OASIS-1 has $5$ coronal slices
@@ -1514,8 +1501,8 @@ $0.36$ ($\chi^2 = 178$, $p < 0.001$), reflecting the well-known fact
 that ADNI sites differ systematically in their CN/AD subject mix.
 Within the five frozen component-safe \SGA{} splits, this association
 is preserved rather than eliminated (script:
-\texttt{scripts/site\_scanner\_confound\_audit.py}; JSON:
-\texttt{reports/tables/adni/adni\_site\_scanner\_confound\_audit.json}).
+\texttt{scripts/\pb site\_scanner\_confound\_audit.py}; JSON:
+\texttt{reports/\pb tables/\pb adni/\pb adni\_site\_scanner\_confound\_audit.json}).
 Supplementary Table~S7 reports bias-corrected
 Cram\'{e}r's $V$ (Bergsma's small-sample correction~\cite{bergsma2013}) for
 site$\times$label and sex$\times$label across the five primary-arm
@@ -1536,7 +1523,7 @@ the component-safe construction is named as future work in
 \S\ref{sec:limitations}.
 
 
-\begin{figure}[!ht]
+\begin{figure*}[!tb]
 \centering
 \includegraphics[width=0.95\linewidth]{fig06_cross_cohort_inflation.pdf}
 \caption{Direction-preserved inflation gap on the two source cohorts
@@ -1554,7 +1541,7 @@ replications are reported in \S\ref{sec:exp5_oasis} (OASIS-1) and
 \S\ref{sec:exp6_adni} (ADNI); Tier~1 was run on ResNet-18 only; the figure shows
 ResNet-18 for visual parity with the rest of the paper.}
 \label{fig:cross_cohort}
-\end{figure}
+\end{figure*}
 
 Figure~\ref{fig:cross_cohort} places the ADNI gap in context under
 one reporting convention, paired-seed bootstrap intervals at
@@ -1585,7 +1572,7 @@ Figure~\ref{fig:arm_forest} consolidates the headline inflation
 results across both source cohorts, the redistributed benchmark, both
 backbones and every ADNI robustness arm in a single reporting frame.
 
-\begin{figure}[!ht]
+\begin{figure*}[!tb]
 \centering
 \includegraphics[width=\linewidth]{fig07_arm_forest.pdf}
 \caption{The two cross-cohort arms and the six ADNI robustness arms, as
@@ -1608,7 +1595,7 @@ on the same runs. The ADNI hierarchical (subject\,$\times$\,seed)
 bootstrap, the more defensible inferential cross-check, gives gap
 \AdniHierGap{}, CI \AdniHierCI{}, direction preserved.}
 \label{fig:arm_forest}
-\end{figure}
+\end{figure*}
 
 % ══════════════════════════════════════════════════════════════════════════════
 
@@ -1753,7 +1740,7 @@ The probe answers \emph{whether} identity is encoded; the degradation
 curve answers \emph{how much} of the inflation each grouping removes
 (Figure~\ref{fig:degradation}).
 
-\begin{figure}[!ht]
+\begin{figure*}[!tb]
 \centering
 \includegraphics[width=0.82\linewidth]{fig08_degradation_curve.pdf}
 \caption{Three-point degradation on Tier~1. Each step changes only
@@ -1763,7 +1750,7 @@ curve answers \emph{how much} of the inflation each grouping removes
          release can achieve; the second is what its lost provenance
          hides.}
 \label{fig:degradation}
-\end{figure}
+\end{figure*}
 
 
 The A$\to$B$'$ step is $\Delta$AUROC $=$ \TierOneGapFilename{} and
@@ -1977,8 +1964,8 @@ the training set should depress AUROC at high $p$, while the class
 enrichment above has no clear sign. The slope is consequently descriptive
 of this substitution procedure as a whole, and is not a causal price per
 unit of realised leakage. Both quantities are measured by
-\texttt{scripts/analyze\_dose\_response\_composition.py} and reported in
-\texttt{reports/tables/adni/adni\_dose\_response\_composition.json}. We report it rather than correct it
+\texttt{scripts/\pb analyze\_dose\_response\_composition.py} and reported in
+\texttt{reports/\pb tables/\pb adni/\pb adni\_dose\_response\_composition.json}. We report it rather than correct it
 because the two cannot be separated without changing the injection
 mechanism, and because the two cannot be separated without changing the
 mechanism: the slope is used only as a floor
@@ -2060,7 +2047,7 @@ Supplementary Material~S4. Density-choice
 qualifications and finer-grid trade-offs are discussed in
 \S\ref{sec:limitations}.
 
-\begin{figure}[!ht]
+\begin{figure*}[!tb]
 \centering
 \includegraphics[width=0.98\linewidth]{fig11_dose_response.pdf}
 \caption{ADNI leakage dose-response on the converter-inclusive
@@ -2078,7 +2065,7 @@ architecture-specific calibration point on this ADNI universe and this
 2D-slice representation, not a claim that the slope generalises to
 other cohorts or 3D representations.}
 \label{fig:dose_response}
-\end{figure}
+\end{figure*}
 
 \paragraph{Interpretation}
 The dose-response is approximately linear over the entire $[0,1]$
@@ -2192,7 +2179,7 @@ admits without routing the question through a trained model, and it is
 therefore free of the seed-variance and test-set-size caveats that
 qualify the AUROC comparisons elsewhere in this paper.
 
-\begin{table}[!ht]
+\begin{table*}[!tb]
 \centering
 \small
 \caption{Provenance degradation on the ADNI1 primary arm ($220$
@@ -2217,9 +2204,9 @@ $50\%$  & $77.0 \pm 5.0$  & $53.6 \pm 6.6$  & $0.980$ & $0.807$ \\
 $100\%$ & $182.6 \pm 7.2$ & $125.4 \pm 1.3$ & $0.993$ & $0.990$ \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
-\begin{figure}[!ht]
+\begin{figure*}[!tb]
 \centering
 \includegraphics[width=\linewidth]{fig12_provenance_degradation.pdf}
 \caption{Provenance degradation on the ADNI1 primary arm, five seeds,
@@ -2236,7 +2223,7 @@ reads $78\%$ rather than $49\%$. The benefit peaks in the regime where
 redistributed benchmarks sit and decays once too few identifiers survive for
 any rule to bind on.}
 \label{fig:provenance_degradation}
-\end{figure}
+\end{figure*}
 
 \paragraph{Result}
 Figure~\ref{fig:provenance_degradation} and
@@ -2396,7 +2383,7 @@ one while losing the other. We print both columns rather than the one that
 reads better, and we compose the dose-response slope through the scan share,
 which is the conservative of the two (\S\ref{sec:adni_dose_response}).
 
-\begin{table}[!ht]
+\begin{table*}[!tb]
 \centering
 \small
 \caption{Residual leakage under structured provenance corruption, ADNI1
@@ -2436,9 +2423,9 @@ on both sides.}
  & $1$ & $0.0$ & $0.0$ & n/a & $0.000$ & $0.000$ \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
-\begin{table}[!ht]
+\begin{table*}[!tb]
 \centering
 \small
 \caption{AUROC consequence of each corruption cell on the ADNI1 primary
@@ -2475,7 +2462,7 @@ check on the pipeline.}
  & $1$ & $0.808$ & $0.808$ & $+0.000$ & $[+0.000,\, +0.000]$ & $0/5$ \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 \paragraph{What the prevented contamination is worth}
 Preventing contamination is worth reporting only if the contamination was
@@ -2575,7 +2562,7 @@ not whether the split was patient-wise. It is which regime the dataset
 is in, and that is answerable before training from the identifiers
 alone.
 
-\begin{table}[!ht]
+\begin{table*}[!tb]
 \centering
 \caption{\SGA{} benchmark report card for the ADNI1 primary-arm
 ResNet-18 model under the component-safe split (Protocol~C), seed means
@@ -2616,7 +2603,7 @@ NPV @ 58.9\% (memory clinic)               & \CardNPVClinic \\
 \multicolumn{2}{l}{\small Computed from sensitivity/specificity above; predictive values are} \\
 \multicolumn{2}{l}{\small prevalence-dependent and tracked at the same two anchors as \S\ref{sec:adni_cost_of_leakage}.} \\
 \end{tabular}
-\end{table}
+\end{table*}
 
 To illustrate the reporting format that \SGA{} produces alongside its
 splits, Table~\ref{tab:report_card} gives a benchmark report card for
@@ -3000,14 +2987,19 @@ tables are aggregate, and participant identifiers in the Tier-3
 manifests are replaced by a PBKDF2 derivation under a secret salt.
 
 \paragraph*{Use of generative AI}
-Large-language-model coding assistants were used to implement and revise
-the released software and to draft manuscript prose;
-\S\ref{sec:llm_use} documents this in the Methods, as the journal
-requires, and states what the tools did and did not do. The study design,
-the protocol definitions and the interpretation of every result are the
-authors'; no reported number was produced or altered by an LLM. The
-authors reviewed and edited all such output and take full responsibility
-for the content of this publication.
+Large-language-model coding assistants were used to implement and revise the
+released software, including the training, audit, split-generation and analysis
+scripts and the figure and table generators, and to draft manuscript prose.
+They were also used to locate defects, two of which are reported in the text
+because they are the kind of silent, self-consistent error this paper concerns.
+The study design, the protocol definitions, the choice of cohorts and arms and
+the interpretation of every result are the authors'. No reported number was
+produced or altered by an LLM: every quantity is computed by the released
+scripts from the released manifests, and
+\texttt{scripts/\pb verify\_paper\_numbers.py} re-checks each against the
+artefact that produced it, so a value introduced into the text would fail that
+check rather than survive it. The authors reviewed and edited all such output
+and take full responsibility for the content of this publication.
 
 \paragraph*{Author contributions}
 \textbf{Mehmet Berke Isler:} Conceptualization, Methodology,
@@ -3022,7 +3014,7 @@ Writing -- review \& editing, Project administration.
 \paragraph*{Data and code availability}
 The \SGA{} framework, the training and analysis pipeline, and the
 manuscript sources are released at
-\texttt{https://github.com/mehmetberkeisler/splitguard-ad} under the
+\texttt{https:/\pb /\pb github.com/\pb mehmetberkeisler/\pb splitguard-ad} under the
 Apache-2.0 licence.
 
 The release boundary is aggregate-only: scripts, paper sources,
@@ -3030,7 +3022,7 @@ figures, aggregate result tables and rebuild instructions are public,
 while raw data, model weights, local manifests, detailed audit rows
 and per-image predictions remain local. The manifest release
 boundary is tier-dependent, and the artefacts for each tier are
-materialised by \texttt{scripts/build\_release\_artefacts.py} into the
+materialised by \texttt{scripts/\pb build\_release\_artefacts.py} into the
 tracked \texttt{release/} directory, with a
 \texttt{RELEASE\_MANIFEST.json} recording the row counts and the
 columns withheld per tier. \textbf{Tier 1 (redistributed public benchmark)}:
@@ -3039,8 +3031,8 @@ image-path level ($6{,}400$ rows), its leakage-graph component table
 ($6{,}400$ rows) and the near-duplicate candidate list ($1{,}582$
 pairs), which together document the split whose contamination
 \S\ref{sec:data_kaggle} measures. The participant-level mapping to
-OASIS-1 is not released; \texttt{scripts/audit\_tier1\_ground\_truth.py}
-and \texttt{scripts/tier1\_split\_rules\_vs\_truth.py} regenerate it,
+OASIS-1 is not released; \texttt{scripts/\pb audit\_tier1\_ground\_truth.py}
+and \texttt{scripts/\pb tier1\_split\_rules\_vs\_truth.py} regenerate it,
 the recovered-participant splits and every Tier-1 contamination and
 calibration number from a user's own Kaggle and OASIS-1 downloads. \textbf{Tier 2
 (OASIS-1)}: image-level identifiers are not ours to redistribute but
@@ -3103,11 +3095,11 @@ intervals, controls and result tables from those predictions and
 writes them into generated files the manuscript reads, so those
 numbers are never transcribed by hand; the remaining quantities are
 computed by the analysis scripts and held to their artefacts by
-\texttt{scripts/verify\_paper\_numbers.py}, which fails on any
+\texttt{scripts/\pb verify\_paper\_numbers.py}, which fails on any
 divergence. Those per-image predictions carry ADNI participant
 identifiers and therefore stay local; what is released is the code
 that produces them, the aggregate outputs, and
-\texttt{scripts/verify\_paper\_numbers.py}, which re-derives every
+\texttt{scripts/\pb verify\_paper\_numbers.py}, which re-derives every
 numerical claim from those outputs and fails the build on any
 divergence. Model weights are not released, because weights trained on
 participant-level data fall under the same data-use terms as the data.

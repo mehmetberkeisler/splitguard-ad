@@ -136,6 +136,19 @@ class ManuscriptCitationsResolveTests(unittest.TestCase):
 
     PATH_RE = re.compile(r"^[\w./-]+\.(py|sh|csv|json|txt|tex|md|yml)$")
 
+    @staticmethod
+    def strip_typesetting(literal: str) -> str:
+        """The path a \\texttt span names, with the typesetting removed.
+
+        LaTeX escapes underscores and percent signs, and \\pb is the zero-width
+        break a two-column measure needs inside a long path. None of them is
+        part of the name being cited. Leaving \\pb in silently cut this check
+        from 19 paths to 9 when the two-column layout arrived, which is why the
+        guard below recomputes its own floor through this same function.
+        """
+        return (literal.replace("\\pb ", "").replace("\\pb", "")
+                .replace("\\_", "_").replace("\\%", "%").strip())
+
     def cited_paths(self) -> set[str]:
         paths = set()
         for name in ("splitguard_ad.tex", "SplitGuard-AD_Supplementary_Material.tex"):
@@ -144,8 +157,7 @@ class ManuscriptCitationsResolveTests(unittest.TestCase):
                 continue
             text = doc.read_text(encoding="utf-8", errors="ignore")
             for literal in re.findall(r"\\texttt\{([^}]*?)\}", text):
-                # LaTeX escapes underscores and percent signs in \texttt.
-                candidate = literal.replace("\\_", "_").replace("\\%", "%").strip()
+                candidate = self.strip_typesetting(literal)
                 if "/" in candidate and self.PATH_RE.match(candidate):
                     paths.add(candidate)
         return paths
@@ -163,13 +175,45 @@ class ManuscriptCitationsResolveTests(unittest.TestCase):
         self.assertEqual(missing, [],
                          "the manuscript names a path the release does not contain")
 
-    def test_the_check_actually_found_some_paths(self):
-        """Guard against the regex silently matching nothing."""
-        cited = self.cited_paths()
+    def test_the_scan_parses_every_path_shaped_span(self):
+        """The scan must not quietly stop recognising paths.
+
+        A fixed floor is not enough. Introducing the two-column layout put a
+        zero-width break macro inside long paths, the normalisation did not
+        strip it, and this check silently fell from 19 paths to 9 while still
+        satisfying a "more than five" assertion.
+
+        The floor is therefore computed from the source: count the spans that
+        are path-shaped before any normalisation, and require the parser to
+        recover them.
+        """
         if not (ROOT / "paper" / "splitguard_ad.tex").is_file():
             self.skipTest("no manuscript sources in this checkout")
-        self.assertGreater(len(cited), 5,
-                           "the citation scan found almost nothing, so it proves nothing")
+
+        # Distinct spans, not occurrences: several paths are cited twice, and
+        # cited_paths returns a set.
+        shaped = set()
+        for name in ("splitguard_ad.tex", "SplitGuard-AD_Supplementary_Material.tex"):
+            doc = ROOT / "paper" / name
+            if not doc.is_file():
+                continue
+            text = doc.read_text(encoding="utf-8", errors="ignore")
+            for literal in re.findall(r"\\texttt\{([^}]*?)\}", text):
+                # The extension list is written out again here on purpose.
+                # Sharing PATH_RE would mean narrowing it blinds the scan and
+                # this guard together, and the guard would stay green while the
+                # check it protects stopped looking at anything.
+                if "/" in literal and re.search(
+                        r"\.(py|sh|csv|json|txt|tex|md|yml|ya?ml|cff|toml)\b", literal):
+                    shaped.add(self.strip_typesetting(literal))
+
+        shaped = len(shaped)
+        parsed = len(self.cited_paths())
+        self.assertGreater(parsed, 5, "the scan found almost nothing, so it proves nothing")
+        self.assertGreaterEqual(
+            parsed, shaped,
+            f"the manuscript holds {shaped} path-shaped spans but the scan recovered "
+            f"{parsed}; the normalisation has stopped keeping up with the typesetting")
 
 
 class PinsMatchTheRecordedEnvironmentTests(unittest.TestCase):
