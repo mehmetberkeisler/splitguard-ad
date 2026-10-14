@@ -2604,6 +2604,61 @@ checks pass on a Tier-1 manifest built from the release's own
 identifier, and only the provenance row would have shown that nothing
 guaranteed they meant anything.
 
+\subsection{Why contamination audits disagree about inflation}
+\label{sec:audits_disagree}
+
+Two concurrent audits of public neuroimaging benchmarks reach apparently
+opposite conclusions, and the three regimes explain the disagreement without
+either being wrong.
+
+Sifat \etal~\cite{aljuhani2026leakageaware} examine the same Kaggle
+redistribution studied here and report, from the slice captions the release
+supplies, that its subject count does not match the labelled OASIS-1 cohort.
+That is the same provenance failure we characterise, reached from the
+identifiers the release carries rather than from the images. What a caption
+cannot settle is which participant an image actually belongs to, and therefore
+how much contamination a correct grouping still admits. Recovering that
+required matching the images against the source cohort, which places the
+finding in Regime~III rather than merely flagging an inconsistency.
+
+Vangala \etal~\cite{scoresthathold2026} audit three public brain-tumour
+corpora and reach the stronger claim that contamination does not surface as an
+inflated score: removing every near-duplicate test image leaves balanced
+accuracy essentially unchanged. Their measurements are careful and their
+patient-level figures are explicitly reported as lower bounds, because only
+$12.6\%$ of their test split could be traced to a patient identifier. We read
+their result as compatible with ours, and the reason is a difference in what
+the two designs can detect.
+
+Their comparison removes duplicated images from the test partition and
+re-scores a model that was trained once; no retraining is involved, so the
+training split still contains those images. Two things follow. A model that has
+memorised a participant retains that memory after the participant's duplicated
+images are deleted from the test set, and continues to benefit from whichever
+of that participant's images remain. And the identity channel is not confined
+to near-duplicates: in their own corpus, $28.8\%$ of test images have a
+near-twin in training while $95.5\%$ of the traceable ones share a
+\emph{participant} with training. Deleting the first layer leaves the second
+intact. Their design therefore measures whether duplicated test items are
+easier to classify, which is a real and useful question, and not whether the
+model learned to recognise participants.
+
+Separating those two requires an intervention on the training side. The
+protocol comparison of \S\ref{sec:exp6_adni} retrains under each grouping, and
+the permutation control of \S\ref{sec:permutation_null} removes the disease
+signal altogether: with diagnosis permuted across participants, random
+splitting still reaches $0.878$ AUROC while both patient-aware protocols sit at
+chance. A model with no pathology available to learn cannot be exploiting
+pathology. Vangala \etal{} offer three candidate explanations for their null
+and establish none of them; the permutation control discriminates between
+exactly these alternatives, and we report it for that reason.
+
+The practical consequence is narrower than a disagreement and more useful. A
+deduplication audit, which is the field's common instrument, cannot detect
+participant-identity leakage, and a benchmark that passes one has not been
+shown to be sound. The weaker point still stands in both papers: a stable score
+is not evidence that an evaluation is clean.
+
 \subsection{Clinical and field-level implications}
 \label{sec:discussion_clinical}
 
