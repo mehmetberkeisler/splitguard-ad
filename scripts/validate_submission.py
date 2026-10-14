@@ -134,7 +134,12 @@ def main() -> int:
             "a substantive statement is required, not a heading")
 
     # ── Bibliography ────────────────────────────────────────────────────
-    cited = {k.strip() for m in re.finditer(r"\\cite[tp]?\{([^}]*)\}", text)
+    # The manuscript and the supplement are submitted together and share one
+    # references.bib, so a key cited in either is cited. Checking the main text
+    # alone would report every reference used only in the supplement as dead,
+    # which is what happened when the extended material moved there.
+    cite_text = text + "\n" + strip_comments(SUPP.read_text(encoding="utf-8"))
+    cited = {k.strip() for m in re.finditer(r"\\cite[tp]?\{([^}]*)\}", cite_text)
              for k in m.group(1).split(",") if k.strip()}
     defined = set(re.findall(r"^@\w+\{([^,]+),", BIB.read_text(encoding="utf-8"), re.M))
     r.check(f"every citation resolves ({len(cited)} keys)", not (cited - defined),

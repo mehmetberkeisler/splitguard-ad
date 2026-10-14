@@ -584,7 +584,7 @@ def robustness_table(summary: dict, path: Path) -> None:
         "which is the paper's headline, the subject part (A$-$B) and the component "
         "marginal (B$-$C), which is its null result; all three are measured on the same "
         "runs. Intervals are paired-seed bootstrap at $B = 10{,}000$.}\n"
-        "\\label{tab:adni_robustness}\n\\begin{tabular}{@{}lccc@{}}\n\\toprule\n"
+        "\\label{tab:adni_robustness}\n\\footnotesize\n\\begin{tabular}{@{}lccc@{}}\n\\toprule\n"
         "\\textbf{Arm} & \\textbf{A$-$C} & \\textbf{A$-$B} & "
         "\\textbf{B$-$C} \\\\\n\\midrule\n" + "\n".join(rows) +
         "\n\\bottomrule\n\\end{tabular}\n\\end{table}\n", encoding="utf-8")
