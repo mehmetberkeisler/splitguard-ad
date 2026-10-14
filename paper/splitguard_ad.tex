@@ -682,18 +682,12 @@ RNG seed $s$
 \end{algorithm}
 
 \paragraph{Implementation note}
-The double loop on lines 2--6 of Algorithm~\ref{alg:splitguard} is
-shown in $\mathcal{O}(N^2)$ form for clarity; in implementation,
-exact identifier edges (subject, session, series UID, acquisition date,
-SHA-256) use hash-grouping in $\mathcal{O}(N)$. The near-duplicate
-comparison is the exception: it is currently evaluated over all
-$\binom{N}{2}$ pairs, which is tractable at the scale studied here
-($N \leq 6{,}400$) but is the component that would need
-locality-sensitive indexing before the framework is applied to
-repositories of $10^5$ images or more. Identifier-edge construction
-completes in $<1$~ms per cohort on a consumer CPU, so framework
-runtime is dominated by image ingestion and by the pairwise hash
-comparison.
+Algorithm~\ref{alg:splitguard} shows the double loop in $\mathcal{O}(N^2)$ form
+for clarity; exact identifier edges are implemented by hash-grouping in
+$\mathcal{O}(N)$. The near-duplicate comparison is the exception, evaluated
+over all $\binom{N}{2}$ pairs, which is tractable at the scale studied here
+($N \leq 6{,}400$) and is the component that would need locality-sensitive
+indexing at $10^5$ images or more.
 
 \paragraph{Protocol nomenclature}
 Throughout the experiments we evaluate three split protocols on the
@@ -701,14 +695,11 @@ same image universe:
 \begin{description}
   \item[Protocol A (Random, leaky).] Random image-level shuffle into
         train/val/test; the conventional benchmark setup.
-  \item[Protocol B (Subject-only).] Split by inferred subject identity:
-        all images from one subject land in a single partition, but
-        connected-component and near-duplicate safety are \emph{not}
-        enforced. When subject identity is unavailable, or when leakage
-        components coincide with subject boundaries, Protocol~B is not
-        separately informative from Protocol~C; we therefore report it
-        only where it isolates a distinct safety layer (the ADNI
-        experiments in \S\ref{sec:exp6_adni}).
+  \item[Protocol B (Subject-only).] Split by the supplied subject
+        identity: all images of one subject land in one partition, with
+        no component or near-duplicate constraint. Reported where it
+        isolates a distinct layer, chiefly the ADNI experiments of
+        \S\ref{sec:exp6_adni}.
   \item[Protocol C (Component-safe, \SGA{}).] Full leakage-graph
         component-safe split: subject identity, scanner-session
         re-acquisitions, and near-duplicate components are all
@@ -867,33 +858,27 @@ No exact SHA-256 duplicates exist. The near-duplicate detector (dHash
 at $16 \times 16$, a $256$-bit code, Hamming $d \leq 4$) flags
 $1{,}582$ candidate pairs, of which $1{,}559$ ($98.5\%$) join two
 slices of the same participant and $1{,}526$ join slices one position
-apart in the same volume. Of the $57$ pairs that straddle the frozen
-partitions, the recovered identities make $52$ the same participant
-and $5$ different participants. The filename key had called $36$ of
-those $57$ pairs ``different subjects''; in $31$ of them the key was
-wrong and the detector was right. Read against the release's own
-identifier the detector looks like a $63\%$ false-positive rate; read
-against ground truth its cross-partition output is $91\%$ true
-leakage. Only the recovered provenance distinguishes the two
-readings, which is the point: an audit that can only compare a
-detector against the identifiers it already has will systematically
+apart in the same volume. Of the $57$ pairs that straddle the frozen partitions, the recovered
+identities make $52$ the same participant and $5$ different. The filename key
+had called $36$ of those $57$ ``different subjects'', and in $31$ of them the
+key was wrong and the detector right. Read against the release's own identifier
+the detector looks like a $63\%$ false-positive rate; read against ground truth
+its cross-partition output is $91\%$ true leakage. An audit that can only
+compare a detector against the identifiers it already holds will systematically
 mistake a broken identifier for a false alarm.
 
 \paragraph{Calibrating the detector}
-With every pair's identity known, the threshold can be calibrated
-over all $20{,}476{,}800$ pairs instead of argued for. At $d \leq 4$
-the detector is precise and sparse: precision $0.986$ and recall $0.246$ of
-adjacent-slice pairs, which is $0.016$ of all pairs sharing a
-participant, at a false-positive rate of $1.1 \times 10^{-6}$. At $d \leq 8$ it is
-sensitive and unusable as a blocking rule: precision $0.699$, recall
-$0.816$ of adjacent slices, false-positive rate
-$1.3 \times 10^{-4}$, which at this corpus size is the $8{,}636$
-pairs that collapse the graph in Table~\ref{tab:tier1_rules}. The
-median Hamming distance between two slices of the same participant is
-$33$ bits against $35$ between participants, so what the detector
-separates is \emph{neighbouring slices}, not participants. This is
-the precise sense in which perceptual hashing cannot stand in for a
-participant identifier.
+With every pair's identity known the threshold is calibrated over all
+$20{,}476{,}800$ pairs rather than argued for. At $d \leq 4$ it is precise and
+sparse (precision $0.986$, recall $0.246$ of adjacent-slice pairs, $0.016$ of
+all same-participant pairs, false-positive rate $1.1 \times 10^{-6}$); at
+$d \leq 8$ it is sensitive and unusable as a blocking rule (precision $0.699$,
+recall $0.816$, false-positive rate $1.3 \times 10^{-4}$, the $8{,}636$ pairs
+that collapse the graph in Table~\ref{tab:tier1_rules}). The median Hamming
+distance between two slices of one participant is $33$ bits against $35$
+between participants, so the detector separates neighbouring slices, not
+participants, and perceptual hashing cannot stand in for a participant
+identifier.
 
 \subsubsection{Tier 2: OASIS-1}
 \label{sec:data_oasis}
@@ -1032,35 +1017,20 @@ diagnosis cannot be resolved (kept in the manifest with
 the primary CN-vs-AD task).
 
 \paragraph{Linkage-integrity audit}
-Because every ADNI label in this study rests on this join, we
-account for it per scan in \texttt{adni\_linkage\_audit.csv}
-(\texttt{scripts/\pb build\_linkage\_audit.py}; schema in Supplementary
-Material~S5). The table is an ADNI-derived Tier-3 artefact and is
-therefore not redistributed with the release; the LONI data-use
-agreement permits only hashed derivatives, which a reader with ADNI
-access regenerates from their own download by running that script. Each row records the scan identifier, a salted PBKDF2
-derivation of the participant identifier, the acquisition date, the
-join tier, the source column, and whether the scan enters the CN-vs-AD
-universe. Of the $2{,}182$ scans, $1{,}695$ ($77.7\%$) were labelled
-through a direct \texttt{(RID, VISCODE)} match, $485$ ($22.2\%$)
-required the 180-day date-proximity fallback, and $2$ ($0.1\%$)
-remained unresolved; these last two are the
-\texttt{diagnosis\_group=unknown} scans discussed above. That roughly
-one label in five depends on a date match rather than an exact visit
-key is a real limitation of the label chain, and stating it is not
-enough: we also measure what it costs. The primary arm is the worst
-case for it. Of its $1{,}123$ CN-vs-AD scans, $841$ are labelled through the exact
-visit key and $282$ ($25.1\%$) through the date fallback. That share
-exceeds the whole CN-vs-AD universe's $297$ of $1{,}412$ ($21.0\%$, against
-$1{,}115$ on the exact key), because the converter components this arm
-excludes are almost fully covered by the visit key ($5.2\%$ date-only). The
-exact-linkage arm of \S\ref{sec:exp6_adni} therefore retrains all
-three protocols on the $841$, keeping the same $220$ participants, and
-asks whether the headline gap rests on the weaker quarter of the label
-chain. Participant identifiers are hashed under a
-secret per-release salt for the same reason as the Tier-3 manifest:
-ADNI PTIDs are low-entropy, so a published salt would make the file
-re-identifiable.
+Every ADNI label rests on this join, so it is accounted for per scan in
+\texttt{adni\_linkage\_audit.csv} (\texttt{scripts/\pb build\_linkage\_audit.py};
+schema and provenance in Supplementary Material~S5). Of the $2{,}182$ scans,
+$1{,}695$ ($77.7\%$) were labelled through a direct \texttt{(RID, VISCODE)}
+match, $485$ ($22.2\%$) through the 180-day date-proximity fallback, and $2$
+($0.1\%$) remained unresolved. The primary arm is the worst case: of its
+$1{,}123$ CN-vs-AD scans, $841$ carry the exact visit key and $282$ ($25.1\%$)
+the date fallback, against $297$ of $1{,}412$ ($21.0\%$, with $1{,}115$ on the
+exact key) in the whole CN-vs-AD universe, because the converter components
+this arm excludes are almost fully covered by the visit key ($5.2\%$
+date-only). That one label in four rests on a date match is a limitation of
+the label chain, so the exact-linkage arm of \S\ref{sec:exp6_adni} retrains
+all three protocols on the $841$, keeping the same $220$ participants, and
+asks whether the headline gap survives without the weaker quarter.
 
 For apples-to-apples comparison with Tier 2, each volume is reduced to
 a single 2D coronal-centre slice. The slice is computed once at ingest
@@ -1858,24 +1828,15 @@ of producing is not there. What it does mean for the audit gate, which
 passed this split on every check it performs, is taken up in
 \S\ref{sec:limitations}.
 
-The dominant practical
-recommendation is therefore straightforward and not novel, split by
-subject identity. The leakage-graph machinery (component-level and
-near-duplicate edges) costs essentially nothing on cohorts with clean
-participant identifiers, and buys nothing measurable there either: we
-claim no \emph{AUROC} benefit from it on ADNI or OASIS-1.
-\S\ref{sec:provenance_degradation} shows what it does buy, on the axis
-where it can: structural protection against patient leakage once
-subject identifiers start disappearing. We can, however, exhibit the failure mode
-it exists for, which the next paragraph does. We retain the
-component-safe construction as the conservative default in the
-pre-training GO/NO-GO gate; readers running the framework on cohorts
-where subject identity is clean and converter-free should expect the
-component-safe and subject-only protocols to be statistically
-indistinguishable. The honest contribution claim is therefore
-infrastructural (an executable AD-specific audit with a binary
-gate), not that the component-graph layer outperforms a careful
-subject-aware GroupKFold on every cohort.
+The practical recommendation on a cohort like this one is therefore the
+familiar one, split by participant identity. The component and near-duplicate
+layers cost almost nothing here and buy nothing measurable either, and we claim
+no AUROC benefit from them on ADNI or OASIS-1. What they buy appears on the
+axis where it can, once identifiers begin to disappear
+(\S\ref{sec:provenance_degradation}). Readers running the framework on a
+cohort with clean, converter-free identities should expect the component-safe
+and subject-only protocols to be indistinguishable, and should read that as the
+instrument reporting correctly rather than as a disappointment.
 
 \paragraph{Where grouping by the available identifier is blind}
 \label{sec:subject_inference_failure}
@@ -1901,24 +1862,15 @@ number it reports cannot be interpreted.
 \subsection{What the gap costs at a screening operating point}
 \label{sec:adni_subgroup}
 
-Running both leaky and honest protocols on the same ADNI universe is
-not just a robustness check; it surfaces \emph{two} findings that the
-leaky benchmark would have concealed. First, a sex-related performance
-disparity emerges under both honest protocols and collapses to
-indistinguishable from zero under the leaky one
-(Supplementary Material~S6). Sex differences in AD are well documented: in atrophy rates on ADNI
-itself~\cite{hua2010sex}, in verbal-memory reserve that can delay
-diagnosis in women~\cite{sundermann2016female}, and in incidence and
-prevalence~\cite{mielke2014clinical}, so a protocol that conceals a
-performance disparity between sexes conceals something the clinical
-literature says should be looked for. We report ours as exploratory
-and do not attribute it to any of these mechanisms. Second, the AUROC gap translates into
-a concrete clinical cost-of-leakage at the screening operating point
-that a clinician trusting the leaky number would systematically
-underestimate (\S\ref{sec:adni_cost_of_leakage}). Both findings rely on
-the per-image test predictions persisted by the converter-inclusion
-sensitivity arm; both rely on the framework's audit-and-prevent design
-to render them visible.
+Running both protocols on the same universe surfaces two findings the leaky
+benchmark conceals. A sex-related performance disparity emerges under both
+honest protocols and collapses to indistinguishable from zero under the leaky
+one (Supplementary Material~S6); sex differences in AD are well
+documented~\cite{hua2010sex,sundermann2016female,mielke2014clinical}, and we
+report ours as exploratory without attributing it to any of those mechanisms.
+The gap also translates into a screening-operating-point cost that a reader of
+the leaky number would underestimate (\S\ref{sec:adni_cost_of_leakage}). Both
+rest on the per-image predictions persisted by the converter-inclusion arm.
 
 \subsubsection{Cost-of-leakage as an arithmetic illustration}
 \label{sec:adni_cost_of_leakage}
@@ -2092,31 +2044,23 @@ other cohorts or 3D representations.}
 \end{figure}
 
 \paragraph{Interpretation}
-The dose-response is approximately linear over the entire $[0,1]$
-overlap range, with one qualification we state rather than smooth
-over: the ResNet-18 increments shrink monotonically across the sweep
-($+0.046$, $+0.035$, $+0.025$, $+0.020$) and the DenseNet-121 mean
-falls slightly at the last step ($0.9403$ at $p=0.75$ to $0.9387$ at
-$p=1$). That is a mild saturation as the leaky endpoint is approached,
-which is what a bounded metric does near its ceiling, and not a
-threshold below which contamination is harmless. No threshold effect
-appears anywhere in the range, which is consistent with the
-biometric-probe finding
-(\S\ref{sec:exp2_probe}) that subject identity is encoded as a
-roughly continuous signal in 2D MRI representations. Both
-architectures' $p=1$ endpoints converge near the Protocol~A leaky
-AUROC, as expected: $100\%$ subject overlap is mechanically
-equivalent to the random-split condition. The DenseNet-121 curve has
-a higher baseline AUROC at $p=0$ ($0.853$ vs.\ $0.814$) and a flatter
-slope ($+\DoseDenseSlope{}$ vs.\ $+\DoseSlope{}$). The two mixed-effects slope
-intervals overlap ($[0.0866, 0.1636]$ vs.\ $[0.0416, 0.1396]$;
-Supplementary~S4) and we run no formal difference test, so the two
-architectures' dose-response slopes are not distinguishable at five
-seeds and we draw no inference about backbone capacity. The DenseNet $R^2$ of $0.64$ still
-trails the ResNet-18 fit, and no DenseNet seed is monotonic across all
-five overlaps: with five seeds per overlap and a smaller endpoint
-separation, the trend is carried by the seed average rather than
-visible within any single seed.
+The response is approximately linear across the whole $[0,1]$ range, with a
+mild saturation near the leaky end: the ResNet-18 increments shrink across the
+sweep ($+0.046$, $+0.035$, $+0.025$, $+0.020$) and the DenseNet-121 mean dips
+at the last step ($0.9403$ at $p=0.75$ to $0.9387$ at $p=1$). That is what a
+bounded metric does near its ceiling, not a threshold below which contamination
+is harmless; no threshold appears anywhere in the range.
+
+Both architectures converge at $p=1$ on the Protocol~A level, which is the same
+convergence the deletion sweep produces from the other direction: total subject
+overlap and absent identifiers are two routes to the same condition. The
+DenseNet-121 curve starts higher ($0.853$ against $0.814$ at $p=0$) and is
+flatter ($+\DoseDenseSlope{}$ against $+\DoseSlope{}$), but the mixed-effects
+slope intervals overlap ($[0.0866, 0.1636]$ against $[0.0416, 0.1396]$;
+Supplementary~S4), its $R^2$ of $0.64$ trails the ResNet-18 fit and no DenseNet
+seed is monotonic across all five overlaps. We run no difference test and draw
+no inference about backbone capacity: at five seeds the trend is carried by the
+seed average rather than visible within a seed.
 
 \paragraph{Practical use, and why the slope is a floor}
 Equation~\ref{eq:dose_response} converts a measured test-subject
@@ -2129,36 +2073,21 @@ while thinning the training set as it does so. A naive split on a real cohort ad
 through slices of one volume, near-duplicates and re-acquisitions, none
 of which the slope sees.
 
-Two of the three cohorts bear this out, and the third does not; we give
-all three rather than the two that agree. Under random splitting,
-contamination is essentially complete on every one: on ADNI1 because
-participants contribute about five scans each, on Tier~1 because a
-participant's $32$ slices are all but certain to land on both sides of
-the split, and on OASIS-1 where $99.5\%$ of test subjects also appear in
-training. The equation therefore predicts a drop of
-at most $\DoseSlope{}$ on each, against a measured \AdniConvGap{} on the
-converter-inclusive ADNI1 arm the injected splits are built from and
-\TierOneGapTotal{} on Tier~1, and the larger shortfall on Tier~1
-is what one would expect where adjacent slices of one volume add a
-channel the slope does not price. On the converter-excluding primary
-arm the measured gap is \AdniGapTotal{}, which the predicted floor now
-matches to within $0.01$. OASIS-1 is the case that does not fit: its
-contamination is as complete as the others' yet its gap is
-\OasisGapTotal{}, roughly a third of the predicted floor, so on that
-cohort the floor is not a floor. We take this as the boundary of the
-calibration rather than a refutation of it: OASIS-1 contributes five
-slices per participant from a single cross-sectional visit, so a
-contaminated test image resembles its training counterpart far less than
-a repeat visit of the same ADNI participant does, and the slope was
-fitted where repeat structure is the dominant form of overlap. The
-margin the floor leaves is therefore a property of
-the cohort it is applied to, not a guarantee, and on a cohort whose
-identity channel is the whole of its leakage the floor is the estimate. Used as a point estimate the
-equation would tell a reader their honest AUROC is higher than it is,
-the wrong direction to err in for a quantity whose purpose is to
-correct over-reporting. Used as a floor it answers the question worth asking of
-a benchmark: whether the contamination present is large enough to
-matter at all.
+Two of the three cohorts bear this out and the third does not; we give all
+three. Under random splitting contamination is essentially complete on each,
+including $99.5\%$ of OASIS-1 test subjects, so the equation predicts a drop of
+at most $\DoseSlope{}$. Measured gaps are \AdniConvGap{} on the
+converter-inclusive ADNI1 arm the injected splits are built from,
+\TierOneGapTotal{} on Tier~1, where adjacent slices of one volume add a channel
+the slope does not price, and \AdniGapTotal{} on the primary arm, which the
+floor matches to within $0.01$. OASIS-1 does not fit: its contamination is as
+complete yet its gap is \OasisGapTotal{}, roughly a third of the prediction. We
+read that as the boundary of the calibration rather than a refutation, since
+OASIS-1 contributes five slices from one cross-sectional visit while the slope
+was fitted where repeat visits dominate. Used as a point estimate the equation
+would overstate a reader's honest AUROC, which is the wrong direction for a
+quantity meant to correct over-reporting; used as a floor it answers whether
+the contamination present is large enough to matter.
 
 
 % ------------------------------------------------------------------------------
