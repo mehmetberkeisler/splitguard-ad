@@ -276,6 +276,24 @@ def main() -> int:
         c.check("hierarchical CI lo", g.get("ci_lo"), 3, origin=str(p))
         c.check("hierarchical CI hi", g.get("ci_hi"), 3, origin=str(p))
 
+    # ── The endpoint comparison the manuscript leads with ───────────────
+    # Subject-wise splitting at both ends of the identifier sweep against the
+    # random-split baseline. These three intervals carry the paper's headline
+    # claim, so they are held to the artefact that computes them rather than
+    # being read off a figure.
+    p = TABLES / "adni_provenance_endpoint.json"
+    d = load(p)
+    if d:
+        for key, label in (("intact_identifiers_subject_wise", "endpoint intact"),
+                           ("destroyed_identifiers_subject_wise", "endpoint destroyed"),
+                           ("random_split_reference", "endpoint random reference")):
+            blk = d.get(key) or {}
+            c.check(f"{label} mean", blk.get("mean"), 3, origin=str(p))
+            c.check(f"{label} CI lo", blk.get("ci_lo"), 3, origin=str(p))
+            c.check(f"{label} CI hi", blk.get("ci_hi"), 3, origin=str(p))
+        c.check("endpoint inflation across the sweep",
+                d.get("inflation_intact_to_destroyed"), 3, origin=str(p))
+
     # ── Dose-response composition ───────────────────────────────────────
     # The arm was described for several drafts as injecting contamination into
     # a fixed training set. It does not: inject_leakage_split.py moves each

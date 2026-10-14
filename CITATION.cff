@@ -28,8 +28,8 @@ authors:
 preferred-citation:
   type: article
   title: >-
-    Patient Leakage Under Degraded Data Provenance in Alzheimer's Disease MRI
-    Deep Learning: Controlled Experiments and the SplitGuard-AD Audit
+    Patient-Wise Splitting Degrades Into Random Splitting as Participant
+    Identifiers Fail: A Controlled Measurement in Alzheimer's Disease MRI
   authors:
     - family-names: "Isler"
       given-names: "Mehmet Berke"

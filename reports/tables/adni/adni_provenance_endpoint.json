@@ -1,0 +1,33 @@
+{
+  "description": "Subject-wise splitting at both ends of the identifier-deletion sweep, against the random-split baseline from the primary arm",
+  "intact_identifiers_subject_wise": {
+    "mean": 0.7709,
+    "sd": 0.0501,
+    "ci_lo": 0.7087,
+    "ci_hi": 0.8331,
+    "n_seeds": 5
+  },
+  "destroyed_identifiers_subject_wise": {
+    "mean": 0.9465,
+    "sd": 0.0209,
+    "ci_lo": 0.9206,
+    "ci_hi": 0.9724,
+    "n_seeds": 5
+  },
+  "destroyed_identifiers_component_safe": {
+    "mean": 0.9354,
+    "sd": 0.0331,
+    "ci_lo": 0.8943,
+    "ci_hi": 0.9765,
+    "n_seeds": 5
+  },
+  "random_split_reference": {
+    "mean": 0.9472,
+    "ci_lo": 0.9262,
+    "ci_hi": 0.9649
+  },
+  "inflation_intact_to_destroyed": 0.1756,
+  "gap_destroyed_vs_random": -0.0007,
+  "intervals_overlap": true,
+  "note": "Overlapping intervals do not establish equality; they record a failure to distinguish the two at five seeds. The manuscript states the claim in that form."
+}

@@ -115,9 +115,9 @@
 
 
 % ── Title ─────────────────────────────────────────────────────────────────────
-\title[Patient Leakage Under Degraded Provenance in AD MRI]{Patient Leakage
-       Under Degraded Data Provenance in Alzheimer's Disease MRI Deep
-       Learning: Controlled Experiments and the SplitGuard-AD Audit}
+\title[Patient-Wise Splitting Degrades With Its Identifier]{Patient-Wise
+       Splitting Degrades Into Random Splitting as Participant Identifiers
+       Fail: A Controlled Measurement in Alzheimer's Disease MRI}
 
 % ── Authors ───────────────────────────────────────────────────────────────────
 % Affiliation order: Medipol School of Medicine (a), Medipol Engineering (b),
@@ -142,33 +142,28 @@
           \orgaddress{\city{Zurich}, \country{Switzerland}}}
 
 % ── Abstract ──────────────────────────────────────────────────────────────────
-\abstract{Deep-learning models for Alzheimer's disease (AD) classification from
-structural MRI routinely report near-perfect benchmark performance that
-does not survive patient-independent evaluation. Splitting by patient
-assumes the provenance defining patient identity is complete and correct,
-which redistribution and metadata loss routinely violate. We ask how
-patient-independent evaluation behaves when it degrades. On ADNI1
-($220$ cognitively normal and AD participants, $1{,}123$ scans, one 2D
-coronal-centre slice per scan), a random-split area under the receiver
-operating characteristic curve (AUROC) of \AdniRandomAUROC{} falls to
-\AdniSafeAUROC{} under component-safe evaluation: an inflation gap of
-\AdniGapTotal{} \AdniGapCI{}, replicated on OASIS-1 (\OasisGapTotal{}) and
-under DenseNet-121. Three controlled experiments separate the links.
-Permuting diagnosis labels across participants breaks the systematic
-participant-level association between diagnosis and anatomy, yet random
-splitting still reaches $0.878$ AUROC while both patient-aware protocols
-sit at chance: the apparent skill is patient recall. Substituting training scans
-into the test set raises AUROC by $+\DoseSlope{}$ per unit nominal overlap,
-descriptive of that procedure, not a causal price. Deleting participant identifiers shows
-that a leakage graph prevents $49\%$ of the leakage subject-wise splitting
-admits at $10\%$ loss. One case is observed, not simulated: by content
-matching, a widely used public 2D AD benchmark redistributes $200$ OASIS-1
-participants whose identifiers became a filename index that merges and
-splits them, and grouping by it still leaves $70\%$ of test images sharing
-a participant with training. Patient independence depends
-on both the splitting procedure and the integrity of the provenance
-defining patient identity. Manifests, audit code and the rebuild pipeline
-are released under Apache-2.0.
+\abstract{Patient-wise splitting is the standard remedy for leakage in medical
+imaging, and its guarantee is usually credited to the splitting procedure.
+It is not a property of the procedure. It is a property of the participant
+identifier the procedure is given, and identifiers are deleted, fragmented
+and merged by redistribution. We measure that dependence across its full
+range on ADNI1 ($220$ cognitively normal and AD participants, $1{,}123$
+scans, one 2D coronal-centre slice per scan). With identifiers complete,
+subject-wise splitting reports an area under the receiver operating
+characteristic curve (AUROC) of $0.771$; with every identifier removed the
+same unchanged procedure reports $0.946$, against $0.947$ for random
+image-level splitting, an inflation of $+0.176$ accrued without any error
+being raised. A provenance-aware grouping adds nothing while identifiers
+are intact, which is the design target, and declines optimism in $7$ of
+$8$ degraded conditions (Wilcoxon $p = 0.008$). Permuting diagnosis across
+participants removes the disease signal, yet random splitting still
+reaches $0.878$ AUROC while both patient-aware protocols sit at chance,
+identifying patient recall as the mechanism. One instance is observed
+rather than imposed: a widely used public 2D AD benchmark is, by content
+matching, a redistribution of $200$ OASIS-1 participants, and grouping by
+the only identifier it supplies still leaves $70\%$ of test images sharing
+a participant with training. Manifests, audit code and the rebuild
+pipeline are released under Apache-2.0.
 }
 
 % ── Keywords ──────────────────────────────────────────────────────────────────
@@ -286,20 +281,34 @@ is patient recall and nothing else. One case is observed rather than
 imposed, in a widely used public benchmark that redistributes a research
 cohort under an identifier that merges and splits its participants.
 
-This paper makes three contributions. First, it shows that
-patient-independent evaluation has an untested dependency on provenance
-integrity, and quantifies how much leakage survives a patient-aware
-protocol as that provenance is degraded and corrupted. Second, it
-calibrates what the surviving leakage is worth, through a contamination
-dose-response and a permutation control that separates patient recall
-from disease signal. Third, it releases \SGA{}, an executable audit that
-builds a per-image leakage graph from whatever identifier evidence a
-cohort carries, emits a frozen component-safe partition and reports a
-pre-training decision, together with the manifests, component tables and
-rebuild pipeline behind every number reported here. Where participant
-identity is intact the audit's component layer reduces to participant
-grouping, and we report that equivalence as a result rather than
-defending it as a feature.
+This paper makes three contributions.
+
+First, and principally, it measures the function relating evaluation validity
+to identifier quality, where the literature has established only its two
+endpoints as categories. Random splitting is known to inflate and patient-wise
+splitting is known to correct it; what lies between has not been measured. We
+show that the relation is continuous and that at its far end the correction
+disappears: with every participant identifier removed, subject-wise splitting
+reports $0.946$ against $0.947$ for random splitting on the same cohort, an
+inflation of $+0.176$ that the procedure signals in no way. Patient-wise
+splitting is therefore not a property of a splitting algorithm but of the
+evidence the algorithm is given, and a paper that reports having used it has
+reported a procedure rather than a guarantee.
+
+Second, it calibrates what the surviving leakage is worth, through a
+contamination dose-response and a permutation control, the latter an
+established instrument~\cite{chaibubneto2017permutation} applied here to
+separate patient recall from disease signal.
+
+Third, it releases \SGA{}, an executable audit that builds a per-image leakage
+graph from whatever identifier evidence a cohort carries, emits a frozen
+component-safe partition and reports a pre-training decision, together with the
+manifests, component tables and rebuild pipeline behind every number reported
+here. We offer it as the instrument that makes the measurement above possible
+rather than as an improvement on participant grouping. Where identity is intact
+its component layer reduces to participant grouping, as it should, and the
+benefit it does carry appears only once provenance is degraded. Both halves of
+that statement are reported as results.
 
 The observation that random image-level splits inflate AD MRI scores
 is not new by itself. Wen \etal~\cite{wen2020} and Yagis \etal~\cite{yagis2021} quantified the
@@ -315,6 +324,24 @@ biometric work on MRI
 representations~\cite{deepbrainprint2023,wachinger2015brainprint,schwarz2019face}
 has established that structural MRI
 leaks subject identity at re-identification accuracies far above chance.
+Two concurrent audits reach the far end of the axis measured here from the
+other direction, by finding benchmarks already there. Sifat
+\etal~\cite{aljuhani2026leakageaware} trace subject identifiers from the slice
+captions of the same Kaggle redistribution studied here and report that its
+subject count does not match the labelled source cohort. Vangala
+\etal~\cite{scoresthathold2026} recover patient identity for the traceable
+$12.6\%$ of a public brain-tumour test split by matching to the original
+release, find that $95.5\%$ of that subset shares a participant with training,
+and report the stronger result that removing every near-duplicate test image
+leaves balanced accuracy unchanged. We take both as evidence that the condition
+is common rather than exotic, which is the premise this paper needs and does
+not have to establish alone. Neither measures the path between the endpoints,
+and neither retrains: the quantity they report is what a contaminated benchmark
+yields, not how that quantity varies with the integrity of the identifier. We
+return to the apparent disagreement between their null and our gap in
+\S\ref{sec:audits_disagree}, where it resolves into a difference in what the
+two designs can detect.
+
 Across all of it, leakage is treated as a binary hazard: either the
 split respects patients or it does not, and the remedy is to group by
 subject. That framing presumes what it needs, a subject identifier
@@ -1600,6 +1627,14 @@ AUROC under random splitting, and no amount of replication across arms
 distinguishes them. We separate them by removing the disease.
 
 \paragraph{Design}
+The instrument is not new. Chaibub Neto \etal~\cite{chaibubneto2017permutation}
+introduced permutation tests for exactly this purpose, to separate a disease
+signature from a participant signature when records of one participant can
+reach both sides of a split, and label-shuffling controls of the same shape are
+now standard in neurophysiology benchmarks. We apply it here because the
+question it answers is the one the inflation gap leaves open, and because the
+protocols it compares are retrained rather than re-scored.
+
 Diagnosis labels are permuted across participants and the three protocols
 are retrained at the frozen settings, five seeds, $15$ epochs. The
 permutation is applied once over the whole cohort rather than inside each
@@ -2233,6 +2268,33 @@ mismatched design the graph appeared to prevent $78\%$ of residual
 leakage at $10\%$ loss. Roughly half of the apparent benefit came from
 the assigner rather than from the grouping. We report the matched
 comparison because only the grouping is the claim.
+
+\paragraph{At the end of the sweep the protocol becomes its own failure mode}
+The structural counts above are what the split admits. What the experiment
+reports is an AUROC, and following it to the end of the sweep gives the result
+this paper is built on.
+
+With identifiers complete, subject-wise splitting on this arm reports
+$0.771$ $[0.709, 0.833]$. With every identifier removed, the same procedure,
+unchanged, reports $0.946$ $[0.921, 0.972]$. The random image-level split of
+\S\ref{sec:exp6_adni} reports $0.947$ $[0.926, 0.965]$ on the same cohort. The
+difference between the last two is $0.001$, and their intervals overlap across
+almost their whole length.
+
+We state that as a failure to distinguish rather than as an equality: five
+seeds cannot establish that two procedures agree, and overlapping intervals are
+weak evidence. What the comparison does establish is that nothing in the
+reported number separates them. A reader handed the right-hand column cannot
+tell from it that the split was meant to be patient-disjoint, and neither can
+the procedure, which raises no error: every scan is a singleton, every
+singleton is its own group, and grouping by group is vacuous. The inflation
+across the sweep is $+0.176$ AUROC, and it accrues without a warning at any
+point.
+
+That is the sense in which patient-wise splitting is not a property of a
+splitting algorithm. The algorithm is unchanged along this axis. Only the
+evidence it is given changes, and the guarantee it is credited with degrades
+continuously into the condition it was adopted to prevent.
 
 \paragraph{Provenance loss amplifies non-linearly}
 Deleting $10\%$ of identifiers returns $36\%$ of test participants to
@@ -2917,13 +2979,22 @@ pipelines are independent of training.
 \section{Conclusions}
 \label{sec:conclusion}
 
-We treated evaluation validity in AD MRI deep learning as a question
-about data provenance and measured both links of that dependency.
-Random image-level evaluation overstates ADNI1 AUROC by \AdniGapTotal{}
-on the primary arm (paired-seed interval \AdniGapCI{} at $n=5$,
-descriptive), and the gap survives every pre-specified variation of
-cohort, backbone, converter rule, acquisition type, input
-dimensionality and label-linkage strictness
+Patient-wise splitting is not a property of a splitting algorithm. It is a
+property of the participant identifier the algorithm is given, and we measured
+that dependence across its full range on one cohort in one code state. With
+identifiers complete the procedure reports $0.771$ AUROC; with every identifier
+removed the same unchanged procedure reports $0.946$, against $0.947$ for the
+random image-level splitting it exists to prevent. The intervals overlap across
+almost their whole length, the inflation across the sweep is $+0.176$, and no
+step of the procedure raises an error at any point along it. A study that
+reports having split by patient has reported a procedure, not a guarantee, and
+the distance between the two is what this paper measures.
+
+The endpoints themselves are not in dispute. Random image-level evaluation
+overstates ADNI1 AUROC by \AdniGapTotal{} on the primary arm (paired-seed
+interval \AdniGapCI{} at $n=5$, descriptive), and the gap survives every
+pre-specified variation of cohort, backbone, converter rule, acquisition type,
+input dimensionality and label-linkage strictness
 (Figure~\ref{fig:arm_forest}; the volumetric arm in
 \S\ref{sec:exp6_adni}, where the gap is \VolGapTotal{} against
 \AdniGapTotal{} in 2D, under a different training recipe).
